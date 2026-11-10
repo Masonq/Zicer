@@ -850,6 +850,10 @@ function useArenaEngine(cfgNow) {
         const n = next(); seg(n.to, n.dur, n.hop)
       },
       serve(side) { if (net()) { s.stopped = false; s.strike = null; serveFrom(side) } },
+      pause() { // breaks: ball rests in the middle, no play
+        s.stopped = true; s.strike = null; s.pos = { x: 50, y: 50 }; place(s.pos); s.trail = []; s.marks = []
+        if (trailEl.current) trailEl.current.setAttribute('points', ''); if (marksEl.current) marksEl.current.innerHTML = ''
+      },
     }
     if (net()) serveFrom(cfg.current.server ?? 0)
     else { const n = next(); seg(n.to, n.dur, n.hop) }
@@ -892,7 +896,9 @@ function Arena({ m, data, t }) {
   const H = t.team(m.home), A = t.team(m.away)
   const names = [H, A]
   const dataSS = x.ss || (lv.game ? lv.game.map(String) : ['0', '0'])
-  const dataPer = (x.periods && x.periods.length ? x.periods : (lv.per || [])).filter((p) => p[0] || p[1])
+  const rawPer = x.periods && x.periods.length ? x.periods : (lv.per || [])
+  // keep the current (still 0-0) set/period too, so the row shows where the match is
+  const dataPer = rawPer.filter((p, i) => p[0] || p[1] || i === rawPer.length - 1)
   const dataScore = data.score || m.score || [0, 0] // centre data is fresher than the page data
   // ---------- displayed (directed) state ----------
   const [shown, setShown] = useState(() => ({ score: dataScore, ss: dataSS, per: dataPer }))
@@ -941,7 +947,18 @@ function Arena({ m, data, t }) {
   else att = scene.x > 55 ? 0 : scene.x < 45 ? 1 : null
   const ttl = scene.title || ''
   const intensity = ttl === t('dangerAttack') || ttl === t('ev_danger') ? 0.95 : ttl === t('attack') || ttl === t('ev_attack') ? 0.6 : 0.3
+  // breaks between periods / sets: no play on the court
+  const lastGame = sport === 'tennis' ? [...(data.xev || [])].reverse().find((e) => e.t === 'game') : null
+  const curSet = dataPer[dataPer.length - 1] || [0, 0]
+  const nowS = data.now || Date.now() / 1000
+  const isBreak = live && (/PAUSE|BREAK|HALF_TIME|INTERVAL/.test(`${lv.p || ''} ${m.minute || ''}`) || /break|pause|half-time|interval/i.test(x.period || '')
+    || (sport === 'tennis' && dataPer.length > 1 && !curSet[0] && !curSet[1] && dataSS[0] === '0' && dataSS[1] === '0' && lastGame && nowS - lastGame.at < 240))
   const eng = useArenaEngine({ live, sport, att, intensity, server, srvY, rcvY })
+  useEffect(() => {
+    if (!eng.api.current || !live) return
+    if (isBreak) eng.api.current.pause()
+    else if (phase.kind === 'idle') { if (net) eng.api.current.serve(server); else eng.api.current.resume({ reset: { x: 50, y: 50 } }) }
+  }, [isBreak]) // eslint-disable-line react-hooks/exhaustive-deps
   // ---------- the director ----------
   useEffect(() => {
     if (phase.kind !== 'idle' || !queue.current.length || !live || !eng.api.current) return
@@ -991,7 +1008,8 @@ function Arena({ m, data, t }) {
   const boardL = sport === 'tennis' ? (live ? shown.ss[0] : dataScore[0]) : shown.score[0]
   const boardR = sport === 'tennis' ? (live ? shown.ss[1] : dataScore[1]) : shown.score[1]
   let status = null
-  if (phase.kind !== 'idle' && phase.ev) status = { side: phase.ev.side, title: phase.kind === 'finish' ? (net ? t('rally') : sport === 'basketball' ? t('shot') : t('ev_shot_on')) : bannerTitle(phase.ev, sport, t), icon: phase.kind === 'finish' ? null : (sport === 'tennis' ? 'ace' : 'score') }
+  if (isBreak && phase.kind === 'idle') status = { side: null, title: sport === 'tennis' ? t('setBreak') : t('pause'), icon: 'timeout' }
+  else if (phase.kind !== 'idle' && phase.ev) status = { side: phase.ev.side, title: phase.kind === 'finish' ? (net ? t('rally') : sport === 'basketball' ? t('shot') : t('ev_shot_on')) : bannerTitle(phase.ev, sport, t), icon: phase.kind === 'finish' ? null : (sport === 'tennis' ? 'ace' : 'score') }
   else if (infoShown) status = { side: infoShown.side, title: infoShown.t === 'bp' ? t('ev_bp') : xevLabel(infoShown, sport, t), icon: infoShown.t === 'bp' ? 'break' : infoShown.t }
   else if (live && att !== null) status = { side: att, title: net ? t('serve') : sport === 'basketball' ? t('withBall') : (ttl && ![t('live'), t('finished'), t('pause'), t('ev_goal'), t('ev_set'), t('ev_vpoint'), `${t('goal')}!`].includes(ttl) && !ttl.startsWith('+') ? ttl : t('withBall')), arrow: !net }
   const ev = phase.ev
@@ -1021,7 +1039,12 @@ function Arena({ m, data, t }) {
       {sport === 'basketball' && fouls && live ? (
         <div className="tt-sets num bb-sub">{bonusDots(fouls[0])}<span>{clock && /^\d{1,2}:\d{2}$/.test(String(clock.t).trim()) ? `Q${clock.q} ${String(clock.t).trim()}` : periodTxt}</span>{bonusDots(fouls[1])}</div>
       ) : (
-        <div className="tt-sets num">{(sport === 'tennis' ? perTxt : [periodTxt, sport === 'football' ? '' : perTxt].filter(Boolean).join('   ')) || '\u00a0'}</div>
+        sport === 'tennis' ? (
+          <div className="tt-sets num tn-sets">
+            <b>{dataScore[0]}:{dataScore[1]}</b>
+            {shown.per.map((p, i) => <span key={i} className={i === shown.per.length - 1 && live ? 'cur' : ''}>{p[0] ?? 0}-{p[1] ?? 0}</span>)}
+          </div>
+        ) : <div className="tt-sets num">{[periodTxt, sport === 'football' ? '' : perTxt].filter(Boolean).join('   ') || '\u00a0'}</div>
       )}
       <div className="trk-status">
         <AnimatePresence mode="wait" initial={false}>
@@ -1048,7 +1071,7 @@ function Arena({ m, data, t }) {
           <span ref={eng.ballEl} className={`eng-ball ball-${sport}`} style={{ opacity: live ? 1 : 0 }} />
           {sport === 'tennis' && [0, 1].map((side) => (
             <div key={side} className={`tt-tag ${side === 0 ? 'l' : 'r'}`} style={{ top: `${side === server ? srvY : rcvY}%` }}>
-              <span className="ellip">{names[side]}</span>{live && side === server && phase.kind === 'idle' && <b>{t('serve')}</b>}
+              <span className="ellip">{names[side]}</span>{live && !isBreak && side === server && phase.kind === 'idle' && <b>{t('serve')}</b>}
             </div>
           ))}
         </div>
@@ -1064,6 +1087,11 @@ function Arena({ m, data, t }) {
             </motion.div>
           )}
         </AnimatePresence>
+        <AnimatePresence>{isBreak && phase.kind === 'idle' && (
+          <motion.div key="brk" className="arena-break" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
+            <span><IconPlayerPause size={18} />{sport === 'tennis' ? t('setBreak') : t('pause')}</span>
+          </motion.div>
+        )}</AnimatePresence>
         {!live && <div className="tt-toast">{t('finished')}</div>}
       </div>
       <Extras m={m} data={data} t={t} items={feed} />

@@ -645,3 +645,10 @@ img { display: block; max-width: 100%; }
 .ab-score { display: flex; align-items: baseline; gap: 4px; font-size: 26px; color: rgba(255,255,255,0.7); padding-left: 12px; border-left: 1px solid rgba(255,255,255,0.14); }
 .ab-score .hl { color: var(--gold); text-shadow: 0 0 14px rgba(242,194,48,0.45); }
 .ab-score i { font-style: normal; opacity: 0.6; }
+
+.eng-ball.ball-tennis { background: radial-gradient(circle at 35% 35%, #F1FF9A, #C8E23A); box-shadow: 0 0 0 3px rgba(215,242,90,0.22), 0 0 12px rgba(215,242,90,0.6); width: 11px; height: 11px; }
+.tn-sets { display: flex; gap: 10px; align-items: center; }
+.tn-sets b { color: var(--gold); font-weight: 600; padding-right: 10px; border-right: 1px solid rgba(255,255,255,0.18); }
+.tn-sets span { color: #cfd8d3; } .tn-sets span.cur { color: #fff; font-weight: 600; }
+.arena-break { position: absolute; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; background: rgba(6, 16, 12, 0.45); }
+.arena-break span { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; background: rgba(8,20,15,0.85); color: #fff; font-weight: 700; font-size: 14px; border: 1px solid rgba(255,255,255,0.12); }
