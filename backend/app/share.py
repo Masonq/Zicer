@@ -12,7 +12,7 @@ from .models import Ticket
 
 router = APIRouter()
 FD = os.path.join(os.path.dirname(__file__), "fonts")
-BG, SURF, LINE, CHALK, MUTED, GOLD, WIN, LOSS = "#0B0F0D", "#151C19", "#29332F", "#F4F5F3", "#95A39D", "#C8F51E", "#4CC38A", "#E5544B"
+BG, SURF, LINE, CHALK, MUTED, GOLD, WIN, LOSS = "#0F2A22", "#16382D", "#2A5244", "#EEF3EE", "#93AFA3", "#F2C230", "#4CC38A", "#E5544B"
 
 
 @lru_cache(maxsize=32)
@@ -45,7 +45,7 @@ def render_ticket(t: Ticket) -> bytes:
         im.paste(lg, (76, 62), lg)
     except Exception:  # noqa
         pass
-    d.text((156, 66), "Winly", font=font("Oswald.ttf", 54, "Bold"), fill=CHALK)
+    d.text((156, 66), "Winly", font=font("Oswald.ttf", 54, "Bold"), fill=GOLD)
     d.text((80, 140), f"tiket @{t.user.username}", font=font("Manrope.ttf", 26, "SemiBold"), fill=MUTED)
     status = {"won": ("PROŠAO", WIN), "lost": ("PAO", LOSS), "void": ("VRAĆEN", MUTED)}.get(t.status, ("U IGRI", CHALK))
     sf = font("Oswald.ttf", 92, "Bold")

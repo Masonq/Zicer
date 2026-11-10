@@ -62,7 +62,7 @@ export default function Layout() {
   return (
     <div className="shell">
       <aside className="sidebar">
-        <Link to="/" className="wordmark"><img src="/logo-128.png" alt="" width="34" height="34" className="wm-logo" /><span>Winly</span></Link>
+        <Link to="/" className="wordmark"><img src="/logo-wide.png" alt="" height="26" className="wm-logo" /><span>Winly</span></Link>
         {nav.map(([to, label, Icon]) => (
           <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => `side-link${isActive ? ' on' : ''}`}><Icon size={20} />{label}</NavLink>
         ))}
@@ -80,7 +80,7 @@ export default function Layout() {
 
       <div style={{ minWidth: 0 }}>
         <header className="topbar">
-          <Link to="/" className="wordmark"><img src="/logo-128.png" alt="" width="34" height="34" className="wm-logo" /><span>Winly</span></Link>
+          <Link to="/" className="wordmark"><img src="/logo-wide.png" alt="" height="26" className="wm-logo" /><span>Winly</span></Link>
           <div className="topbar-right">
             {user && <Link to="/profil" className="bank-chip" title={t('yourBank')}><Wallet size={16} />{fmtNum(user.bank)}</Link>}
             <LangSwitch />

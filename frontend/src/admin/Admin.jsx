@@ -106,7 +106,7 @@ function Comments() {
   )
 }
 
-const EMPTY_BM = { name: '', url: '', bonus_sr: '', bonus_ru: '', rating: 4.5, color: '#C8F51E', sort: 0, active: true }
+const EMPTY_BM = { name: '', url: '', bonus_sr: '', bonus_ru: '', rating: 4.5, color: '#F2C230', sort: 0, active: true }
 function Bookmakers() {
   const [ver, setVer] = useState(0)
   const [edit, setEdit] = useState(null)

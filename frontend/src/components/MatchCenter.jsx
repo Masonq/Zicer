@@ -36,7 +36,7 @@ function Momentum({ data, colors }) {
   const W = 600, H = 120, mid = H / 2
   const maxMin = Math.max(90, ...data.map((d) => d[0]))
   const bw = W / (maxMin + 1)
-  const hc = '#C8F51E', ac = '#EEF3EE'
+  const hc = '#F2C230', ac = '#EEF3EE'
   return (
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="momentum" aria-hidden="true">
       <line x1="0" x2={W} y1={mid} y2={mid} stroke="rgba(238,243,238,0.25)" strokeWidth="1" />
@@ -262,7 +262,7 @@ function celebrate(el, side) {
     const r = el.getBoundingClientRect()
     const x = (r.left + r.width * (side === 0 ? 0.8 : 0.2)) / window.innerWidth
     const y = (r.top + r.height * 0.5) / window.innerHeight
-    confetti({ particleCount: 70, spread: 70, startVelocity: 32, ticks: 140, scalar: 0.8, origin: { x, y }, colors: side === 0 ? ['#3D8EF0', '#C8F51E', '#ffffff'] : ['#8BD12F', '#C8F51E', '#ffffff'], disableForReducedMotion: true })
+    confetti({ particleCount: 70, spread: 70, startVelocity: 32, ticks: 140, scalar: 0.8, origin: { x, y }, colors: side === 0 ? ['#3D8EF0', '#F2C230', '#ffffff'] : ['#8BD12F', '#F2C230', '#ffffff'], disableForReducedMotion: true })
     if (navigator.vibrate) navigator.vibrate([40, 30, 40])
   } catch {}
 }
@@ -492,43 +492,57 @@ function TennisCourt({ m, data, t }) {
   const sy = (side) => (side === 0 ? (deuce ? 68 : 32) : (deuce ? 32 : 68))
   const srvY = sy(server)
   const rcvY = server === 0 ? (deuce ? 32 : 68) : (deuce ? 68 : 32)
-  // serve + rally loop: serve goes diagonally into the receiver's service box, then every shot crosses the net
-  const [ball, setBall] = useState({ x: server === 0 ? 4 : 96, y: srvY, k: 0, fly: false })
-  const loop = useRef(null)
+  // One continuous trajectory per point (like broadcast/LMT trackers):
+  // serve -> diagonal service box -> rally, every shot crosses the net, ball flies in a straight line in the
+  // top-down view with height shown by size and shadow; the path stays drawn and the ball waits at the last
+  // bounce until the real point result arrives. Then a new point starts from the server.
+  const ballEl = useRef(null), shadowEl = useRef(null), trailEl = useRef(null), marksEl = useRef(null)
+  const raf = useRef(0)
+  const pointKey = `${ss[0]}:${ss[1]}:${server}:${phase.kind}`
   useEffect(() => {
-    clearTimeout(loop.current)
-    if (!live || phase.kind !== 'idle') { setBall({ x: server === 0 ? 4 : 96, y: srvY, k: Date.now(), fly: false }); return }
-    let side = server // side where the ball is now
-    let shots = 0
-    let total = 3 + Math.floor(Math.random() * 6)
-    const step = () => {
-      if (shots === 0) {
-        setBall({ x: server === 0 ? 4 : 96, y: srvY, k: Date.now(), fly: false }) // toss
-        shots = 1
-        loop.current = setTimeout(step, 1300)
-        return
-      }
-      if (shots > total) { // rally over: short pause, next serve
-        shots = 0; side = server; total = 3 + Math.floor(Math.random() * 6)
-        loop.current = setTimeout(step, 1500)
-        return
-      }
+    cancelAnimationFrame(raf.current)
+    if (!live || phase.kind !== 'idle' || !ballEl.current) return
+    const start = { x: server === 0 ? 5 : 95, y: srvY }
+    const pts = [start]
+    let side = server
+    const n = 4 + Math.floor(Math.random() * 5)
+    for (let i = 0; i < n; i++) {
       side = 1 - side
-      let xx, yy
-      if (shots === 1) { // serve into the diagonal service box
-        xx = side === 1 ? 58 + Math.random() * 10 : 32 + Math.random() * 10
-        yy = rcvY > 50 ? 55 + Math.random() * 12 : 33 + Math.random() * 12
-      } else {
-        xx = side === 1 ? 66 + Math.random() * 20 : 14 + Math.random() * 20
-        yy = 20 + Math.random() * 60
-      }
-      setBall({ x: xx, y: yy, k: Date.now(), fly: true })
-      shots += 1
-      loop.current = setTimeout(step, 1150)
+      if (i === 0) pts.push({ x: side === 1 ? 57 + Math.random() * 9 : 34 + Math.random() * 9, y: rcvY > 50 ? 56 + Math.random() * 12 : 32 + Math.random() * 12 })
+      else pts.push({ x: side === 1 ? 64 + Math.random() * 24 : 12 + Math.random() * 24, y: 18 + Math.random() * 64 })
     }
-    loop.current = setTimeout(step, 400)
-    return () => clearTimeout(loop.current)
-  }, [live, server, totalPts, phase.kind]) // eslint-disable-line react-hooks/exhaustive-deps
+    const dur = (i) => (i === 0 ? 820 : 980)
+    let shot = 0, t0 = performance.now() + 900 // short toss before the serve
+    const marks = []
+    const draw = (now) => {
+      const el = ballEl.current, sh = shadowEl.current, tr = trailEl.current
+      if (!el || !sh || !tr) return
+      if (now < t0) { // toss: ball goes up and down at the server
+        const k = 1 - Math.abs((now - (t0 - 900)) / 450 - 1)
+        el.style.left = `${start.x}%`; el.style.top = `${start.y}%`; el.style.transform = `translate(-50%, calc(-50% - ${k * 22}px)) scale(${1 + k * 0.25})`
+        sh.style.left = `${start.x}%`; sh.style.top = `${start.y}%`
+        tr.setAttribute('points', '')
+        raf.current = requestAnimationFrame(draw); return
+      }
+      const p0 = pts[shot], p1 = pts[shot + 1]
+      const tt = Math.min(1, (now - t0) / dur(shot))
+      const x = p0.x + (p1.x - p0.x) * tt, y = p0.y + (p1.y - p0.y) * tt
+      const h = 4 * tt * (1 - tt) // height of the flight
+      el.style.left = `${x}%`; el.style.top = `${y}%`; el.style.transform = `translate(-50%, calc(-50% - ${h * 26}px)) scale(${1 + h * 0.35})`
+      sh.style.left = `${x}%`; sh.style.top = `${y}%`; sh.style.opacity = String(0.55 - h * 0.3)
+      tr.setAttribute('points', [...pts.slice(Math.max(0, shot - 2), shot + 1), { x, y }].map((p) => `${p.x},${p.y}`).join(' '))
+      if (tt >= 1) {
+        marks.push(p1)
+        if (marksEl.current) marksEl.current.innerHTML = marks.slice(-3).map((m) => `<circle cx="${m.x}" cy="${m.y}" r="1.1" />`).join('')
+        shot += 1; t0 = now
+        if (shot >= pts.length - 1) return // rally drawn: wait at the last bounce for the real point result
+      }
+      raf.current = requestAnimationFrame(draw)
+    }
+    if (marksEl.current) marksEl.current.innerHTML = ''
+    raf.current = requestAnimationFrame(draw)
+    return () => cancelAnimationFrame(raf.current)
+  }, [pointKey, live]) // eslint-disable-line react-hooks/exhaustive-deps
   const setsTxt = per.map((p) => `${p[0]}-${p[1]}`).join(', ')
   const ev = phase.ev
   const winner = ev ? ev.side : null
@@ -555,8 +569,12 @@ function TennisCourt({ m, data, t }) {
         <CourtLines sport="tennis" />
         {live && phase.kind !== 'big' && (
           <>
-            <span className="bp-shadow tn" style={{ left: `${ball.x}%`, top: `${ball.y}%` }} />
-            <span className="bp-wrap tn" style={{ left: `${ball.x}%`, top: `${ball.y}%` }}><span key={ball.k} className={`bp-ball ball-tennis${ball.fly ? ' arc' : ' toss'}`} /></span>
+            <svg className="tn-trail" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+              <polyline ref={trailEl} points="" fill="none" stroke="rgba(215,242,90,0.55)" strokeWidth="1.6" strokeDasharray="4 4" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+              <g ref={marksEl} fill="none" stroke="rgba(255,255,255,0.75)" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
+            </svg>
+            <span ref={shadowEl} className="tn-shadow" style={{ left: `${server === 0 ? 5 : 95}%`, top: `${srvY}%` }} />
+            <span ref={ballEl} className="tn-ball" style={{ left: `${server === 0 ? 5 : 95}%`, top: `${srvY}%` }} />
           </>
         )}
         {tag(0)}{tag(1)}
