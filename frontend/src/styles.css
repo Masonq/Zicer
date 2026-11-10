@@ -573,3 +573,34 @@ img { display: block; max-width: 100%; }
 .tn-ball { position: absolute; z-index: 3; width: 12px; height: 12px; border-radius: 50%; background: #D7F25A; transform: translate(-50%, -50%);
   box-shadow: 0 0 0 3px rgba(215,242,90,0.22), 0 0 12px rgba(215,242,90,0.7); will-change: left, top, transform; }
 .tn-shadow { position: absolute; z-index: 2; width: 14px; height: 5px; border-radius: 50%; background: rgba(0,0,0,0.45); filter: blur(1px); transform: translate(-50%, 2px); will-change: left, top; }
+
+/* arena: continuous play engine + richer visuals */
+.arena-fx { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
+.arena-fx .trail { filter: drop-shadow(0 0 3px rgba(255,255,255,0.35)); }
+.eng-ball { position: absolute; z-index: 3; width: 13px; height: 13px; border-radius: 50%; background: #fff; transform: translate(-50%, -50%); left: 50%; top: 50%;
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.18), 0 0 14px rgba(255,255,255,0.65); will-change: left, top, transform; transition: opacity .3s; }
+.eng-ball.ball-basketball { background: radial-gradient(circle at 35% 35%, #F7A764, #D9661E); box-shadow: 0 0 0 3px rgba(232,131,58,0.25), 0 0 12px rgba(232,131,58,0.6); }
+.eng-ball.ball-hockey { width: 14px; height: 9px; background: #0B0F12; box-shadow: 0 0 0 2px rgba(255,255,255,0.7), 0 0 10px rgba(255,255,255,0.6); }
+.eng-ball.ball-volleyball, .eng-ball.ball-waterpolo { background: radial-gradient(circle at 35% 35%, #FFF3A6, #F2C230); box-shadow: 0 0 0 3px rgba(245,213,71,0.25), 0 0 12px rgba(245,213,71,0.6); }
+.eng-shadow { position: absolute; z-index: 2; width: 15px; height: 5px; border-radius: 50%; background: rgba(0,0,0,0.45); filter: blur(1px); transform: translate(-50%, 3px); left: 50%; top: 50%; will-change: left, top; }
+.ripple { position: absolute; z-index: 2; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.9); opacity: 0; pointer-events: none; }
+.ripple.go { animation: ripple 1.2s ease-out 2; }
+@keyframes ripple { 0% { transform: scale(0.5); opacity: 0.9; } 100% { transform: scale(6); opacity: 0; } }
+/* territory of the team in possession + moving chevrons */
+.terr { position: absolute; top: 0; bottom: 0; width: 50%; z-index: 1; pointer-events: none; display: flex; align-items: center; justify-content: center; transition: left .6s, opacity .6s; }
+.terr.t0 { left: 50%; background: linear-gradient(90deg, rgba(61,142,240,0) 0%, rgba(61,142,240,0.16) 100%); color: rgba(61,142,240,0.55); }
+.terr.t1 { left: 0; background: linear-gradient(270deg, rgba(139,209,47,0) 0%, rgba(139,209,47,0.16) 100%); color: rgba(139,209,47,0.6); }
+.terr.t1 .chev { transform: scaleX(-1); }
+.chev { width: 54px; height: 18px; animation: chev 1.6s linear infinite; }
+.terr.t1 .chev { animation-name: chevl; }
+@keyframes chev { 0% { translate: -14px 0; opacity: 0; } 30% { opacity: 1; } 100% { translate: 14px 0; opacity: 0; } }
+@keyframes chevl { 0% { translate: 14px 0; opacity: 0; } 30% { opacity: 1; } 100% { translate: -14px 0; opacity: 0; } }
+/* courts: more depth and texture */
+.tt-court::after { content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: radial-gradient(120% 90% at 50% 50%, transparent 55%, rgba(0,0,0,0.32) 100%); }
+.court-football.tt-court { background: repeating-linear-gradient(90deg, rgba(255,255,255,0.045) 0 9.09%, rgba(0,0,0,0.06) 9.09% 18.18%), radial-gradient(80% 70% at 50% 45%, #2A6E52 0%, #1A4A37 100%); }
+.court-hockey.tt-court { background: radial-gradient(70% 60% at 50% 45%, #E8F1F8 0%, #C9DCEA 100%); }
+.court-hockey.tt-court .court-svg rect, .court-hockey.tt-court .court-svg circle { stroke: rgba(30,60,90,0.45); }
+.court-volleyball.tt-court { background: radial-gradient(80% 70% at 50% 45%, #D2884A 0%, #A65E2A 100%); }
+.court-waterpolo.tt-court { background: repeating-linear-gradient(170deg, rgba(255,255,255,0.05) 0 12px, rgba(0,0,0,0.03) 12px 24px), radial-gradient(80% 70% at 50% 45%, #22A2D8 0%, #0E6B98 100%); background-size: 200% 200%, 100% 100%; animation: water 9s linear infinite; }
+@keyframes water { from { background-position: 0 0, 0 0; } to { background-position: 120px 60px, 0 0; } }
+@media (prefers-reduced-motion: reduce) { .chev, .court-waterpolo.tt-court, .ripple.go { animation: none; } }

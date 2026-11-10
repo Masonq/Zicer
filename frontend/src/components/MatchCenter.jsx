@@ -344,6 +344,77 @@ function bballPossession(plays) {
   return null
 }
 
+// ---------- play engine: the ball/puck is always moving along continuous paths ----------
+// It keeps circulating in the zone of the team in possession (deeper when the attack is dangerous),
+// and when a real event arrives it travels to the event spot (shot, corner, goal...), holds, then play resumes.
+const SEG = { football: [1300, 2000], hockey: [520, 820], basketball: [650, 1000], waterpolo: [1000, 1500], volleyball: [1050, 1250] }
+function usePlayEngine({ live, sport, att, intensity, eventSpot, eventKey, isScore, server }) {
+  const ballEl = useRef(null), shadowEl = useRef(null), trailEl = useRef(null), rippleEl = useRef(null)
+  const st = useRef({ pos: { x: 50, y: 50 }, from: { x: 50, y: 50 }, to: { x: 50, y: 50 }, t0: 0, dur: 1, hop: 0, hold: 0, trail: [], lastTrail: 0, side: 0, after: null })
+  const cfg = useRef({ att, intensity, sport, server })
+  cfg.current = { att, intensity, sport, server }
+  useEffect(() => {
+    const e = st.current
+    let raf = 0
+    const rnd = (a, b) => a + Math.random() * (b - a)
+    const place = (p, h = 0) => {
+      if (ballEl.current) { ballEl.current.style.left = `${p.x}%`; ballEl.current.style.top = `${p.y}%`; ballEl.current.style.transform = `translate(-50%, calc(-50% - ${h * 24}px)) scale(${1 + h * 0.3})` }
+      if (shadowEl.current) { shadowEl.current.style.left = `${p.x}%`; shadowEl.current.style.top = `${p.y}%`; shadowEl.current.style.opacity = String(0.5 - h * 0.25) }
+    }
+    const next = () => {
+      const { att: a, intensity: k, sport: sp, server: srv } = cfg.current
+      const [d0, d1] = SEG[sp] || [900, 1400]
+      if (sp === 'volleyball') { // rally over the net, arcs, until the real point arrives
+        e.side = e.side === 0 ? 1 : 0
+        return { to: { x: e.side === 1 ? rnd(60, 86) : rnd(14, 40), y: rnd(22, 78) }, dur: rnd(d0, d1), hop: 1 }
+      }
+      if (a === null || a === undefined) return { to: { x: rnd(36, 64), y: Math.max(18, Math.min(82, e.pos.y + rnd(-30, 30))) }, dur: rnd(d0, d1), hop: 0 }
+      const depth = sp === 'basketball' ? [62, 90] : [52 + 12 * k, 66 + 26 * k]
+      let x = rnd(depth[0], depth[1])
+      if (a === 1) x = 100 - x
+      const dy = sp === 'hockey' ? 46 : 34
+      const y = Math.max(18, Math.min(82, e.pos.y + rnd(-dy, dy)))
+      return { to: { x, y }, dur: rnd(d0, d1) * (sp === 'football' ? 1 - 0.25 * k : 1), hop: sp === 'basketball' ? 0.25 : 0 }
+    }
+    const seg = (to, dur, hop) => { e.from = { ...e.pos }; e.to = to; e.t0 = performance.now(); e.dur = dur; e.hop = hop }
+    if (!live) { e.pos = { x: 50, y: 50 }; place(e.pos); if (trailEl.current) trailEl.current.setAttribute('points', ''); return }
+    if (cfg.current.sport === 'volleyball' && cfg.current.server !== null) { e.pos = { x: cfg.current.server === 0 ? 6 : 94, y: 50 }; e.side = cfg.current.server }
+    const n = next(); seg(n.to, n.dur, n.hop)
+    const frame = (now) => {
+      if (e.hold && now < e.hold) { raf = requestAnimationFrame(frame); return }
+      if (e.hold) { e.hold = 0; if (e.after) { e.pos = { ...e.after }; e.after = null; e.trail = [] } const n2 = next(); seg(n2.to, n2.dur, n2.hop) }
+      const tt = Math.min(1, (now - e.t0) / e.dur)
+      const ease = tt < 0.5 ? 2 * tt * tt : 1 - Math.pow(-2 * tt + 2, 2) / 2
+      const p = { x: e.from.x + (e.to.x - e.from.x) * ease, y: e.from.y + (e.to.y - e.from.y) * ease }
+      const h = e.hop ? 4 * tt * (1 - tt) * e.hop : 0
+      e.pos = p
+      place(p, h)
+      if (now - e.lastTrail > 60) {
+        e.lastTrail = now; e.trail.push(p); if (e.trail.length > 22) e.trail.shift()
+        if (trailEl.current) trailEl.current.setAttribute('points', e.trail.map((q) => `${q.x.toFixed(2)},${q.y.toFixed(2)}`).join(' '))
+      }
+      if (tt >= 1) {
+        if (e.event) { e.event = false; e.hold = now + 1500 } else { const n3 = next(); seg(n3.to, n3.dur, n3.hop) }
+      }
+      raf = requestAnimationFrame(frame)
+    }
+    raf = requestAnimationFrame(frame)
+    return () => cancelAnimationFrame(raf)
+  }, [live, sport]) // eslint-disable-line react-hooks/exhaustive-deps
+  // a real event: travel to its spot, ripple, hold; after a goal play restarts from the centre
+  useEffect(() => {
+    if (!eventKey || !eventSpot || !live) return
+    const e = st.current
+    e.from = { ...e.pos }; e.to = eventSpot; e.t0 = performance.now(); e.dur = 520; e.hop = sport === 'basketball' ? 0.8 : 0.15; e.event = true
+    e.after = isScore ? (sport === 'basketball' ? { x: eventSpot.x > 50 ? 92 : 8, y: 50 } : { x: 50, y: 50 }) : null
+    if (rippleEl.current) {
+      rippleEl.current.style.left = `${eventSpot.x}%`; rippleEl.current.style.top = `${eventSpot.y}%`
+      rippleEl.current.classList.remove('go'); void rippleEl.current.offsetWidth; rippleEl.current.classList.add('go')
+    }
+  }, [eventKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  return { ballEl, shadowEl, trailEl, rippleEl }
+}
+
 function Court({ m, data, t }) {
   const live = m.status === 'live'
   const scene = useScene(m, data, t)
@@ -392,6 +463,14 @@ function Court({ m, data, t }) {
   else if (m.sport === 'basketball' && att !== null) ball = { x: att === 0 ? 70 : 30, y: 62 }
   else if (att !== null) ball = { x: Math.max(8, Math.min(92, scene.x)), y: 55 }
   else ball = { x: 50, y: 50 }
+  // ---- engine inputs
+  const ttl = scene.title || ''
+  const intensity = ttl === t('dangerAttack') || ttl === t('ev_danger') ? 0.95 : ttl === t('attack') || ttl === t('ev_attack') ? 0.6 : 0.3
+  const evSpotKey = phase.kind === 'event' && ev ? ev.k : null
+  const evSpot = phase.kind === 'event' && ev && EVSPOT[ev.t === 'score' && m.sport === 'basketball' ? 'p2' : ev.t]
+    ? (() => { const sp = EVSPOT[ev.t === 'score' && m.sport === 'basketball' ? 'p2' : ev.t]; return { x: ev.side === 0 ? sp[0] : 100 - sp[0], y: ev.t === 'corner' ? (String(ev.k).length % 2 ? sp[1] : 100 - sp[1]) : sp[1] } })()
+    : null
+  const engine = usePlayEngine({ live, sport: m.sport, att, intensity, eventSpot: evSpot, eventKey: evSpotKey, isScore: ev && ev.t === 'score', server })
   // ---- card
   let card = null
   if (live && phase.kind === 'event' && ev) card = { side: ev.side, title: ev.title, sub: ev.sub, icon: ev.t }
@@ -425,12 +504,18 @@ function Court({ m, data, t }) {
             <polygon fill={`url(#pg${att})`} points={att === 0 ? '18,0 50,0 64,50 50,100 18,100 32,50' : '82,0 50,0 36,50 50,100 82,100 68,50'} />
           </svg>
         )}
-        {live && phase.kind !== 'big' && (
-          <>
-            <span className="bp-shadow" style={{ left: `${ball.x}%`, top: `${ball.y}%` }} />
-            <span className="bp-wrap" style={{ left: `${ball.x}%`, top: `${ball.y}%` }}><span className={`bp-ball ball-${m.sport} live`} /></span>
-          </>
+        {live && att !== null && server === null && (
+          <div className={`terr t${att}`} aria-hidden="true">
+            <svg className="chev" viewBox="0 0 60 20"><path d="M2 2 L10 10 L2 18 M18 2 L26 10 L18 18 M34 2 L42 10 L34 18" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          </div>
         )}
+        <svg className="arena-fx" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          <defs><linearGradient id={`tg${m.id}`} x1="0" x2="1"><stop offset="0" stopColor="#fff" stopOpacity="0" /><stop offset="1" stopColor="#fff" stopOpacity="0.55" /></linearGradient></defs>
+          <polyline ref={engine.trailEl} points="" fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" className="trail" />
+        </svg>
+        <span ref={engine.rippleEl} className="ripple" />
+        <span ref={engine.shadowEl} className="eng-shadow" style={{ opacity: live ? 0.5 : 0 }} />
+        <span ref={engine.ballEl} className={`eng-ball ball-${m.sport}`} style={{ opacity: live && phase.kind !== 'big' ? 1 : 0 }} />
         </div>
         <AnimatePresence>
         {card && (
