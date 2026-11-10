@@ -480,8 +480,8 @@ img { display: block; max-width: 100%; }
 .tt-tag { position: absolute; z-index: 3; display: flex; flex-direction: column; gap: 1px; font-size: 13px; font-weight: 600; color: #fff; max-width: 42%; transform: translateY(-50%);
   transition: top .5s ease; text-shadow: 0 1px 4px rgba(0,0,0,0.5); }
 .tt-tag b { color: #F5D547; font-weight: 700; font-size: 13px; }
-.tt-tag.l { left: 9%; padding-left: 8px; border-left: 3px solid var(--c0); }
-.tt-tag.r { right: 9%; padding-right: 8px; border-right: 3px solid var(--c1); text-align: right; align-items: flex-end; }
+.tt-tag.l { left: 11%; padding-left: 8px; border-left: 3px solid var(--c0); }
+.tt-tag.r { right: 11%; padding-right: 8px; border-right: 3px solid var(--c1); text-align: right; align-items: flex-end; }
 .tt-toast { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 4; padding: 8px 16px; border-radius: 8px; background: rgba(10, 28, 46, 0.88);
   color: #F5D547; font-family: var(--display); font-size: 24px; font-weight: 500; box-shadow: 0 6px 20px rgba(0,0,0,0.35); animation: pop .25s ease-out; }
 @keyframes pop { from { transform: translate(-50%, -50%) scale(0.85); opacity: 0; } }
@@ -492,3 +492,9 @@ img { display: block; max-width: 100%; }
 @keyframes fadein { from { opacity: 0; } }
 .center-body.fixed { height: 300px; overflow-y: auto; overscroll-behavior: contain; }
 .center-body.fixed .ev-list { max-height: none; }
+.bp-wrap, .bp-shadow { transition: left 1.4s cubic-bezier(.45,.05,.3,1), top 1.4s cubic-bezier(.45,.05,.3,1); }
+.bp-ball.live::after { content: ''; position: absolute; inset: -6px; border-radius: 50%; border: 2px solid currentColor; opacity: 0; animation: ring 2.4s ease-out infinite; }
+.bp-ball { color: rgba(255,255,255,0.7); }
+.bp-ball.ball-basketball { color: #E8833A; } .bp-ball.ball-tennis { color: #D7F25A; } .bp-ball.ball-volleyball, .bp-ball.ball-waterpolo { color: #F5D547; }
+@keyframes ring { 0% { transform: scale(0.6); opacity: 0.7; } 100% { transform: scale(1.8); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .bp-ball.live::after { animation: none; } }

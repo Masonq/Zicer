@@ -234,7 +234,6 @@ function Court({ m, data, t }) {
   const per = (x.periods && x.periods.length ? x.periods : (lv.per || [])).filter((p) => p[0] || p[1])
   const periodTxt = !live ? t('finished') : m.sport === 'football' ? (m.minute === 'HT' ? t('ht') : m.minute || '') : periodLabel(lv.p, m.sport, t) || (/^[A-Z0-9_]+$/.test(m.minute || '') ? periodLabel(m.minute, m.sport, t) : m.minute)
   const scoresTxt = per.map((p) => `${p[0] ?? 0}-${p[1] ?? 0}`).join(', ')
-  const server = m.sport === 'volleyball' && x.server ? x.server - 1 : null
   // event toasts (real events from the live feed)
   const evs = (data.xev || []).filter((e) => TOAST.includes(e.t))
   const last = evs[evs.length - 1]
@@ -250,36 +249,20 @@ function Court({ m, data, t }) {
     const b = setTimeout(() => setPhase({ kind: 'idle', ev: null }), last.t === 'score' ? 4400 : 1700)
     return () => { clearTimeout(a); clearTimeout(b) }
   }, [last?.at, live, data.now]) // eslint-disable-line react-hooks/exhaustive-deps
-  // ball engine
-  const st = useRef({ n: 0, side: 0, att: 0, shot: false, strong: false, dataAtt: null })
-  const [pos, setPos] = useState({ x: 50, y: 50, hop: false, k: 0 })
-  useEffect(() => {
-    const att = scene.x > 55 ? 0 : scene.x < 45 ? 1 : null
-    st.current.dataAtt = att
-    if (att != null) st.current.att = att
-    st.current.strong = Math.abs(scene.x - 50) > 28
-  }, [scene.x, scene.title])
-  useEffect(() => {
-    if (phase.kind !== 'toast' || !phase.ev) return
-    const spot = EVSPOT[phase.ev.t]
-    if (!spot) return
-    const xx = phase.ev.side === 0 ? spot[0] : 100 - spot[0]
-    const yy = phase.ev.t === 'corner' ? (Math.random() < 0.5 ? spot[1] : 100 - spot[1]) : spot[1]
-    st.current.att = phase.ev.side
-    setPos((p) => ({ x: xx, y: yy, hop: false, k: p.k + 1 }))
-  }, [phase.kind, phase.ev])
-  useEffect(() => {
-    if (!live) { setPos({ x: 50, y: 50, hop: false, k: 0 }); return }
-    const i = setInterval(() => {
-      if (phaseRef.current !== 'idle') return
-      const p = nextPos(m.sport, st.current)
-      setPos((old) => ({ ...p, k: old.k + 1 }))
-    }, tick)
-    return () => clearInterval(i)
-  }, [live, m.sport, tick])
-  const phaseRef = useRef('idle')
-  phaseRef.current = phase.kind
-  const att = st.current.att
+  // ball position comes only from the match state and real events: it moves when something happens, never randomly
+  const server = m.sport === 'volleyball' && x.server ? x.server - 1 : null
+  let target
+  if (phase.kind !== 'idle' && phase.ev && EVSPOT[phase.ev.t]) {
+    const sp = EVSPOT[phase.ev.t]
+    target = { x: phase.ev.side === 0 ? sp[0] : 100 - sp[0], y: phase.ev.t === 'corner' ? (phase.ev.at % 2 ? sp[1] : 100 - sp[1]) : sp[1] }
+  } else if (server !== null) {
+    target = { x: server === 0 ? 6 : 94, y: 50 }
+  } else {
+    target = { x: Math.max(6, Math.min(94, scene.x)), y: scene.y ?? 50 }
+  }
+  const pos = target
+  const att = scene.x > 55 ? 0 : scene.x < 45 ? 1 : null
+  const st = { current: { att } }
   const ev = phase.ev
   const evTitle = ev ? xevLabel(ev, m.sport, t) : ''
   const tag = (side) => {
@@ -304,14 +287,14 @@ function Court({ m, data, t }) {
         <span className="tt-player r"><span className="ellip">{A}</span><IconShirtFilled size={18} className="c1i" /></span>
       </div>
       <div className="tt-sets num">{[periodTxt, m.sport === 'football' ? '' : scoresTxt].filter(Boolean).join('   ') || '\u00a0'}</div>
-      <div className={`court court-${m.sport} tt-court`} style={{ '--tick': `${tick}ms` }}>
+      <div className={`court court-${m.sport} tt-court`} style={{ '--tick': '1400ms' }}>
         <CourtLines sport={m.sport} />
         {mom.length > 0 && <div className="bp-mom"><Momentum data={mom} /></div>}
         {live && phase.kind !== 'big' && (
           <>
             <span className="bp-shadow" style={{ left: `${pos.x}%`, top: `${pos.y}%` }} />
             <span className="bp-wrap" style={{ left: `${pos.x}%`, top: `${pos.y}%` }}>
-              <span key={pos.k} className={`bp-ball ball-${m.sport}${pos.hop ? ' hop' : ''}${phase.kind === 'toast' ? ' flash' : ''}`} />
+              <span className={`bp-ball ball-${m.sport} live${phase.kind === 'toast' ? ' flash' : ''}`} />
             </span>
           </>
         )}
@@ -359,25 +342,8 @@ function TennisCourt({ m, data, t }) {
   const sy = (side) => (side === 0 ? (deuce ? 68 : 32) : (deuce ? 32 : 68))
   const srvY = sy(server)
   const rcvY = server === 0 ? (deuce ? 32 : 68) : (deuce ? 68 : 32)
-  const [ball, setBall] = useState({ x: server === 0 ? 17 : 83, y: srvY, k: 0 })
-  const shots = useRef(0)
-  const ballX = useRef(server === 0 ? 17 : 83)
-  useEffect(() => {
-    if (!live) return
-    ballX.current = server === 0 ? 17 : 83
-    setBall({ x: ballX.current, y: srvY, k: Date.now() })
-    shots.current = 0
-    const i = setInterval(() => {
-      shots.current += 1
-      const toRight = ballX.current < 50 // every shot crosses the net: never two bounces on one side
-      ballX.current = toRight ? 77 : 23
-      const xx = toRight ? 70 + Math.random() * 14 : 16 + Math.random() * 14
-      ballX.current = xx
-      const yy = shots.current === 1 ? (server === 0 ? (deuce ? 32 : 68) : (deuce ? 68 : 32)) : 22 + Math.random() * 56
-      setBall({ x: xx, y: yy, k: Date.now() })
-    }, 1150)
-    return () => clearInterval(i)
-  }, [live, server, totalPts, phase.kind === 'idle']) // eslint-disable-line react-hooks/exhaustive-deps
+  // ball waits with the server (behind the baseline); no fake rallies
+  const ball = { x: server === 0 ? 4 : 96, y: srvY }
   const setsTxt = per.map((p) => `${p[0]}-${p[1]}`).join(', ')
   const ev = phase.ev
   const winner = ev ? ev.side : null
@@ -400,12 +366,12 @@ function TennisCourt({ m, data, t }) {
         <span className="tt-player r"><span className="ellip">{A}</span><IconShirtFilled size={18} className="c1i" /></span>
       </div>
       <div className="tt-sets num">{setsTxt || '\u00a0'}</div>
-      <div className="court court-tennis tt-court" style={{ '--tick': '1150ms' }}>
+      <div className="court court-tennis tt-court" style={{ '--tick': '1400ms' }}>
         <CourtLines sport="tennis" />
         {live && phase.kind !== 'big' && (
           <>
             <span className="bp-shadow" style={{ left: `${ball.x}%`, top: `${ball.y}%` }} />
-            <span className="bp-wrap" style={{ left: `${ball.x}%`, top: `${ball.y}%` }}><span key={ball.k} className="bp-ball ball-tennis hop" /></span>
+            <span className="bp-wrap" style={{ left: `${ball.x}%`, top: `${ball.y}%` }}><span className="bp-ball ball-tennis live" /></span>
           </>
         )}
         {tag(0)}{tag(1)}

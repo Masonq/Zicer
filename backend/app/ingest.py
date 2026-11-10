@@ -268,8 +268,8 @@ def sync_other_sports(db: Session) -> str:
 
 
 def sync_other_results(db: Session) -> str:
-    pending = db.scalars(select(Match).where(Match.ext.like("mbo:%"), Match.status.in_(["scheduled", "live"]),
-                                             Match.start < datetime.utcnow())).all()
+    pending = db.scalars(select(Match).where(Match.ext.like("mbo:%"), Match.start < datetime.utcnow(),
+                                             or_(Match.status.in_(["scheduled", "live"]), and_(Match.status == "finished", Match.settled == False)))).all()  # noqa
     if not pending:
         return "no pending"
     n = 0
@@ -284,11 +284,15 @@ def sync_other_results(db: Session) -> str:
             for m in [x for x in pending if x.sport == sport]:
                 r = res.get(int(m.ext.split(":")[1]))
                 if not r:
-                    if m.start < datetime.utcnow() - timedelta(hours=8):
+                    if m.status != "finished" and m.start < datetime.utcnow() - timedelta(hours=8):
                         m.status = "cancelled"
                     continue
                 m.score_home, m.score_away, m.reg_home, m.reg_away = r["h"], r["a"], r["rh"], r["ra"]
-                m.status = "finished" if r["end"] else "live"
+                if r["end"]:
+                    m.status = "finished"
+                    lv = dict(m.live or {}); lv.pop("fin_by", None); m.live = lv
+                elif m.status != "finished":
+                    m.status = "live"
                 n += 1
     db.commit()
     return f"other results {n}"
@@ -322,8 +326,8 @@ def sync_live(db: Session) -> str:
     n = 0
     for m in ms:
         d = data[m.mb_id]
-        keep = {k: v for k, v in (m.live or {}).items() if k in ("x", "xev")}
-        m.live = {**keep, **{k: d.get(k) for k in ("p", "cm", "per", "game", "stats", "spl")}}
+        keep = {k: v for k, v in (m.live or {}).items() if k in ("x", "xev", "x_seen", "fin_by", "fin_at")}
+        m.live = {**keep, **{k: d.get(k) for k in ("p", "cm", "per", "game", "stats", "spl")}, "mb_seen": int(datetime.utcnow().timestamp())}
         if m.status == "finished" or m.settled:
             continue
         own_feed = m.ext.startswith("fm:") or m.ext.startswith("nba:")
@@ -338,8 +342,8 @@ def sync_live(db: Session) -> str:
 
 
 def sync_maxbet_results(db: Session) -> str:
-    pending = db.scalars(select(Match).where(Match.ext.like("mbb:%"), Match.status.in_(["scheduled", "live"]),
-                                             Match.start < datetime.utcnow())).all()
+    pending = db.scalars(select(Match).where(Match.ext.like("mbb:%"), Match.start < datetime.utcnow(),
+                                             or_(Match.status.in_(["scheduled", "live"]), and_(Match.status == "finished", Match.settled == False)))).all()  # noqa
     if not pending:
         return "no pending"
     res = {}
@@ -353,12 +357,14 @@ def sync_maxbet_results(db: Session) -> str:
     for m in pending:
         r = res.get(int(m.ext.split(":")[1]))
         if not r:
-            if m.start < datetime.utcnow() - timedelta(hours=2, minutes=30) and m.status == "scheduled":
-                m.status = "live"
             continue
         m.score_home, m.score_away = r["h"], r["a"]
         m.reg_home, m.reg_away = r["rh"], r["ra"]
-        m.status = "finished" if r["end"] else "live"
+        if r["end"]:
+            m.status = "finished"
+            lv = dict(m.live or {}); lv.pop("fin_by", None); m.live = lv
+        elif m.status != "finished":
+            m.status = "live"
         n += 1
     db.commit()
     return f"maxbet results {n}"
@@ -487,7 +493,11 @@ def settle(db: Session) -> str:
     cnt = 0
     ms = db.scalars(select(Match).where(Match.settled == False, Match.status.in_(["finished", "cancelled"]))).all()  # noqa
     events = []
+    now_ts = int(datetime.utcnow().timestamp())
     for m in ms:
+        lv = m.live or {}
+        if lv.get("fin_by") == "absence" and now_ts - (lv.get("fin_at") or 0) < 1800:
+            continue
         res = outcome(m) if m.status == "finished" else None
         void = m.status == "cancelled"
         if not void and res is None:
@@ -1061,6 +1071,7 @@ def sync_xfeed(db: Session) -> str:
         live["x"] = {"st": g["stats"], "score": g["score"], "ts": g.get("ts"), "period": g["period"], "periods": g["periods"],
                      "ss": g.get("ss"), "server": g.get("server")}
         live["xev"] = evs[-40:]
+        live["x_seen"] = now_ts
         m.live = live
         if m.status == "scheduled" and g.get("ts"):
             m.status = "live"
@@ -1071,3 +1082,26 @@ def sync_xfeed(db: Session) -> str:
         upd += 1
     db.commit()
     return f"xfeed games {len(games)}, linked {linked}, updated {upd}"
+
+
+
+def finish_stale(db: Session) -> str:
+    """MaxBet-only matches (ABA, hockey, tennis, volleyball...) have no 'final' signal in the live feed:
+    when a live match disappears from both live feeds, it is over. Settlement waits for official results."""
+    now_ts = int(datetime.utcnow().timestamp())
+    n = 0
+    for m in db.scalars(select(Match).where(Match.status == "live", or_(Match.ext.like("mbb:%"), Match.ext.like("mbo:%")))).all():
+        lv = dict(m.live or {})
+        seen = max(lv.get("mb_seen") or 0, lv.get("x_seen") or 0)
+        if m.start > datetime.utcnow() - timedelta(minutes=25):
+            continue
+        gone = seen and now_ts - seen > 180
+        never = not seen and m.start < datetime.utcnow() - timedelta(hours=3)
+        if (gone or never) and m.score_home is not None:
+            m.status = "finished"
+            m.minute = ""
+            lv["fin_by"], lv["fin_at"] = "absence", now_ts
+            m.live = lv
+            n += 1
+    db.commit()
+    return f"finished {n}"
