@@ -880,8 +880,19 @@ def _gtx(text: str, tl: str) -> str:
     return _tr(text, tl)
 
 
+CTX_WORDS = ("теннисистка", "теннисист", "тенисерка", "тенисер", "tenisač", "футбольный клуб", "баскетбольный клуб", "хоккейный клуб",
+             "волейбольный клуб", "ватерпольный клуб", "фудбалски клуб", "кошаркашки клуб", "хокејашки клуб", "спортивный клуб")
+
+
 def _strip_ctx(s: str) -> str:
-    return s.split("(")[0].strip().strip(".,") if "(" in s else s.strip()
+    s = s.split("(")[0] if "(" in s else s
+    low = s.lower()
+    for w in CTX_WORDS:
+        i = low.find(w)
+        if i >= 0:
+            s = s[:i] + s[i + len(w):]
+            low = s.lower()
+    return " ".join(s.split()).strip(" .,-")
 
 
 def _league_names(lg: League) -> tuple[str, str]:
@@ -934,6 +945,10 @@ def _top_team_ids(db: Session) -> set:
 def translate_names(db: Session, limit: int = 120) -> str:
     import time
     done = 0
+    # tennis players keep their own names (no "translation" of a person's name)
+    for t in db.scalars(select(Team).where(Team.sport == "tennis", or_(Team.name_ru != Team.short_name, Team.name_ru == ""))).all():
+        t.name_sr = t.name_cyr = t.name_ru = t.short_name or t.name
+    db.commit()
     for lg in db.scalars(select(League).where(League.name_ru == "").limit(40)).all():
         try:
             lg.name_sr, lg.name_ru = _league_names(lg)

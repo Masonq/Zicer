@@ -71,65 +71,144 @@ function Crest({ team, size }) {
 }
 
 const L = { stroke: 'rgba(255,255,255,0.24)', strokeWidth: 2, fill: 'none' }
+// Courts drawn to real regulation proportions (units = metres, incl. run-off).
+// The SVG is the whole court area; ball positions (0..100%) map to the playing field inside it.
+export const COURT = {
+  football: { w: 113, h: 76, fx: 4, fy: 4, fw: 105, fh: 68 },
+  basketball: { w: 31, h: 17, fx: 1.5, fy: 1, fw: 28, fh: 15 },
+  hockey: { w: 62, h: 31, fx: 1, fy: 0.5, fw: 60, fh: 30 },
+  tennis: { w: 29.5, h: 14.4, fx: 2.865, fy: 1.715, fw: 23.77, fh: 10.97 },
+  volleyball: { w: 22, h: 12, fx: 2, fy: 1.5, fw: 18, fh: 9 },
+  waterpolo: { w: 29, h: 21, fx: 2, fy: 0.5, fw: 25, fh: 20 },
+}
+export const fieldStyle = (sport) => { const c = COURT[sport] || COURT.football; return { left: `${(c.fx / c.w) * 100}%`, top: `${(c.fy / c.h) * 100}%`, width: `${(c.fw / c.w) * 100}%`, height: `${(c.fh / c.h) * 100}%` } }
+export const courtAspect = (sport) => { const c = COURT[sport] || COURT.football; return `${c.w} / ${c.h}` }
+const WL = { stroke: '#fff', strokeOpacity: 0.85, fill: 'none', vectorEffect: 'non-scaling-stroke', strokeWidth: 1.6 }
 export function CourtLines({ sport }) {
-  if (sport === 'basketball') {
-    const W = { stroke: 'rgba(255,255,255,0.85)', strokeWidth: 2.2, fill: 'none' }
-    const paint = 'rgba(15,42,34,0.82)'
+  const c = COURT[sport] || COURT.football
+  const { fx: X, fy: Y, fw: W, fh: H } = c
+  const vb = `0 0 ${c.w} ${c.h}`
+  if (sport === 'football') {
+    const cy = Y + H / 2
+    const stripes = Array.from({ length: 12 }, (_, i) => <rect key={i} x={X + (W / 12) * i} y={Y} width={W / 12} height={H} fill={i % 2 ? '#2F8152' : '#2B774B'} />)
+    const side = (dir) => {
+      const gx = dir === 1 ? X : X + W
+      const s = dir
+      return (
+        <g key={dir}>
+          <rect x={dir === 1 ? gx : gx - 16.5} y={cy - 20.16} width={16.5} height={40.32} {...WL} />
+          <rect x={dir === 1 ? gx : gx - 5.5} y={cy - 9.16} width={5.5} height={18.32} {...WL} />
+          <circle cx={gx + s * 11} cy={cy} r={0.25} fill="#fff" fillOpacity="0.85" />
+          <path d={`M ${gx + s * 16.5} ${cy - 7.31} A 9.15 9.15 0 0 ${dir === 1 ? 1 : 0} ${gx + s * 16.5} ${cy + 7.31}`} {...WL} />
+          <rect x={dir === 1 ? gx - 1.6 : gx} y={cy - 3.66} width={1.6} height={7.32} fill="rgba(255,255,255,0.18)" stroke="#fff" strokeOpacity="0.85" vectorEffect="non-scaling-stroke" strokeWidth="1.2" />
+        </g>
+      )
+    }
     return (
-      <svg viewBox="0 0 600 300" preserveAspectRatio="none" className="court-svg">
-        <path d="M6 22 H72 A128 128 0 0 1 72 278 H6 Z" fill="rgba(15,42,34,0.22)" />
-        <path d="M594 22 H528 A128 128 0 0 0 528 278 H594 Z" fill="rgba(15,42,34,0.22)" />
-        <rect x="6" y="100" width="118" height="100" fill={paint} /><rect x="476" y="100" width="118" height="100" fill={paint} />
-        <circle cx="300" cy="150" r="40" fill={paint} />
-        <rect x="6" y="6" width="588" height="288" rx="4" {...W} />
-        <line x1="300" y1="6" x2="300" y2="294" {...W} />
-        <circle cx="300" cy="150" r="40" {...W} /><circle cx="300" cy="150" r="13" {...W} />
-        <rect x="6" y="100" width="118" height="100" {...W} /><rect x="476" y="100" width="118" height="100" {...W} />
-        <path d="M124 114 A36 36 0 0 1 124 186" {...W} /><path d="M476 114 A36 36 0 0 0 476 186" {...W} />
-        <path d="M6 22 H72 A128 128 0 0 1 72 278 H6" {...W} /><path d="M594 22 H528 A128 128 0 0 0 528 278 H594" {...W} />
-        <line x1="26" y1="132" x2="26" y2="168" stroke="rgba(255,255,255,0.9)" strokeWidth="3" /><line x1="574" y1="132" x2="574" y2="168" stroke="rgba(255,255,255,0.9)" strokeWidth="3" />
-        <circle cx="38" cy="150" r="7" stroke="#E8833A" strokeWidth="2.5" fill="none" /><circle cx="562" cy="150" r="7" stroke="#E8833A" strokeWidth="2.5" fill="none" />
+      <svg viewBox={vb} className="court-svg" aria-hidden="true">
+        <rect width={c.w} height={c.h} fill="#256B42" />
+        {stripes}
+        <rect x={X} y={Y} width={W} height={H} {...WL} />
+        <line x1={X + W / 2} y1={Y} x2={X + W / 2} y2={Y + H} {...WL} />
+        <circle cx={X + W / 2} cy={cy} r={9.15} {...WL} /><circle cx={X + W / 2} cy={cy} r={0.3} fill="#fff" fillOpacity="0.85" />
+        {[1, -1].map(side)}
+        {[[X, Y, 0], [X + W, Y, 90], [X + W, Y + H, 180], [X, Y + H, 270]].map(([x, y, r]) => <path key={r} d={`M ${x + Math.cos((r * Math.PI) / 180)} ${y + Math.sin((r * Math.PI) / 180)} A 1 1 0 0 1 ${x + Math.cos(((r + 90) * Math.PI) / 180)} ${y + Math.sin(((r + 90) * Math.PI) / 180)}`} {...WL} />)}
       </svg>
     )
   }
-  if (sport === 'hockey') return (
-    <svg viewBox="0 0 600 300" preserveAspectRatio="none" className="court-svg">
-      <rect x="6" y="6" width="588" height="288" rx="70" {...L} />
-      <line x1="300" y1="6" x2="300" y2="294" stroke="rgba(229,84,75,0.7)" strokeWidth="4" />
-      <line x1="210" y1="6" x2="210" y2="294" stroke="rgba(90,150,230,0.7)" strokeWidth="4" /><line x1="390" y1="6" x2="390" y2="294" stroke="rgba(90,150,230,0.7)" strokeWidth="4" />
-      <line x1="44" y1="20" x2="44" y2="280" stroke="rgba(229,84,75,0.5)" strokeWidth="2" /><line x1="556" y1="20" x2="556" y2="280" stroke="rgba(229,84,75,0.5)" strokeWidth="2" />
-      <circle cx="300" cy="150" r="40" stroke="rgba(90,150,230,0.6)" strokeWidth="2" fill="none" />
-      {[[110, 80], [110, 220], [490, 80], [490, 220]].map(([x, y]) => <circle key={x + '-' + y} cx={x} cy={y} r="30" stroke="rgba(229,84,75,0.45)" strokeWidth="2" fill="none" />)}
-      <path d="M44 132 A18 18 0 0 1 44 168" stroke="rgba(90,150,230,0.7)" strokeWidth="2" fill="rgba(90,150,230,0.15)" /><path d="M556 132 A18 18 0 0 0 556 168" stroke="rgba(90,150,230,0.7)" strokeWidth="2" fill="rgba(90,150,230,0.15)" />
-    </svg>)
-  if (sport === 'tennis') return (
-    <svg viewBox="0 0 600 300" preserveAspectRatio="none" className="court-svg">
-      <rect x="30" y="20" width="540" height="260" {...L} stroke="rgba(255,255,255,0.6)" /><line x1="30" y1="52" x2="570" y2="52" stroke="rgba(255,255,255,0.6)" strokeWidth="2" /><line x1="30" y1="248" x2="570" y2="248" stroke="rgba(255,255,255,0.6)" strokeWidth="2" />
-      <line x1="160" y1="52" x2="160" y2="248" stroke="rgba(255,255,255,0.6)" strokeWidth="2" /><line x1="440" y1="52" x2="440" y2="248" stroke="rgba(255,255,255,0.6)" strokeWidth="2" />
-      <line x1="160" y1="150" x2="440" y2="150" stroke="rgba(255,255,255,0.6)" strokeWidth="2" />
-      <line x1="300" y1="10" x2="300" y2="290" stroke="rgba(255,255,255,0.85)" strokeWidth="4" strokeDasharray="2 3" />
-    </svg>)
-  if (sport === 'volleyball') return (
-    <svg viewBox="0 0 600 300" preserveAspectRatio="none" className="court-svg">
-      <rect x="40" y="30" width="520" height="240" stroke="rgba(255,255,255,0.6)" strokeWidth="2" fill="none" />
-      <line x1="300" y1="14" x2="300" y2="286" stroke="rgba(255,255,255,0.85)" strokeWidth="4" />
-      <line x1="213" y1="30" x2="213" y2="270" stroke="rgba(255,255,255,0.45)" strokeWidth="2" /><line x1="387" y1="30" x2="387" y2="270" stroke="rgba(255,255,255,0.45)" strokeWidth="2" />
-    </svg>)
-  if (sport === 'waterpolo') return (
-    <svg viewBox="0 0 600 300" preserveAspectRatio="none" className="court-svg">
-      <rect x="6" y="6" width="588" height="288" {...L} />
-      <line x1="40" y1="6" x2="40" y2="294" stroke="rgba(229,84,75,0.7)" strokeWidth="2" /><line x1="560" y1="6" x2="560" y2="294" stroke="rgba(229,84,75,0.7)" strokeWidth="2" />
-      <line x1="105" y1="6" x2="105" y2="294" stroke="rgba(242,194,48,0.7)" strokeWidth="2" /><line x1="495" y1="6" x2="495" y2="294" stroke="rgba(242,194,48,0.7)" strokeWidth="2" />
-      <line x1="300" y1="6" x2="300" y2="294" stroke="rgba(255,255,255,0.55)" strokeWidth="2" />
-      <rect x="0" y="125" width="8" height="50" fill="rgba(255,255,255,0.6)" /><rect x="592" y="125" width="8" height="50" fill="rgba(255,255,255,0.6)" />
-    </svg>)
-  return (
-    <svg viewBox="0 0 600 300" preserveAspectRatio="none" className="court-svg">
-      <rect x="6" y="6" width="588" height="288" rx="6" {...L} /><line x1="300" y1="6" x2="300" y2="294" {...L} /><circle cx="300" cy="150" r="40" {...L} /><circle cx="300" cy="150" r="2.5" fill="rgba(255,255,255,0.4)" />
-      <rect x="6" y="78" width="74" height="144" {...L} /><rect x="520" y="78" width="74" height="144" {...L} />
-      <rect x="6" y="118" width="26" height="64" {...L} /><rect x="568" y="118" width="26" height="64" {...L} />
-      <path d="M80 122 A36 36 0 0 1 80 178" {...L} /><path d="M520 122 A36 36 0 0 0 520 178" {...L} />
-    </svg>)
+  if (sport === 'basketball') {
+    const cy = Y + H / 2
+    const half = (dir) => {
+      const bx = dir === 1 ? X : X + W
+      const s = dir
+      const hoop = bx + s * 1.575
+      return (
+        <g key={dir}>
+          <rect x={dir === 1 ? bx : bx - 5.8} y={cy - 2.45} width={5.8} height={4.9} fill="#1F5E48" fillOpacity="0.92" />
+          <rect x={dir === 1 ? bx : bx - 5.8} y={cy - 2.45} width={5.8} height={4.9} {...WL} />
+          <path d={`M ${bx + s * 5.8} ${cy - 1.8} A 1.8 1.8 0 0 ${dir === 1 ? 1 : 0} ${bx + s * 5.8} ${cy + 1.8}`} {...WL} />
+          <path d={`M ${bx} ${cy - 6.6} H ${bx + s * 2.99} A 6.75 6.75 0 0 ${dir === 1 ? 1 : 0} ${bx + s * 2.99} ${cy + 6.6} H ${bx}`} {...WL} />
+          <path d={`M ${hoop} ${cy - 1.25} A 1.25 1.25 0 0 ${dir === 1 ? 1 : 0} ${hoop} ${cy + 1.25}`} {...WL} />
+          <line x1={bx + s * 1.2} y1={cy - 0.9} x2={bx + s * 1.2} y2={cy + 0.9} stroke="#fff" strokeWidth="2.2" vectorEffect="non-scaling-stroke" />
+          <circle cx={hoop} cy={cy} r={0.23} fill="none" stroke="#E8833A" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+        </g>
+      )
+    }
+    return (
+      <svg viewBox={vb} className="court-svg" aria-hidden="true">
+        <defs><pattern id="planks" width="0.6" height="2.4" patternUnits="userSpaceOnUse"><rect width="0.6" height="2.4" fill="#D6A26C" /><rect x="0.59" width="0.01" height="2.4" fill="rgba(90,50,20,0.25)" /></pattern></defs>
+        <rect width={c.w} height={c.h} fill="#1F5E48" />
+        <rect x={X} y={Y} width={W} height={H} fill="url(#planks)" />
+        <rect x={X} y={Y} width={W} height={H} {...WL} />
+        <line x1={X + W / 2} y1={Y} x2={X + W / 2} y2={Y + H} {...WL} />
+        <circle cx={X + W / 2} cy={cy} r={1.8} fill="#1F5E48" fillOpacity="0.92" /><circle cx={X + W / 2} cy={cy} r={1.8} {...WL} />
+        {[1, -1].map(half)}
+      </svg>
+    )
+  }
+  if (sport === 'hockey') {
+    const cy = Y + H / 2
+    const r = 8.5
+    const red = { stroke: '#D64545', fill: 'none', vectorEffect: 'non-scaling-stroke', strokeWidth: 1.6 }
+    const blue = { stroke: '#2F6FD0', fill: 'none', vectorEffect: 'non-scaling-stroke', strokeWidth: 3 }
+    return (
+      <svg viewBox={vb} className="court-svg" aria-hidden="true">
+        <rect width={c.w} height={c.h} fill="#1A2730" />
+        <rect x={X} y={Y} width={W} height={H} rx={r} fill="#F1F6F9" stroke="#9FB3C2" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+        <line x1={X + 4} y1={Y + 0.6} x2={X + 4} y2={Y + H - 0.6} {...red} /><line x1={X + W - 4} y1={Y + 0.6} x2={X + W - 4} y2={Y + H - 0.6} {...red} />
+        <line x1={X + 21.5} y1={Y} x2={X + 21.5} y2={Y + H} {...blue} /><line x1={X + W - 21.5} y1={Y} x2={X + W - 21.5} y2={Y + H} {...blue} />
+        <line x1={X + W / 2} y1={Y} x2={X + W / 2} y2={Y + H} stroke="#D64545" strokeWidth="3" vectorEffect="non-scaling-stroke" />
+        <circle cx={X + W / 2} cy={cy} r={4.5} {...{ ...blue, strokeWidth: 1.6 }} />
+        {[[X + 10, cy - 7], [X + 10, cy + 7], [X + W - 10, cy - 7], [X + W - 10, cy + 7]].map(([x, y]) => <g key={x + '-' + y}><circle cx={x} cy={y} r={4.5} {...red} /><circle cx={x} cy={y} r={0.3} fill="#D64545" /></g>)}
+        <path d={`M ${X + 4} ${cy - 1.8} A 1.8 1.8 0 0 1 ${X + 4} ${cy + 1.8} Z`} fill="rgba(47,111,208,0.35)" stroke="#D64545" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
+        <path d={`M ${X + W - 4} ${cy - 1.8} A 1.8 1.8 0 0 0 ${X + W - 4} ${cy + 1.8} Z`} fill="rgba(47,111,208,0.35)" stroke="#D64545" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
+        <rect x={X + 2.9} y={cy - 0.92} width={1.1} height={1.83} fill="none" stroke="#D64545" strokeWidth="1.6" vectorEffect="non-scaling-stroke" />
+        <rect x={X + W - 4} y={cy - 0.92} width={1.1} height={1.83} fill="none" stroke="#D64545" strokeWidth="1.6" vectorEffect="non-scaling-stroke" />
+      </svg>
+    )
+  }
+  if (sport === 'tennis') {
+    const al = 1.37
+    return (
+      <svg viewBox={vb} className="court-svg" aria-hidden="true">
+        <rect width={c.w} height={c.h} fill="#3C7A5A" />
+        <rect x={X} y={Y} width={W} height={H} fill="#2D5F95" />
+        <rect x={X} y={Y} width={W} height={H} {...WL} />
+        <line x1={X} y1={Y + al} x2={X + W} y2={Y + al} {...WL} /><line x1={X} y1={Y + H - al} x2={X + W} y2={Y + H - al} {...WL} />
+        <line x1={X + W / 2 - 6.4} y1={Y + al} x2={X + W / 2 - 6.4} y2={Y + H - al} {...WL} /><line x1={X + W / 2 + 6.4} y1={Y + al} x2={X + W / 2 + 6.4} y2={Y + H - al} {...WL} />
+        <line x1={X + W / 2 - 6.4} y1={Y + H / 2} x2={X + W / 2 + 6.4} y2={Y + H / 2} {...WL} />
+        <line x1={X} y1={Y + H / 2} x2={X + 0.3} y2={Y + H / 2} {...WL} /><line x1={X + W - 0.3} y1={Y + H / 2} x2={X + W} y2={Y + H / 2} {...WL} />
+        <line x1={X + W / 2} y1={Y - 0.9} x2={X + W / 2} y2={Y + H + 0.9} stroke="#fff" strokeWidth="2.6" strokeDasharray="1 1.4" vectorEffect="non-scaling-stroke" />
+      </svg>
+    )
+  }
+  if (sport === 'volleyball') {
+    return (
+      <svg viewBox={vb} className="court-svg" aria-hidden="true">
+        <rect width={c.w} height={c.h} fill="#2A6FA8" />
+        <rect x={X} y={Y} width={W} height={H} fill="#E08A3C" />
+        <rect x={X} y={Y} width={W} height={H} {...WL} />
+        <line x1={X + 6} y1={Y} x2={X + 6} y2={Y + H} {...WL} /><line x1={X + 12} y1={Y} x2={X + 12} y2={Y + H} {...WL} />
+        <line x1={X + W / 2} y1={Y - 1} x2={X + W / 2} y2={Y + H + 1} stroke="#fff" strokeWidth="3" vectorEffect="non-scaling-stroke" />
+        <circle cx={X + W / 2} cy={Y - 1} r={0.22} fill="#fff" /><circle cx={X + W / 2} cy={Y + H + 1} r={0.22} fill="#fff" />
+      </svg>
+    )
+  }
+  if (sport === 'waterpolo') {
+    const cy = Y + H / 2
+    const ln = (x, col) => <line key={x + col} x1={x} y1={Y} x2={x} y2={Y + H} stroke={col} strokeWidth="1.8" vectorEffect="non-scaling-stroke" />
+    return (
+      <svg viewBox={vb} className="court-svg" aria-hidden="true">
+        <rect width={c.w} height={c.h} fill="#0F5E86" />
+        <rect x={X} y={Y} width={W} height={H} fill="#1C8CC0" />
+        {[2, 5, 6].map((d) => [ln(X + d, d === 2 ? '#E04848' : d === 5 ? '#F2C230' : '#4CC38A'), ln(X + W - d, d === 2 ? '#E04848' : d === 5 ? '#F2C230' : '#4CC38A')])}
+        {ln(X + W / 2, '#ffffff')}
+        <rect x={X} y={Y} width={W} height={H} stroke="#fff" strokeOpacity="0.85" fill="none" strokeWidth="1.6" vectorEffect="non-scaling-stroke" />
+        <rect x={X - 0.6} y={cy - 1.5} width={0.6} height={3} fill="#fff" /><rect x={X + W} y={cy - 1.5} width={0.6} height={3} fill="#fff" />
+      </svg>
+    )
+  }
+  return null
 }
 
 const XPOS = { danger: 84, attack: 66, shot_on: 93, shot_off: 90, corner: 97, penalty: 88, p2: 88, p3: 82, ft: 88, score: 92, ace: 75, break: 70, df: 40 }
@@ -435,14 +514,12 @@ function Court({ m, data, t }) {
   const [phase, setPhase] = useState({ kind: 'idle', ev: null })
   const seen = useRef(null)
   const courtRef = useRef(null)
-  const [p3d, toggle3d] = use3D()
   useEffect(() => {
     if (!data.now) return
     if (seen.current === null) { seen.current = last ? last.k : ''; return }
     if (!last || last.k === seen.current || !live) return
     seen.current = last.k
     const bigScore = last.t === 'score' && m.sport !== 'basketball'
-    if (bigScore) celebrate(courtRef.current, last.side)
     setPhase({ kind: 'event', ev: last })
     const a = setTimeout(() => setPhase(bigScore ? { kind: 'big', ev: last } : { kind: 'idle', ev: null }), 2600)
     const b = setTimeout(() => setPhase({ kind: 'idle', ev: null }), bigScore ? 5200 : 2700)
@@ -494,10 +571,9 @@ function Court({ m, data, t }) {
       ) : (
         <div className="tt-sets num">{[periodTxt, m.sport === 'football' ? '' : scoresTxt].filter(Boolean).join('   ') || '\u00a0'}</div>
       )}
-      <div ref={courtRef} className={`court court-${m.sport} tt-court${p3d ? ' p3d' : ''}`}>
-        <button className="trk-3d" onClick={toggle3d} aria-label="2D/3D">{p3d ? '2D' : '3D'}</button>
-        <div className="plane">
+      <div ref={courtRef} className={`court court-${m.sport} tt-court`} style={{ aspectRatio: courtAspect(m.sport) }}>
         <CourtLines sport={m.sport} />
+        <div className="field" style={fieldStyle(m.sport)}>
         {live && att !== null && phase.kind === 'idle' && server === null && (
           <svg className="poss" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
             <defs><linearGradient id={`pg${att}`} x1={att === 0 ? '0' : '1'} x2={att === 0 ? '1' : '0'} y1="0" y2="0"><stop offset="0" stopColor="#fff" stopOpacity="0.02" /><stop offset="1" stopColor="#fff" stopOpacity="0.22" /></linearGradient></defs>
@@ -505,13 +581,11 @@ function Court({ m, data, t }) {
           </svg>
         )}
         {live && att !== null && server === null && (
-          <div className={`terr t${att}`} aria-hidden="true">
-            <svg className="chev" viewBox="0 0 60 20"><path d="M2 2 L10 10 L2 18 M18 2 L26 10 L18 18 M34 2 L42 10 L34 18" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
-          </div>
+          <div className={`terr t${att}`} aria-hidden="true" />
         )}
         <svg className="arena-fx" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
           <defs><linearGradient id={`tg${m.id}`} x1="0" x2="1"><stop offset="0" stopColor="#fff" stopOpacity="0" /><stop offset="1" stopColor="#fff" stopOpacity="0.55" /></linearGradient></defs>
-          <polyline ref={engine.trailEl} points="" fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" className="trail" />
+          <polyline ref={engine.trailEl} points="" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="1.4" strokeDasharray="3 4" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" className="trail" />
         </svg>
         <span ref={engine.rippleEl} className="ripple" />
         <span ref={engine.shadowEl} className="eng-shadow" style={{ opacity: live ? 0.5 : 0 }} />
@@ -565,7 +639,6 @@ function TennisCourt({ m, data, t }) {
     if (seen.current === null) { seen.current = last ? last.at : 0; return } // events that already happened are not replayed
     if (!last || last.at <= seen.current || !live) return
     seen.current = last.at
-    if (last.t === 'game') celebrate(tcRef.current, last.side)
     setPhase({ kind: 'toast', ev: last })
     const a = setTimeout(() => setPhase({ kind: 'big', ev: last }), 1500)
     const b = setTimeout(() => setPhase({ kind: 'idle', ev: null }), 4200)
@@ -587,22 +660,25 @@ function TennisCourt({ m, data, t }) {
   useEffect(() => {
     cancelAnimationFrame(raf.current)
     if (!live || phase.kind !== 'idle' || !ballEl.current) return
-    const start = { x: server === 0 ? 5 : 95, y: srvY }
-    const pts = [start]
-    let side = server
-    const n = 4 + Math.floor(Math.random() * 5)
-    for (let i = 0; i < n; i++) {
-      side = 1 - side
-      if (i === 0) pts.push({ x: side === 1 ? 57 + Math.random() * 9 : 34 + Math.random() * 9, y: rcvY > 50 ? 56 + Math.random() * 12 : 32 + Math.random() * 12 })
-      else pts.push({ x: side === 1 ? 64 + Math.random() * 24 : 12 + Math.random() * 24, y: 18 + Math.random() * 64 })
+    const start = { x: server === 0 ? -3 : 103, y: srvY }
+    let pts = [], shot = 0, t0 = 0, marks = [], restartT = 0
+    const dur = (i) => (i === 0 ? 820 : 960)
+    const build = () => { // serve into the diagonal service box, then the rally; every shot crosses the net
+      pts = [start]; let side = server
+      const n = 4 + Math.floor(Math.random() * 5)
+      for (let i = 0; i < n; i++) {
+        side = 1 - side
+        if (i === 0) pts.push({ x: side === 1 ? 54 + Math.random() * 18 : 28 + Math.random() * 18, y: rcvY > 50 ? 54 + Math.random() * 30 : 16 + Math.random() * 30 })
+        else pts.push({ x: side === 1 ? 72 + Math.random() * 24 : 4 + Math.random() * 24, y: 16 + Math.random() * 68 })
+      }
+      shot = 0; marks = []; t0 = performance.now() + 900
+      if (marksEl.current) marksEl.current.innerHTML = ''
     }
-    const dur = (i) => (i === 0 ? 820 : 980)
-    let shot = 0, t0 = performance.now() + 900 // short toss before the serve
-    const marks = []
     const draw = (now) => {
       const el = ballEl.current, sh = shadowEl.current, tr = trailEl.current
       if (!el || !sh || !tr) return
-      if (now < t0) { // toss: ball goes up and down at the server
+      if (restartT) { if (now < restartT) { raf.current = requestAnimationFrame(draw); return } restartT = 0; build() }
+      if (now < t0) { // toss
         const k = 1 - Math.abs((now - (t0 - 900)) / 450 - 1)
         el.style.left = `${start.x}%`; el.style.top = `${start.y}%`; el.style.transform = `translate(-50%, calc(-50% - ${k * 22}px)) scale(${1 + k * 0.25})`
         sh.style.left = `${start.x}%`; sh.style.top = `${start.y}%`
@@ -612,19 +688,19 @@ function TennisCourt({ m, data, t }) {
       const p0 = pts[shot], p1 = pts[shot + 1]
       const tt = Math.min(1, (now - t0) / dur(shot))
       const x = p0.x + (p1.x - p0.x) * tt, y = p0.y + (p1.y - p0.y) * tt
-      const h = 4 * tt * (1 - tt) // height of the flight
-      el.style.left = `${x}%`; el.style.top = `${y}%`; el.style.transform = `translate(-50%, calc(-50% - ${h * 26}px)) scale(${1 + h * 0.35})`
+      const h = 4 * tt * (1 - tt)
+      el.style.left = `${x}%`; el.style.top = `${y}%`; el.style.transform = `translate(-50%, calc(-50% - ${h * 24}px)) scale(${1 + h * 0.3})`
       sh.style.left = `${x}%`; sh.style.top = `${y}%`; sh.style.opacity = String(0.55 - h * 0.3)
       tr.setAttribute('points', [...pts.slice(Math.max(0, shot - 2), shot + 1), { x, y }].map((p) => `${p.x},${p.y}`).join(' '))
       if (tt >= 1) {
         marks.push(p1)
-        if (marksEl.current) marksEl.current.innerHTML = marks.slice(-3).map((m) => `<circle cx="${m.x}" cy="${m.y}" r="1.1" />`).join('')
+        if (marksEl.current) marksEl.current.innerHTML = marks.slice(-3).map((m) => `<circle cx="${m.x}" cy="${m.y}" r="0.9" />`).join('')
         shot += 1; t0 = now
-        if (shot >= pts.length - 1) return // rally drawn: wait at the last bounce for the real point result
+        if (shot >= pts.length - 1) restartT = now + 2400 // keep playing rallies until the real point arrives
       }
       raf.current = requestAnimationFrame(draw)
     }
-    if (marksEl.current) marksEl.current.innerHTML = ''
+    build()
     raf.current = requestAnimationFrame(draw)
     return () => cancelAnimationFrame(raf.current)
   }, [pointKey, live]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -650,19 +726,21 @@ function TennisCourt({ m, data, t }) {
         <span className="tt-player r"><span className="ellip">{A}</span><IconShirtFilled size={18} className="c1i" /></span>
       </div>
       <div className="tt-sets num">{setsTxt || '\u00a0'}</div>
-      <div ref={tcRef} className="court court-tennis tt-court" style={{ '--tick': '1400ms' }}>
+      <div ref={tcRef} className="court court-tennis tt-court" style={{ aspectRatio: courtAspect('tennis') }}>
         <CourtLines sport="tennis" />
+        <div className="field" style={fieldStyle('tennis')}>
         {live && phase.kind !== 'big' && (
           <>
             <svg className="tn-trail" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
               <polyline ref={trailEl} points="" fill="none" stroke="rgba(215,242,90,0.55)" strokeWidth="1.6" strokeDasharray="4 4" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
               <g ref={marksEl} fill="none" stroke="rgba(255,255,255,0.75)" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
             </svg>
-            <span ref={shadowEl} className="tn-shadow" style={{ left: `${server === 0 ? 5 : 95}%`, top: `${srvY}%` }} />
-            <span ref={ballEl} className="tn-ball" style={{ left: `${server === 0 ? 5 : 95}%`, top: `${srvY}%` }} />
+            <span ref={shadowEl} className="tn-shadow" style={{ left: `${server === 0 ? -3 : 103}%`, top: `${srvY}%` }} />
+            <span ref={ballEl} className="tn-ball" style={{ left: `${server === 0 ? -3 : 103}%`, top: `${srvY}%` }} />
           </>
         )}
         {tag(0)}{tag(1)}
+        </div>
         {phase.kind === 'toast' && <div className="tt-toast">{evTitle}</div>}
         {phase.kind === 'big' && ev && (
           <div className="tt-big num">

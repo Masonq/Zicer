@@ -22,7 +22,7 @@
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; background: var(--bg); color: var(--chalk); }
+html, body { margin: 0; padding: 0; background: var(--bg); color: var(--chalk); overscroll-behavior-y: none; }
 body { font-family: var(--body); font-size: 15px; line-height: 1.45; -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
 a { color: inherit; text-decoration: none; }
 button, input, select, textarea { font: inherit; color: inherit; }
@@ -475,8 +475,8 @@ img { display: block; max-width: 100%; }
 .tt-score i.c1b { margin: 0 -6px 0 8px; }
 .c0b { background: var(--c0); } .c1b { background: var(--c1); }
 .tt-sets { min-height: 22px; line-height: 18px; width: max-content; margin: 0 auto; padding: 2px 14px; font-size: 13px; color: #D9E2DD; background: rgba(0, 0, 0, 0.35); border-radius: 0 0 10px 10px; }
-.tt-court { margin: 6px 0 0; border-radius: 0; height: 210px; }
-@media (min-width: 600px) { .tt-court { height: 250px; } }
+.tt-court { margin: 6px 0 0; border-radius: 0; height: auto; }
+
 .tt-tag { position: absolute; z-index: 3; display: flex; flex-direction: column; gap: 1px; font-size: 13px; font-weight: 600; color: #fff; max-width: 42%; transform: translateY(-50%);
   transition: top .5s ease; text-shadow: 0 1px 4px rgba(0,0,0,0.5); }
 .tt-tag b { color: #F5D547; font-weight: 700; font-size: 13px; }
@@ -500,8 +500,7 @@ img { display: block; max-width: 100%; }
 @media (prefers-reduced-motion: reduce) { .bp-ball.live::after { animation: none; } }
 
 /* tracker cards & possession */
-.trk .tt-court { height: 220px; }
-@media (min-width: 600px) { .trk .tt-court { height: 260px; } }
+.trk .tt-court { height: auto; }
 .poss { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; transition: opacity .4s; }
 .trk-card { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 4; display: flex; align-items: center; gap: 12px;
   min-width: 150px; max-width: 78%; padding: 9px 14px 9px 12px; border-radius: 8px; background: rgba(28, 24, 16, 0.86); box-shadow: 0 8px 22px rgba(0,0,0,0.35);
@@ -596,11 +595,21 @@ img { display: block; max-width: 100%; }
 @keyframes chev { 0% { translate: -14px 0; opacity: 0; } 30% { opacity: 1; } 100% { translate: 14px 0; opacity: 0; } }
 @keyframes chevl { 0% { translate: 14px 0; opacity: 0; } 30% { opacity: 1; } 100% { translate: -14px 0; opacity: 0; } }
 /* courts: more depth and texture */
-.tt-court::after { content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: radial-gradient(120% 90% at 50% 50%, transparent 55%, rgba(0,0,0,0.32) 100%); }
-.court-football.tt-court { background: repeating-linear-gradient(90deg, rgba(255,255,255,0.045) 0 9.09%, rgba(0,0,0,0.06) 9.09% 18.18%), radial-gradient(80% 70% at 50% 45%, #2A6E52 0%, #1A4A37 100%); }
-.court-hockey.tt-court { background: radial-gradient(70% 60% at 50% 45%, #E8F1F8 0%, #C9DCEA 100%); }
-.court-hockey.tt-court .court-svg rect, .court-hockey.tt-court .court-svg circle { stroke: rgba(30,60,90,0.45); }
-.court-volleyball.tt-court { background: radial-gradient(80% 70% at 50% 45%, #D2884A 0%, #A65E2A 100%); }
-.court-waterpolo.tt-court { background: repeating-linear-gradient(170deg, rgba(255,255,255,0.05) 0 12px, rgba(0,0,0,0.03) 12px 24px), radial-gradient(80% 70% at 50% 45%, #22A2D8 0%, #0E6B98 100%); background-size: 200% 200%, 100% 100%; animation: water 9s linear infinite; }
 @keyframes water { from { background-position: 0 0, 0 0; } to { background-position: 120px 60px, 0 0; } }
 @media (prefers-reduced-motion: reduce) { .chev, .court-waterpolo.tt-court, .ripple.go { animation: none; } }
+
+/* regulation courts */
+.tt-court { background: #12241C !important; animation: none !important; }
+.tt-court .court-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.field { position: absolute; z-index: 2; }
+.field .terr { top: 0; bottom: 0; }
+.terr.t0 { background: linear-gradient(90deg, rgba(61,142,240,0) 0%, rgba(61,142,240,0.13) 100%); }
+.terr.t1 { background: linear-gradient(270deg, rgba(139,209,47,0) 0%, rgba(139,209,47,0.13) 100%); }
+.tt-court .tt-tag.l { left: 4%; } .tt-court .tt-tag.r { right: 4%; }
+
+/* header stays fixed on top (no jumping with iOS rubber-band scrolling) */
+@media (max-width: 1023px) {
+  .topbar { position: fixed; left: 0; right: 0; top: 0; }
+  .main { padding-top: calc(72px + env(safe-area-inset-top, 0px)); }
+}
+.center-body:not(.fixed) { min-height: 150px; }
