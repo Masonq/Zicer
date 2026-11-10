@@ -36,6 +36,12 @@ ENV
   ok "создан"
 else ok "уже есть, не трогаю"; fi
 DBPASS=$(grep DATABASE_URL /etc/zicer.env | sed -E 's#.*zicer:([^@]+)@.*#\1#')
+if ! grep -q '^ZICER_PORT=' /etc/zicer.env; then
+  systemctl stop zicer-api >/dev/null 2>&1
+  for p in $(seq 8790 8899); do ss -ltnH "sport = :$p" | grep -q . || { echo "ZICER_PORT=$p" >> /etc/zicer.env; break; }; done
+fi
+PORT=$(grep '^ZICER_PORT=' /etc/zicer.env | cut -d= -f2)
+ok "порт API: $PORT"
 
 step "PostgreSQL"
 sudo -u postgres psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='zicer'" | grep -q 1 || sudo -u postgres psql -qc "CREATE ROLE zicer LOGIN PASSWORD '$DBPASS'"
@@ -56,7 +62,7 @@ After=network.target postgresql.service
 [Service]
 WorkingDirectory=$APP/backend
 EnvironmentFile=/etc/zicer.env
-ExecStart=$APP/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8710 --workers 2 --proxy-headers
+ExecStart=$APP/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port $PORT --workers 2 --proxy-headers
 Restart=always
 RestartSec=3
 [Install]
@@ -78,7 +84,7 @@ UNIT
 systemctl daemon-reload
 systemctl enable zicer-api zicer-worker >/dev/null 2>&1
 systemctl restart zicer-api zicer-worker
-sleep 5
+sleep 8
 systemctl is-active zicer-api >/dev/null && ok "zicer-api работает" || bad "zicer-api не запустился"
 systemctl is-active zicer-worker >/dev/null && ok "zicer-worker работает" || bad "zicer-worker не запустился"
 
@@ -100,8 +106,8 @@ server {
     client_max_body_size 2m;
     gzip on;
     gzip_types text/css application/javascript application/json image/svg+xml;
-    location /api/ { proxy_pass http://127.0.0.1:8710; proxy_set_header Host \$host; proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for; proxy_set_header X-Forwarded-Proto \$scheme; proxy_read_timeout 60s; }
-    location /t/ { proxy_pass http://127.0.0.1:8710; proxy_set_header Host \$host; }
+    location /api/ { proxy_pass http://127.0.0.1:$PORT; proxy_set_header Host \$host; proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for; proxy_set_header X-Forwarded-Proto \$scheme; proxy_read_timeout 60s; }
+    location /t/ { proxy_pass http://127.0.0.1:$PORT; proxy_set_header Host \$host; }
     location /assets/ { expires 1y; add_header Cache-Control "public, max-age=31536000, immutable"; try_files \$uri =404; }
     location = /index.html { add_header Cache-Control "no-cache, no-store, must-revalidate"; expires -1; }
     location / { add_header Cache-Control "no-cache, no-store, must-revalidate"; try_files \$uri \$uri/ /index.html; }
@@ -121,7 +127,8 @@ systemctl reload nginx
 
 step "Проверки"
 sleep 20
-H=$(curl -s -m 10 http://127.0.0.1:8710/api/health); echo "api local: $H"; echo "$H" | grep -q true || bad "api local"
+H=$(curl -s -m 10 http://127.0.0.1:$PORT/api/health); echo "api local: $H"; echo "$H" | grep -q '"app":"zicer"' || bad "api local"
+HS=$(curl -s -m 10 https://$DOMAIN/api/health); echo "api https: $HS"; echo "$HS" | grep -q '"app":"zicer"' || bad "api https отвечает не Zicer"
 for path in / /api/health /api/home /mecevi; do
   code=$(curl -s -m 15 -o /dev/null -w '%{http_code}' https://$DOMAIN$path); echo "https $path -> $code"; [ "$code" = "200" ] || bad "https $path $code"
 done

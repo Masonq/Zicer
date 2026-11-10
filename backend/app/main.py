@@ -32,7 +32,7 @@ def startup():
 
 @app.get("/api/health")
 def health():
-    return {"ok": True}
+    return {"ok": True, "app": "zicer"}
 
 
 app.include_router(api.router)
