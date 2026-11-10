@@ -88,6 +88,27 @@ sleep 8
 systemctl is-active zicer-api >/dev/null && ok "zicer-api работает" || bad "zicer-api не запустился"
 systemctl is-active zicer-worker >/dev/null && ok "zicer-worker работает" || bad "zicer-worker не запустился"
 
+step "Автообновление"
+cat > /etc/systemd/system/zicer-autoupdate.service <<UNIT
+[Unit]
+Description=Zicer auto update from GitHub
+[Service]
+Type=oneshot
+ExecStart=/bin/bash $APP/deploy/autoupdate.sh
+UNIT
+cat > /etc/systemd/system/zicer-autoupdate.timer <<UNIT
+[Unit]
+Description=Zicer auto update every minute
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=60s
+AccuracySec=10s
+[Install]
+WantedBy=timers.target
+UNIT
+systemctl daemon-reload
+systemctl enable --now zicer-autoupdate.timer >/dev/null 2>&1 && ok "таймер автообновления включён" || bad "таймер автообновления"
+
 step "Админ"
 ADMIN_INFO=""
 if [ ! -f /etc/zicer-admin.txt ]; then
