@@ -22,14 +22,12 @@ SCHEDULE = [  # (name, fn, every_seconds)
     ("other_results", ingest.sync_other_results, 180),
     ("odds", ingest.sync_odds, 180),
     ("settle", ingest.settle, 60),
-    ("trends", ingest.build_trends, 1800),
-    ("analysis", ingest.build_analysis, 1800),
     ("tg_poll", ingest.tg_poll, 20),
     ("tg_reminders", ingest.tg_reminders, 300),
 ]
 
 
-SLOW = {"names", "basketball_week", "football", "trends", "analysis"}
+SLOW = {"names", "basketball_week", "football"}
 _running: set = set()
 
 
@@ -56,7 +54,7 @@ def main():
         ingest.job(db, "basketball_week", ingest.sync_basketball_week)
         ingest.job(db, "other_sports", ingest.sync_other_sports)
         ingest.job(db, "backfill", ingest.backfill_football)
-        for n in ("odds", "settle", "trends", "analysis"):
+        for n in ("odds", "settle"):
             ingest.job(db, n, dict((a, b) for a, b, _ in SCHEDULE)[n])
     t0 = time.time()
     for n, _, _ in SCHEDULE:

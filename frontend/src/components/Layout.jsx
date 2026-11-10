@@ -1,6 +1,6 @@
 import { NavLink, Link, Outlet, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
-import { House, CalendarDays, Trophy, User, Flame, TrendingUp, Landmark, Swords, Wallet, Shield } from 'lucide-react'
+import { House, CalendarDays, Trophy, User, Flame, Landmark, Swords, Wallet, Shield } from 'lucide-react'
 import { useT, LangCtx } from '../i18n'
 import { useContext } from 'react'
 import { useAuth, useSlip, usePoll, prefetch } from '../store'
@@ -58,7 +58,7 @@ export default function Layout() {
   }, [user?.id])
   const nav = [
     ['/', t('home'), House], ['/mecevi', t('matches'), CalendarDays], ['/derbi', t('derby'), Swords],
-    ['/trendovi', t('trends'), TrendingUp], ['/rang', t('ranking'), Trophy], ['/kladionice', t('bookmakers'), Landmark],
+    ['/rang', t('ranking'), Trophy], ['/kladionice', t('bookmakers'), Landmark],
   ]
   return (
     <div className="shell">

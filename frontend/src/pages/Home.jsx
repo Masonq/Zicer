@@ -7,19 +7,6 @@ import { useAuth, usePoll } from '../store'
 import { MatchList, SectionHead, Skeleton, Crest, Avatar, fmtNum, fmtOdds, Countdown, pickLabel, Empty } from '../components/ui'
 import { FeaturedMatch } from './Match'
 
-export function TrendCard({ tr }) {
-  const t = useT()
-  const m = tr.match
-  return (
-    <Link to={`/mec/${m.id}`} className="card pad trend">
-      <div className="trend-text">{t.lang === 'ru' ? tr.ru : t.serb(tr.sr)}</div>
-      <div className="trend-foot">
-        <span className="trend-match">{t.team(m.home)} – {t.team(m.away)}</span>
-        <span className="badge gold">{pickLabel(t, m, tr.pick)} {fmtOdds(tr.odds)}</span>
-      </div>
-    </Link>
-  )
-}
 
 export function TipsterRow({ r, i }) {
   const t = useT()
@@ -109,12 +96,6 @@ export default function Home() {
         {d.upcoming.length ? <MatchList matches={d.upcoming.slice(0, 12)} /> : <div className="card"><Empty title={t('noMatches')} text={t('tryOtherDay')} /></div>}
       </section>
 
-      {d.trends.length > 0 && (
-        <section className="section">
-          <SectionHead title={t('trends')} to="/trendovi" link={t('seeAll')} />
-          <div className="grid-2">{d.trends.slice(0, 4).map((tr, i) => <TrendCard key={i} tr={tr} />)}</div>
-        </section>
-      )}
 
       {(sport === 'all' || sport === 'football' || sport === 'basketball') && d.battle.length > 0 && (
         <section className="section">

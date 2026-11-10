@@ -37,7 +37,7 @@ function Dashboard() {
                 <td style={{ whiteSpace: 'nowrap' }}>{ago(j.last_ok)}</td>
                 <td className="small">{j.info}</td>
                 <td className="small" style={{ color: j.last_error_at && (!j.last_ok || j.last_error_at > j.last_ok) ? 'var(--loss)' : 'var(--dim)', maxWidth: 260 }}>{j.last_error ? `${ago(j.last_error_at)}: ${j.last_error.split('\n')[0]}` : '—'}</td>
-                <td>{['football', 'basketball', 'odds', 'settle', 'trends', 'analysis'].includes(j.name) && <button className="btn btn-ghost btn-sm" onClick={() => run(j.name)}>Запустить</button>}</td>
+                <td>{['football', 'basketball', 'odds', 'settle'].includes(j.name) && <button className="btn btn-ghost btn-sm" onClick={() => run(j.name)}>Запустить</button>}</td>
               </tr>
             ))}</tbody>
           </table>

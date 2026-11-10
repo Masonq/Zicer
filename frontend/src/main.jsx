@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import ReactDOM from 'react-dom/client'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import '@fontsource/oswald/400.css'
 import '@fontsource/oswald/500.css'
 import '@fontsource/oswald/600.css'
@@ -21,7 +21,6 @@ import TicketPage from './pages/Ticket'
 import TicketView from './pages/TicketView'
 import Ranking from './pages/Ranking'
 import Derby from './pages/Derby'
-import Trends from './pages/Trends'
 import Bookmakers from './pages/Bookmakers'
 import Profile from './pages/Profile'
 import Me from './pages/Me'
@@ -61,7 +60,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                 <Route path="/tiket/:id" element={<TicketView />} />
                 <Route path="/rang" element={<Ranking />} />
                 <Route path="/derbi" element={<Derby />} />
-                <Route path="/trendovi" element={<Trends />} />
+                <Route path="/trendovi" element={<Navigate to="/" replace />} />
                 <Route path="/kladionice" element={<Bookmakers />} />
                 <Route path="/klub/:id" element={<TeamPage />} />
                 <Route path="/u/:username" element={<Profile />} />
