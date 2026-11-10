@@ -53,7 +53,9 @@ def fetch_all(client: httpx.Client) -> list[dict]:
                     for x in block.get("Value") or []:
                         stats[x.get("N")] = [x.get("S1") or "0", x.get("S2") or "0"]
                 periods = [[(p.get("Value") or {}).get("S1", 0), (p.get("Value") or {}).get("S2", 0)] for p in sc.get("PS") or []]
-                out.append({"id": g.get("I"), "sport": sport, "home": g.get("O1") or "", "away": g.get("O2") or "",
+                ss = sc.get("SS") or {}
+                out.append({"ss": [str(ss.get("S1", "0")), str(ss.get("S2", "0"))] if ss else None, "server": sc.get("P"),
+                            "id": g.get("I"), "sport": sport, "home": g.get("O1") or "", "away": g.get("O2") or "",
                             "start": g.get("S"), "score": [fs.get("S1", 0), fs.get("S2", 0)], "ts": sc.get("TS"),
                             "period": sc.get("CPS") or "", "stats": stats, "periods": periods})
         except Exception:  # noqa

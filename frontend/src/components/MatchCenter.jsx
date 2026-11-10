@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { IconShirtFilled } from '@tabler/icons-react'
 import { api } from '../api'
 import { useT } from '../i18n'
 import { usePoll } from '../store'
@@ -257,6 +258,96 @@ function Court({ m, data, t }) {
   )
 }
 
+
+const PV = { 0: 0, 15: 1, 30: 2, 40: 3, A: 4 }
+// Tennis tracker in the style of bookmaker live trackers: server, point score, point / game / break toasts
+function TennisCourt({ m, data, t }) {
+  const live = m.status === 'live'
+  const x = (data.live || {}).x || {}
+  const ss = x.ss || ((data.live || {}).game ? (data.live || {}).game.map(String) : ['0', '0'])
+  const server = x.server ? x.server - 1 : ((data.live || {}).spl === 'AWAY' ? 1 : 0)
+  const per = x.periods && x.periods.length ? x.periods : ((data.live || {}).per || []).filter((p) => p[0] || p[1])
+  const H = t.team(m.home), A = t.team(m.away)
+  const names = [H, A]
+  const evs = (data.xev || []).filter((e) => ['point', 'game', 'bp'].includes(e.t))
+  const last = evs[evs.length - 1]
+  const [phase, setPhase] = useState({ kind: 'idle', ev: null })
+  const seen = useRef(null)
+  useEffect(() => {
+    if (!data.now) return // placeholder data, wait for real data
+    if (seen.current === null) { seen.current = last ? last.at : 0; return } // events that already happened are not replayed
+    if (!last || last.at <= seen.current || !live) return
+    seen.current = last.at
+    setPhase({ kind: 'toast', ev: last })
+    const a = setTimeout(() => setPhase({ kind: 'big', ev: last }), 1500)
+    const b = setTimeout(() => setPhase({ kind: 'idle', ev: null }), 4200)
+    return () => { clearTimeout(a); clearTimeout(b) }
+  }, [last?.at, live, data.now]) // eslint-disable-line react-hooks/exhaustive-deps
+  // serving side alternates deuce / advantage court with every point
+  const totalPts = (PV[ss[0]] ?? 0) + (PV[ss[1]] ?? 0)
+  const deuce = totalPts % 2 === 0
+  const sy = (side) => (side === 0 ? (deuce ? 68 : 32) : (deuce ? 32 : 68))
+  const srvY = sy(server)
+  const rcvY = server === 0 ? (deuce ? 32 : 68) : (deuce ? 68 : 32)
+  const [ball, setBall] = useState({ x: server === 0 ? 17 : 83, y: srvY, k: 0 })
+  const shots = useRef(0)
+  useEffect(() => {
+    if (!live) return
+    setBall({ x: server === 0 ? 17 : 83, y: srvY, k: Date.now() })
+    shots.current = 0
+    const i = setInterval(() => {
+      shots.current += 1
+      const toRight = (shots.current + server) % 2 === 1
+      const xx = toRight ? 70 + Math.random() * 14 : 16 + Math.random() * 14
+      const yy = shots.current === 1 ? (server === 0 ? (deuce ? 32 : 68) : (deuce ? 68 : 32)) : 22 + Math.random() * 56
+      setBall({ x: xx, y: yy, k: Date.now() })
+    }, 1150)
+    return () => clearInterval(i)
+  }, [live, server, totalPts, phase.kind === 'idle']) // eslint-disable-line react-hooks/exhaustive-deps
+  const setsTxt = per.map((p) => `${p[0]}-${p[1]}`).join(', ')
+  const ev = phase.ev
+  const winner = ev ? ev.side : null
+  const evTitle = ev ? (ev.t === 'game' ? (ev.brk ? t('ev_break') : t('ev_game')) : ev.t === 'bp' ? t('ev_bp') : t('ev_point')) : ''
+  const tag = (side) => {
+    const isSrv = side === server
+    const label = phase.kind === 'big' && winner === side ? evTitle : isSrv && live ? t('serve') : ''
+    return (
+      <div className={`tt-tag ${side === 0 ? 'l' : 'r'} c${side}`} style={{ top: `${side === server ? srvY : rcvY}%` }}>
+        <span className="ellip">{names[side]}</span>
+        {label && <b>{label}</b>}
+      </div>
+    )
+  }
+  return (
+    <div className="tennis-tracker">
+      <div className="tt-bar">
+        <span className="tt-player l"><IconShirtFilled size={18} className="c0i" /><span className="ellip">{H}</span></span>
+        <span className="tt-score num"><i className="c0b" />{live ? `${ss[0]}:${ss[1]}` : (m.score ? `${m.score[0]}:${m.score[1]}` : '–')}<i className="c1b" /></span>
+        <span className="tt-player r"><span className="ellip">{A}</span><IconShirtFilled size={18} className="c1i" /></span>
+      </div>
+      {setsTxt && <div className="tt-sets num">{setsTxt}</div>}
+      <div className="court court-tennis tt-court" style={{ '--tick': '1150ms' }}>
+        <CourtLines sport="tennis" />
+        {live && phase.kind !== 'big' && (
+          <>
+            <span className="bp-shadow" style={{ left: `${ball.x}%`, top: `${ball.y}%` }} />
+            <span className="bp-wrap" style={{ left: `${ball.x}%`, top: `${ball.y}%` }}><span key={ball.k} className="bp-ball ball-tennis hop" /></span>
+          </>
+        )}
+        {tag(0)}{tag(1)}
+        {phase.kind === 'toast' && <div className="tt-toast">{evTitle}</div>}
+        {phase.kind === 'big' && ev && (
+          <div className="tt-big num">
+            <div><span>{ev.t === 'game' ? per.length ? per[per.length - 1][0] : '' : (ev.ss || ss)[0]}</span><i className="c0b" /></div>
+            <div><span>{ev.t === 'game' ? per.length ? per[per.length - 1][1] : '' : (ev.ss || ss)[1]}</span><i className="c1b" /></div>
+          </div>
+        )}
+        {!live && <div className="tt-toast">{t('finished')}</div>}
+      </div>
+    </div>
+  )
+}
+
 function Stats({ stats, t }) {
   if (!stats || !stats.length) return <div className="empty" style={{ padding: 20 }}>{t('noStats')}</div>
   return (
@@ -347,7 +438,7 @@ function Events({ m, data, t }) {
 export default function MatchCenter({ m, fallback = null }) {
   const t = useT()
   const live = m.status === 'live'
-  const { data: loaded } = usePoll(() => api(`/matches/${m.id}/center`), [m.id, m.status], live ? 15000 : 0, true)
+  const { data: loaded } = usePoll(() => api(`/matches/${m.id}/center`), [m.id, m.status], live ? (m.sport === 'tennis' ? 6000 : 15000) : 0, true)
   const [tab, setTab] = useState(null)
   const data = loaded || { live: m.live || {} }
   const lv = data.live || {}
@@ -368,7 +459,7 @@ export default function MatchCenter({ m, fallback = null }) {
         <div className="tablo"><div className="big">{m.score ? `${m.score[0]}${sep}${m.score[1]}` : '–'}</div></div>
         <Link to={`/klub/${m.away.id}`} className="hc-team r"><Crest team={m.away} size={44} /><span className="hc-name">{t.team(m.away)}</span></Link>
       </div>
-      <Court m={m} data={data} t={t} />
+      {m.sport === 'tennis' ? <TennisCourt m={m} data={data} t={t} /> : <Court m={m} data={data} t={t} />}
       <div className="seg" style={{ margin: '12px 12px 0' }}>{tabs.map(([k, l]) => <button key={k} className={active === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}</div>
       <div className="center-body">
         {!loaded ? <div className="skeleton" style={{ height: 140, margin: 14, borderRadius: 12 }} /> : (

@@ -255,5 +255,5 @@ def fetch_live(client: httpx.Client) -> dict:
         game = [_v(hs, "GAME_SCORE"), _v(as_, "GAME_SCORE")] if h.get("s") == "T" else None
         out[res["mi"]] = {"h": h.get("h", ""), "a": h.get("a", ""), "s": h.get("s"), "kot": h.get("kot"), "score": [sh, sa] if sh is not None and sa is not None else None, "p": res.get("p") or "",
                           "cm": res.get("cm"), "per": per, "game": game if game and None not in game else None,
-                          "stats": stats, "state": h.get("ls", "")}
+                          "stats": stats, "state": h.get("ls", ""), "spl": res.get("spl")}
     return out

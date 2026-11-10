@@ -463,3 +463,30 @@ img { display: block; max-width: 100%; }
 
 .page-body { min-height: 100vh; }
 .center-body { min-height: 160px; }
+
+/* tennis tracker */
+.tennis-tracker { margin: 0 14px; border-radius: 14px; overflow: hidden; background: #163E5F; --c0: #3D8EF0; --c1: #8BD12F; }
+.tt-bar { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 10px; padding: 10px 12px; background: rgba(8, 24, 40, 0.55); }
+.tt-player { display: flex; align-items: center; gap: 6px; min-width: 0; font-weight: 700; font-size: 13px; }
+.tt-player.r { justify-content: flex-end; }
+.c0i { color: var(--c0); flex: none; } .c1i { color: var(--c1); flex: none; }
+.tt-score { display: inline-flex; align-items: center; gap: 0; font-size: 22px; font-weight: 600; background: #0B1F31; border: 1px solid rgba(255,255,255,0.35); border-radius: 6px; padding: 2px 10px; height: 36px; line-height: 1; }
+.tt-score i { display: block; width: 4px; height: 26px; border-radius: 2px; margin: 0 8px 0 -6px; }
+.tt-score i.c1b { margin: 0 -6px 0 8px; }
+.c0b { background: var(--c0); } .c1b { background: var(--c1); }
+.tt-sets { width: max-content; margin: 0 auto; padding: 2px 14px; font-size: 13px; color: #D8E6F2; background: rgba(8, 24, 40, 0.55); border-radius: 0 0 10px 10px; }
+.tt-court { margin: 6px 0 0; border-radius: 0; height: 210px; }
+@media (min-width: 600px) { .tt-court { height: 250px; } }
+.tt-tag { position: absolute; z-index: 3; display: flex; flex-direction: column; gap: 1px; font-size: 13px; font-weight: 600; color: #fff; max-width: 42%; transform: translateY(-50%);
+  transition: top .5s ease; text-shadow: 0 1px 4px rgba(0,0,0,0.5); }
+.tt-tag b { color: #F5D547; font-weight: 700; font-size: 13px; }
+.tt-tag.l { left: 9%; padding-left: 8px; border-left: 3px solid var(--c0); }
+.tt-tag.r { right: 9%; padding-right: 8px; border-right: 3px solid var(--c1); text-align: right; align-items: flex-end; }
+.tt-toast { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 4; padding: 8px 16px; border-radius: 8px; background: rgba(10, 28, 46, 0.88);
+  color: #F5D547; font-family: var(--display); font-size: 24px; font-weight: 500; box-shadow: 0 6px 20px rgba(0,0,0,0.35); animation: pop .25s ease-out; }
+@keyframes pop { from { transform: translate(-50%, -50%) scale(0.85); opacity: 0; } }
+.tt-big { position: absolute; left: 22%; right: 22%; top: 18%; bottom: 30%; z-index: 4; display: grid; grid-template-columns: 1fr 1fr; align-items: center; justify-items: center; animation: fadein .25s ease-out; }
+.tt-big > div { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.tt-big span { font-size: 52px; font-weight: 500; line-height: 1; color: #fff; text-shadow: 0 2px 10px rgba(0,0,0,0.35); }
+.tt-big i { display: block; width: 70px; height: 4px; border-radius: 2px; }
+@keyframes fadein { from { opacity: 0; } }

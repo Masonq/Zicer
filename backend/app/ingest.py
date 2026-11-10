@@ -322,7 +322,8 @@ def sync_live(db: Session) -> str:
     n = 0
     for m in ms:
         d = data[m.mb_id]
-        m.live = {k: d[k] for k in ("p", "cm", "per", "game", "stats")}
+        keep = {k: v for k, v in (m.live or {}).items() if k in ("x", "xev")}
+        m.live = {**keep, **{k: d.get(k) for k in ("p", "cm", "per", "game", "stats", "spl")}}
         if m.status == "finished" or m.settled:
             continue
         own_feed = m.ext.startswith("fm:") or m.ext.startswith("nba:")
@@ -1033,10 +1034,32 @@ def sync_xfeed(db: Session) -> str:
                 d = (g["score"][side] or 0) - (prev_score[side] or 0)
                 if d > 0:
                     new.append({"t": "score", "side": side, "at": now_ts, "ts": g.get("ts"), "n": int(d)})
-        prio = {"attack": 1, "sub": 1, "foul": 1, "danger": 2, "ft": 2, "p2": 3, "corner": 3, "yellow": 3, "pen2": 3, "df": 3,
+        # tennis: point-by-point events from game score (SS) and games per set
+        if m.sport == "tennis" and g.get("ss"):
+            px = live.get("x") or {}
+            pss, pper = px.get("ss"), px.get("periods") or []
+            PV = {"0": 0, "15": 1, "30": 2, "40": 3, "A": 4}
+            games_now = [sum(int(p[i] or 0) for p in g["periods"]) for i in (0, 1)]
+            games_prev = [sum(int(p[i] or 0) for p in pper) for i in (0, 1)] if pper else None
+            if pss and pss != g["ss"]:
+                if games_prev and games_now != games_prev:
+                    gw = 0 if games_now[0] > games_prev[0] else 1
+                    srv = (px.get("server") or 1) - 1
+                    new.append({"t": "game", "side": gw, "at": now_ts, "ts": g.get("ts"), "n": 1, "brk": gw != srv, "ss": pss})
+                else:
+                    a, b = PV.get(g["ss"][0], 0) - PV.get(pss[0], 0), PV.get(g["ss"][1], 0) - PV.get(pss[1], 0)
+                    side = 0 if (a > 0 or b < 0) and not (b > 0) else 1
+                    new.append({"t": "point", "side": side, "at": now_ts, "ts": g.get("ts"), "n": 1, "ss": g["ss"]})
+                srv = (g.get("server") or 1) - 1
+                rcv = 1 - srv
+                vr, vs = PV.get(g["ss"][rcv], 0), PV.get(g["ss"][srv], 0)
+                if vr >= 3 and vr > vs and not (vr == 3 and vs == 3):
+                    new.append({"t": "bp", "side": rcv, "at": now_ts, "ts": g.get("ts"), "n": 1})
+        prio = {"point": 5, "game": 8, "bp": 6, "attack": 1, "sub": 1, "foul": 1, "danger": 2, "ft": 2, "p2": 3, "corner": 3, "yellow": 3, "pen2": 3, "df": 3,
                 "shot_off": 4, "p3": 4, "ace": 4, "shot_on": 5, "break": 5, "penalty": 6, "red": 6, "score": 9}
         evs += sorted(new, key=lambda e: prio.get(e["t"], 0))
-        live["x"] = {"st": g["stats"], "score": g["score"], "ts": g.get("ts"), "period": g["period"], "periods": g["periods"]}
+        live["x"] = {"st": g["stats"], "score": g["score"], "ts": g.get("ts"), "period": g["period"], "periods": g["periods"],
+                     "ss": g.get("ss"), "server": g.get("server")}
         live["xev"] = evs[-40:]
         m.live = live
         if m.status == "scheduled" and g.get("ts"):
