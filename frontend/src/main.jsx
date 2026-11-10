@@ -30,6 +30,7 @@ import { Login, Register } from './pages/Auth'
 import Onboarding from './pages/Onboarding'
 import TeamPage from './pages/Team'
 import Admin from './admin/Admin'
+import TabloPreview from './pages/TabloPreview'
 
 function LangRoot({ children }) {
   const { user, setUser } = useAuth()
@@ -71,6 +72,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                 <Route path="/registracija" element={<Register />} />
                 <Route path="/izbor-kluba" element={<Onboarding />} />
                 <Route path="/admin/*" element={<Admin />} />
+                <Route path="/pregled-tablo" element={<TabloPreview />} />
                 <Route path="*" element={<Home />} />
               </Route>
             </Routes>

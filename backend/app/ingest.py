@@ -343,7 +343,10 @@ def sync_live(db: Session) -> str:
             continue
         own_feed = m.ext.startswith("fm:") or m.ext.startswith("nba:")
         if not own_feed and d["score"] is not None and m.start <= datetime.utcnow() + timedelta(minutes=5):
-            m.score_home, m.score_away = d["score"]
+            if m.sport in ("tennis", "volleyball") and d.get("per"):
+                m.score_home, m.score_away = sets_won_from_periods(d["per"], m.sport)
+            else:
+                m.score_home, m.score_away = d["score"]
             m.status = "live"
         if not own_feed:
             m.minute = (f"{d['cm']}'" if d.get("cm") and m.sport == "football" else d["p"])[:16]
@@ -1127,7 +1130,11 @@ def sync_xfeed(db: Session) -> str:
         if m.status == "scheduled" and g.get("ts"):
             m.status = "live"
         if m.status == "live" and not m.settled and g.get("score") and None not in g["score"]:
-            m.score_home, m.score_away = int(g["score"][0] or 0), int(g["score"][1] or 0)
+            if m.sport in ("tennis", "volleyball") and g.get("periods"):
+                # sets won = finished sets in the set scores (the bare counter can glitch)
+                m.score_home, m.score_away = sets_won_from_periods(g["periods"], m.sport)
+            else:
+                m.score_home, m.score_away = int(g["score"][0] or 0), int(g["score"][1] or 0)
         if m.status == "live" and m.sport == "football" and g.get("ts"):
             m.minute = f"{g['ts'] // 60 + 1}'"
         close_if_decided(m)
@@ -1172,6 +1179,22 @@ def sets_to_win(m: Match) -> int:
     return 2
 
 
+def sets_won_from_periods(per, sport: str) -> list[int]:
+    """Count only sets that are really finished (6-x with 2 games lead or 7-x in tennis; 25/15 with 2 points in volleyball)."""
+    won = [0, 0]
+    for i, p in enumerate(per or []):
+        a, b = int(p[0] or 0), int(p[1] or 0)
+        hi, lo = max(a, b), min(a, b)
+        if sport == "tennis":
+            done = (hi >= 6 and hi - lo >= 2) or hi == 7
+        else:
+            target = 15 if i == 4 else 25
+            done = hi >= target and hi - lo >= 2
+        if done:
+            won[0 if a > b else 1] += 1
+    return won
+
+
 def close_if_decided(m: Match) -> bool:
     """Tennis / volleyball: the match is over the moment a side has won the needed sets.
     The match is closed for the live view right away; bets are settled only after the official result."""
@@ -1180,6 +1203,10 @@ def close_if_decided(m: Match) -> bool:
     if max(m.score_home or 0, m.score_away or 0) < sets_to_win(m):
         return False
     lv = dict(m.live or {})
+    # a single feed can glitch: the finished sets in the set scores must confirm it
+    per = ((lv.get("x") or {}).get("periods")) or lv.get("per") or []
+    if max(sets_won_from_periods(per, m.sport)) < sets_to_win(m):
+        return False
     m.status = "finished"
     m.minute = ""
     lv["fin_by"], lv["fin_at"] = "score", int(datetime.utcnow().timestamp())

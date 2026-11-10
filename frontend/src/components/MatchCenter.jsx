@@ -920,11 +920,22 @@ function MomentumStrip({ m, data, t }) {
   )
 }
 
-export function isDecided(m, score) {
+function setsWon(per, sport) {
+  const won = [0, 0]
+  ;(per || []).forEach((p, i) => {
+    const a = +p[0] || 0, b = +p[1] || 0, hi = Math.max(a, b), lo = Math.min(a, b)
+    const done = sport === 'tennis' ? (hi >= 6 && hi - lo >= 2) || hi === 7 : hi >= (i === 4 ? 15 : 25) && hi - lo >= 2
+    if (done) won[a > b ? 0 : 1] += 1
+  })
+  return won
+}
+// over only when the score AND the finished set scores both say so (one feed can glitch)
+export function isDecided(m, score, per) {
   if (m.sport !== 'tennis' && m.sport !== 'volleyball') return false
   const lg = ((m.league && m.league.name) || '').toLowerCase()
   const need = m.sport === 'volleyball' ? 3 : /australian open|roland garros|wimbledon|us open/.test(lg) && !/wta|women/.test(lg) ? 3 : 2
-  return Math.max((score || [0, 0])[0] || 0, (score || [0, 0])[1] || 0) >= need
+  if (Math.max((score || [0, 0])[0] || 0, (score || [0, 0])[1] || 0) < need) return false
+  return Math.max(...setsWon(per, m.sport)) >= need
 }
 const BOARD_KEYS = {
   tennis: ['x:Aces', 'x:Double faults', 'x:1st Serve %', 'x:Win % 1st Serve', 'x:Break point %', 'x:Breaks'],
@@ -961,7 +972,7 @@ function Arena({ m, data, t }) {
   const statusNow = data.status || m.status
   const scoreNow = data.score || m.score || [0, 0]
   // tennis / volleyball are over the moment a side has the sets it needs; don't keep "playing" until the feed says so
-  const decided = isDecided(m, scoreNow)
+  const decided = isDecided(m, scoreNow, ((data.live || {}).x || {}).periods || (data.live || {}).per)
   const live = statusNow === 'live' && !decided
   const finished = statusNow === 'finished' || decided
   const net = sport === 'tennis' || sport === 'volleyball'
@@ -1296,7 +1307,7 @@ export default function MatchCenter({ m, fallback = null }) {
     <div className="center-card hero-center">
       <div className="hc-top">
         <span className="ellip">{t.league(m.league)}</span>
-        {(data.status || m.status) === 'live' && !isDecided(m, data.score || m.score) ? <span className="badge live"><span className="live-dot" style={{ marginRight: 6 }} />{m.minute === 'HT' ? t('ht') : /^[A-Z0-9_]+$/.test(m.minute || '') ? periodLabel(m.minute, m.sport, t) : m.minute || t('live')}</span> : <span className="badge">{t('finished')}</span>}
+        {(data.status || m.status) === 'live' && !isDecided(m, data.score || m.score, (lv.x || {}).periods || lv.per) ? <span className="badge live"><span className="live-dot" style={{ marginRight: 6 }} />{m.minute === 'HT' ? t('ht') : /^[A-Z0-9_]+$/.test(m.minute || '') ? periodLabel(m.minute, m.sport, t) : m.minute || t('live')}</span> : <span className="badge">{t('finished')}</span>}
       </div>
       <Arena m={m} data={data} t={t} />
       <div className="seg" style={{ margin: '12px 12px 0' }}>{tabs.map(([k, l]) => <button key={k} className={active === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}</div>
