@@ -34,6 +34,7 @@ def main():
         ingest.job(db, "football", ingest.sync_football)
         ingest.job(db, "basketball", ingest.sync_basketball)
         ingest.job(db, "basketball_week", ingest.sync_basketball_week)
+        ingest.job(db, "other_sports", ingest.sync_other_sports)
         ingest.job(db, "backfill", ingest.backfill_football)
         for n in ("odds", "settle", "trends", "analysis"):
             ingest.job(db, n, dict((a, b) for a, b, _ in SCHEDULE)[n])
