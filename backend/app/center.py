@@ -130,10 +130,23 @@ def _el(m: Match):
                 if "," in name:
                     last, first = [y.strip() for y in name.split(",", 1)]
                     name = f"{first.title()} {last.title()}"
-                plays.append({"q": qi, "clock": x.get("MARKERTIME") or "", "home": (x.get("CODETEAM") or "").strip() == home_code,
+                plays.append({"pt": pt, "q": qi, "clock": x.get("MARKERTIME") or "", "home": (x.get("CODETEAM") or "").strip() == home_code,
                               "player": name, "sr": sr, "ru": ru, "pts": pts,
                               "score": [x.get("POINTS_A"), x.get("POINTS_B")] if x.get("POINTS_A") is not None else None})
         out["plays"] = plays[-60:]
+        # game clock, quarter and team fouls in the current quarter (bonus dots)
+        if plays:
+            lastp = plays[-1]
+            out["clock"] = {"q": lastp["q"], "t": lastp["clock"]}
+            cq = lastp["q"]
+            fouls = [0, 0]
+            for qi, qk in enumerate(["FirstQuarter", "SecondQuarter", "ThirdQuarter", "ForthQuarter", "ExtraTime"], 1):
+                if qi != cq:
+                    continue
+                for x in p.get(qk) or []:
+                    if (x.get("PLAYTYPE") or "").strip() in ("CM", "CMU", "CMT", "CMD"):
+                        fouls[0 if (x.get("CODETEAM") or "").strip() == home_code else 1] += 1
+            out["fouls"] = fouls
     except Exception:  # noqa
         pass
     _cache[key] = (time.time(), out)

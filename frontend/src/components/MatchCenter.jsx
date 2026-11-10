@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { IconShirtFilled } from '@tabler/icons-react'
+import { IconShirtFilled, IconHandStop, IconStopwatch, IconFlag, IconTarget, IconRectangleVerticalFilled, IconArrowsExchange, IconBallBasketball, IconBallFootball, IconBallVolleyball, IconPlayerPause } from '@tabler/icons-react'
 import { api } from '../api'
 import { useT } from '../i18n'
 import { usePoll } from '../store'
@@ -221,7 +221,34 @@ function nextPos(sport, st) {
 const TOAST = ['score', 'shot_on', 'shot_off', 'corner', 'penalty', 'red', 'yellow', 'pen2', 'p3', 'break', 'ace']
 const EVSPOT = { score: [95, 50], shot_on: [93, 50], shot_off: [93, 30], corner: [97, 6], penalty: [86, 50], p3: [80, 50], ace: [80, 50] }
 
-// Bookmaker-style tracker for football, basketball, hockey, volleyball, water polo
+// Bookmaker-style tracker for football, basketball, hockey, volleyball, water polo:
+// possession wedge + "team / with the ball" card, event cards with icons, ball at the place of action.
+const EV_ICON = {
+  score: { football: IconBallFootball, hockey: IconTarget, waterpolo: IconTarget, basketball: IconBallBasketball, volleyball: IconBallVolleyball },
+  shot_on: IconTarget, shot_off: IconTarget, corner: IconFlag, yellow: 'yellow', red: 'red', foul: IconHandStop, pen2: IconStopwatch,
+  p2: IconBallBasketball, p3: IconBallBasketball, ft: IconBallBasketball, sub: IconArrowsExchange, penalty: IconTarget, timeout: IconPlayerPause,
+}
+function EvIconBig({ type, sport }) {
+  let I = EV_ICON[type]
+  if (I && typeof I === 'object') I = I[sport]
+  if (I === 'yellow' || I === 'red') return <IconRectangleVerticalFilled size={30} style={{ color: I === 'yellow' ? '#F5D547' : '#E5544B' }} />
+  if (!I) return null
+  return <I size={30} stroke={1.6} />
+}
+
+// who has the ball in basketball, from the real play-by-play
+function bballPossession(plays) {
+  for (let i = plays.length - 1; i >= 0; i--) {
+    const p = plays[i]
+    const own = p.home ? 0 : 1
+    if (p.pts > 0) return 1 - own
+    if (['D', 'O', 'ST'].includes(p.pt)) return own
+    if (p.pt === 'TO') return 1 - own
+    if (['2FGA', '3FGA'].includes(p.pt)) return own
+  }
+  return null
+}
+
 function Court({ m, data, t }) {
   const live = m.status === 'live'
   const scene = useScene(m, data, t)
@@ -229,77 +256,93 @@ function Court({ m, data, t }) {
   const x = lv.x || {}
   const H = t.team(m.home), A = t.team(m.away)
   const names = [H, A]
-  const tick = TICK[m.sport] || 1500
-  const sep = ':'
   const per = (x.periods && x.periods.length ? x.periods : (lv.per || [])).filter((p) => p[0] || p[1])
   const periodTxt = !live ? t('finished') : m.sport === 'football' ? (m.minute === 'HT' ? t('ht') : m.minute || '') : periodLabel(lv.p, m.sport, t) || (/^[A-Z0-9_]+$/.test(m.minute || '') ? periodLabel(m.minute, m.sport, t) : m.minute)
   const scoresTxt = per.map((p) => `${p[0] ?? 0}-${p[1] ?? 0}`).join(', ')
-  // event toasts (real events from the live feed)
-  const evs = (data.xev || []).filter((e) => TOAST.includes(e.t))
-  const last = evs[evs.length - 1]
+  const server = m.sport === 'volleyball' && x.server ? x.server - 1 : null
+  const plays = data.plays || []
+  // ---- events (real): basketball play-by-play or the live stats feed
+  const evList = m.sport === 'basketball' && plays.length
+    ? plays.map((p, i) => ({ k: `${p.q}-${p.clock}-${i}`, t: p.pts ? 'score' : p.pt === 'CM' || p.pt === 'CMU' || p.pt === 'CMT' ? 'foul' : p.pt === 'TOUT' ? 'timeout' : null, side: p.home ? 0 : 1, title: t.lang === 'ru' ? p.ru : t.serb(p.sr), sub: p.player, pts: p.pts })).filter((e) => e.t)
+    : (data.xev || []).filter((e) => TOAST.includes(e.t) || e.t === 'foul').map((e) => ({ k: `${e.at}-${e.t}-${e.side}`, t: e.t, side: e.side, title: xevLabel(e, m.sport, t), sub: '', at: e.at }))
+  const last = evList[evList.length - 1]
   const [phase, setPhase] = useState({ kind: 'idle', ev: null })
   const seen = useRef(null)
   useEffect(() => {
     if (!data.now) return
-    if (seen.current === null) { seen.current = last ? last.at : 0; return }
-    if (!last || last.at <= seen.current || !live) return
-    seen.current = last.at
-    setPhase({ kind: 'toast', ev: last })
-    const a = setTimeout(() => setPhase(last.t === 'score' ? { kind: 'big', ev: last } : { kind: 'idle', ev: null }), 1600)
-    const b = setTimeout(() => setPhase({ kind: 'idle', ev: null }), last.t === 'score' ? 4400 : 1700)
+    if (seen.current === null) { seen.current = last ? last.k : ''; return }
+    if (!last || last.k === seen.current || !live) return
+    seen.current = last.k
+    const bigScore = last.t === 'score' && m.sport !== 'basketball'
+    setPhase({ kind: 'event', ev: last })
+    const a = setTimeout(() => setPhase(bigScore ? { kind: 'big', ev: last } : { kind: 'idle', ev: null }), 2600)
+    const b = setTimeout(() => setPhase({ kind: 'idle', ev: null }), bigScore ? 5200 : 2700)
     return () => { clearTimeout(a); clearTimeout(b) }
-  }, [last?.at, live, data.now]) // eslint-disable-line react-hooks/exhaustive-deps
-  // ball position comes only from the match state and real events: it moves when something happens, never randomly
-  const server = m.sport === 'volleyball' && x.server ? x.server - 1 : null
-  let target
-  if (phase.kind !== 'idle' && phase.ev && EVSPOT[phase.ev.t]) {
-    const sp = EVSPOT[phase.ev.t]
-    target = { x: phase.ev.side === 0 ? sp[0] : 100 - sp[0], y: phase.ev.t === 'corner' ? (phase.ev.at % 2 ? sp[1] : 100 - sp[1]) : sp[1] }
-  } else if (server !== null) {
-    target = { x: server === 0 ? 6 : 94, y: 50 }
-  } else {
-    target = { x: Math.max(6, Math.min(94, scene.x)), y: scene.y ?? 50 }
-  }
-  const pos = target
-  const att = scene.x > 55 ? 0 : scene.x < 45 ? 1 : null
-  const st = { current: { att } }
+  }, [last?.k, live, data.now]) // eslint-disable-line react-hooks/exhaustive-deps
+  // ---- possession
+  let att = null
+  if (m.sport === 'basketball' && plays.length) att = bballPossession(plays)
+  else if (server !== null) att = server
+  else att = scene.x > 55 ? 0 : scene.x < 45 ? 1 : null
   const ev = phase.ev
-  const evTitle = ev ? xevLabel(ev, m.sport, t) : ''
-  const tag = (side) => {
-    let label = ''
-    if (phase.kind !== 'idle' && ev && ev.side === side) label = evTitle
-    else if (live && server === side) label = t('serve')
-    else if (live && att === side && phase.kind === 'idle' && scene.title && ![t('live'), t('finished'), t('pause')].includes(scene.title)) label = scene.title.startsWith('+') ? scene.title.split(' ')[0] : scene.title
-    return (
-      <div className={`tt-tag ${side === 0 ? 'l' : 'r'}`} style={{ top: side === 0 ? '24%' : '76%' }}>
-        <span className="ellip">{names[side]}</span>
-        {label && <b>{label}</b>}
-      </div>
-    )
-  }
-  const mom = m.sport === 'football' ? data.momentum || [] : []
-  const sc = ev && ev.t === 'score' && m.score ? m.score : m.score
+  // ---- ball position
+  let ball
+  if (phase.kind === 'event' && ev && EVSPOT[ev.t === 'score' && m.sport === 'basketball' ? 'p2' : ev.t]) {
+    const sp = EVSPOT[ev.t === 'score' && m.sport === 'basketball' ? 'p2' : ev.t]
+    ball = { x: ev.side === 0 ? sp[0] : 100 - sp[0], y: ev.t === 'corner' ? (String(ev.k).length % 2 ? sp[1] : 100 - sp[1]) : sp[1] }
+  } else if (server !== null) ball = { x: server === 0 ? 6 : 94, y: 50 }
+  else if (m.sport === 'basketball' && att !== null) ball = { x: att === 0 ? 70 : 30, y: 62 }
+  else if (att !== null) ball = { x: Math.max(8, Math.min(92, scene.x)), y: 55 }
+  else ball = { x: 50, y: 50 }
+  // ---- card
+  let card = null
+  if (live && phase.kind === 'event' && ev) card = { side: ev.side, title: ev.title, sub: ev.sub, icon: ev.t }
+  else if (live && phase.kind === 'idle' && att !== null) {
+    const label = server !== null ? t('serve') : m.sport === 'basketball' ? t('withBall') : (scene.title && ![t('live'), t('finished'), t('pause')].includes(scene.title) ? (scene.title.startsWith('+') ? t('withBall') : scene.title) : t('withBall'))
+    card = { side: att, title: label, sub: '', icon: null, arrow: true }
+  } else if (live && /PAUSE|BREAK|HALF_TIME/.test(lv.p || m.minute || '')) card = { side: null, title: t('timeStopped'), icon: 'timeout' }
+  const fouls = data.fouls
+  const clock = data.clock
+  const bonusDots = (n) => <span className="bonus"><b>BONUS</b>{[0, 1, 2, 3, 4].map((i) => <i key={i} className={i < Math.min(5, n) ? 'on' : ''} />)}</span>
+  const sc = m.score
   return (
-    <div className="tennis-tracker">
+    <div className="tennis-tracker trk">
       <div className="tt-bar">
         <span className="tt-player l"><IconShirtFilled size={18} className="c0i" /><span className="ellip">{H}</span></span>
-        <span className="tt-score num"><i className="c0b" />{m.score ? `${m.score[0]}${sep}${m.score[1]}` : '–'}<i className="c1b" /></span>
+        <span className="tt-score num"><i className="c0b" />{sc ? `${sc[0]}:${sc[1]}` : '–'}<i className="c1b" /></span>
         <span className="tt-player r"><span className="ellip">{A}</span><IconShirtFilled size={18} className="c1i" /></span>
       </div>
-      <div className="tt-sets num">{[periodTxt, m.sport === 'football' ? '' : scoresTxt].filter(Boolean).join('   ') || '\u00a0'}</div>
-      <div className={`court court-${m.sport} tt-court`} style={{ '--tick': '1400ms' }}>
+      {m.sport === 'basketball' && fouls && live ? (
+        <div className="tt-sets num bb-sub">{bonusDots(fouls[0])}<span>{clock ? `Q${clock.q} ${clock.t}` : periodTxt}</span>{bonusDots(fouls[1])}</div>
+      ) : (
+        <div className="tt-sets num">{[periodTxt, m.sport === 'football' ? '' : scoresTxt].filter(Boolean).join('   ') || '\u00a0'}</div>
+      )}
+      <div className={`court court-${m.sport} tt-court`}>
         <CourtLines sport={m.sport} />
-        {mom.length > 0 && <div className="bp-mom"><Momentum data={mom} /></div>}
+        {live && att !== null && phase.kind === 'idle' && server === null && (
+          <svg className="poss" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+            <defs><linearGradient id={`pg${att}`} x1={att === 0 ? '0' : '1'} x2={att === 0 ? '1' : '0'} y1="0" y2="0"><stop offset="0" stopColor="#fff" stopOpacity="0.02" /><stop offset="1" stopColor="#fff" stopOpacity="0.22" /></linearGradient></defs>
+            <polygon fill={`url(#pg${att})`} points={att === 0 ? '18,0 50,0 64,50 50,100 18,100 32,50' : '82,0 50,0 36,50 50,100 82,100 68,50'} />
+          </svg>
+        )}
         {live && phase.kind !== 'big' && (
           <>
-            <span className="bp-shadow" style={{ left: `${pos.x}%`, top: `${pos.y}%` }} />
-            <span className="bp-wrap" style={{ left: `${pos.x}%`, top: `${pos.y}%` }}>
-              <span className={`bp-ball ball-${m.sport} live${phase.kind === 'toast' ? ' flash' : ''}`} />
-            </span>
+            <span className="bp-shadow" style={{ left: `${ball.x}%`, top: `${ball.y}%` }} />
+            <span className="bp-wrap" style={{ left: `${ball.x}%`, top: `${ball.y}%` }}><span className={`bp-ball ball-${m.sport} live`} /></span>
           </>
         )}
-        {tag(0)}{tag(1)}
-        {phase.kind === 'toast' && <div className="tt-toast">{evTitle}</div>}
+        {card && (
+          <div key={(card.title || '') + card.side} className={`trk-card${card.side === 1 ? ' s1' : card.side === 0 ? ' s0' : ''}`}
+            style={{ top: ball.y >= 50 ? '30%' : '70%', left: `${Math.max(32, Math.min(68, ball.x))}%` }}>
+            {card.side !== null && card.arrow && <span className={`trk-arrow ${card.side === 0 ? 'r' : 'l'}`} />}
+            <div className="trk-txt">
+              {card.side !== null && <b>{names[card.side]}</b>}
+              <span>{card.title}</span>
+              {card.sub && <small>{card.sub}</small>}
+            </div>
+            {card.icon && <span className="trk-ico"><EvIconBig type={card.icon} sport={m.sport} /></span>}
+          </div>
+        )}
         {phase.kind === 'big' && sc && (
           <div className="tt-big num">
             <div><span>{sc[0]}</span><i className="c0b" /></div>
