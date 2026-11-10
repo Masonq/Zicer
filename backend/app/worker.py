@@ -11,6 +11,7 @@ log = logging.getLogger("zicer.worker")
 SCHEDULE = [  # (name, fn, every_seconds)
     ("football_live", ingest.sync_football_live, 40),
     ("live", ingest.sync_live, 20),
+    ("xfeed", ingest.sync_xfeed, 12),
     ("football", ingest.sync_football, 900),
     ("basketball", ingest.sync_basketball, 180),
     ("basketball_week", ingest.sync_basketball_week, 1800),

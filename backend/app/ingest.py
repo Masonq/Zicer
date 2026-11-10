@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from . import config
 from .models import (Team, League, Match, Prediction, Ticket, TicketItem, ScorePick, Trend, User,
                      JobStatus, Translation, TgSent, Meta, now)
-from .sources import fotmob, euroleague, maxbet, espn_nba
+from .sources import fotmob, euroleague, maxbet, espn_nba, xfeed
 from .textutil import similarity, to_cyr, to_lat
 
 log = logging.getLogger("zicer")
@@ -965,3 +965,86 @@ def translate_names(db: Session, limit: int = 120) -> str:
         time.sleep(0.15)
     from .translator import last_error
     return f"names {done}" + (f" | last error: {last_error['msg']}" if last_error["msg"] else "")
+
+
+
+def _tennis_same(a: str, b: str) -> bool:
+    """MaxBet 'Rune H.' vs 22Bet 'Holger Vitus Nodskov Rune'."""
+    from .textutil import strip_accents
+    ta = [x for x in strip_accents(a).lower().replace(".", " ").replace("-", " ").split() if len(x) > 2]
+    tb = set(strip_accents(b).lower().replace(".", " ").replace("-", " ").split())
+    return bool(ta) and any(x in tb for x in ta)
+
+
+def sync_xfeed(db: Session) -> str:
+    """Live stats + derived live events (dangerous attack, shot, corner...) from 22Bet."""
+    import time as _t
+    with httpx.Client() as c:
+        games = xfeed.fetch_all(c)
+    if not games:
+        return "xfeed empty"
+    by_id = {g["id"]: g for g in games}
+    lo = datetime.utcnow() - timedelta(hours=4)
+    cand = db.scalars(select(Match).where(Match.start > lo, Match.start < datetime.utcnow() + timedelta(minutes=15),
+                                          Match.status.in_(["live", "scheduled"]))).all()
+    taken = {m.x_id for m in cand if m.x_id}
+    linked = 0
+    for m in cand:
+        if m.x_id and m.x_id in by_id:
+            continue
+        best, bs = None, 0.0
+        for g in games:
+            if g["sport"] != m.sport or g["id"] in taken:
+                continue
+            if g.get("start") and abs(datetime.utcfromtimestamp(g["start"]) - m.start).total_seconds() > 3 * 3600:
+                continue
+            if m.sport == "tennis":
+                ok = _tennis_same(m.home.name, g["home"]) and _tennis_same(m.away.name, g["away"])
+                sc = 2.0 if ok else 0
+            else:
+                sh, sa = similarity(g["home"], m.home.name), similarity(g["away"], m.away.name)
+                sc = sh + sa if sh >= 0.8 and sa >= 0.8 else 0
+            if sc > bs:
+                best, bs = g, sc
+        if best:
+            m.x_id = best["id"]
+            taken.add(best["id"])
+            linked += 1
+    db.flush()
+    now_ts = int(_t.time())
+    upd = 0
+    for m in db.scalars(select(Match).where(Match.x_id.in_(list(by_id.keys())))).all():
+        g = by_id[m.x_id]
+        live = dict(m.live or {})
+        prev = (live.get("x") or {}).get("st") or {}
+        prev_score = (live.get("x") or {}).get("score")
+        evs = list(live.get("xev") or [])
+        new = []
+        for name, val in g["stats"].items():
+            et = xfeed.EVENT_KEYS.get(name)
+            if not et or name not in prev:
+                continue
+            for side in (0, 1):
+                d = xfeed._num(val[side]) - xfeed._num(prev[name][side])
+                if 0 < d <= 3:
+                    new.append({"t": et, "side": side, "at": now_ts, "ts": g.get("ts"), "n": int(d)})
+        if prev_score and g["score"] != prev_score:
+            for side in (0, 1):
+                d = (g["score"][side] or 0) - (prev_score[side] or 0)
+                if d > 0:
+                    new.append({"t": "score", "side": side, "at": now_ts, "ts": g.get("ts"), "n": int(d)})
+        prio = {"attack": 1, "sub": 1, "foul": 1, "danger": 2, "ft": 2, "p2": 3, "corner": 3, "yellow": 3, "pen2": 3, "df": 3,
+                "shot_off": 4, "p3": 4, "ace": 4, "shot_on": 5, "break": 5, "penalty": 6, "red": 6, "score": 9}
+        evs += sorted(new, key=lambda e: prio.get(e["t"], 0))
+        live["x"] = {"st": g["stats"], "score": g["score"], "ts": g.get("ts"), "period": g["period"], "periods": g["periods"]}
+        live["xev"] = evs[-40:]
+        m.live = live
+        if m.status == "scheduled" and g.get("ts"):
+            m.status = "live"
+        if m.status == "live" and not m.settled and g.get("score") and None not in g["score"]:
+            m.score_home, m.score_away = int(g["score"][0] or 0), int(g["score"][1] or 0)
+        if m.status == "live" and m.sport == "football" and g.get("ts"):
+            m.minute = f"{g['ts'] // 60 + 1}'"
+        upd += 1
+    db.commit()
+    return f"xfeed games {len(games)}, linked {linked}, updated {upd}"

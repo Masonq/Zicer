@@ -180,6 +180,18 @@ def _nba(m: Match):
     return out
 
 
+def _x_stats(m: Match):
+    from .sources.xfeed import STAT_NAMES
+    st = ((m.live or {}).get("x") or {}).get("st") or {}
+    out = []
+    for name, v in st.items():
+        if name == "Timeouts remaining":
+            continue
+        sr, ru, pct = STAT_NAMES.get(name, (name, name, False))
+        out.append({"key": "x:" + name, "sr": sr, "ru": ru, "pct": pct, "v": [str(v[0]).rstrip("%"), str(v[1]).rstrip("%")]})
+    return out
+
+
 def _mb_stats(m: Match):
     st = (m.live or {}).get("stats") or {}
     names = {"corners": ("Korneri", "Угловые"), "yc": ("Žuti kartoni", "Жёлтые карточки"), "rc": ("Crveni kartoni", "Красные карточки")}
@@ -191,21 +203,29 @@ def center(mid: int, db: Session = Depends(get_db)):
     m = db.get(Match, mid)
     if not m:
         raise HTTPException(404)
-    base = {"status": m.status, "minute": m.minute, "score": [m.score_home, m.score_away] if m.score_home is not None else None,
+    base = {"now": int(time.time()), "xev": (m.live or {}).get("xev") or [], "status": m.status, "minute": m.minute, "score": [m.score_home, m.score_away] if m.score_home is not None else None,
             "sport": m.sport, "live": m.live or {}}
     if m.status not in ("live", "finished"):
         return base
     try:
+        xs = _x_stats(m)
         if m.ext.startswith("fm:"):
             base.update(_fotmob(m.ext.split(":")[1], m.status == "live"))
             if not base.get("stats"):
-                base["stats"] = _mb_stats(m)
+                base["stats"] = xs or _mb_stats(m)
+            elif xs:
+                have = {s["ru"] for s in base["stats"]}
+                base["stats"] = [s for s in xs if s["key"] in ("x:Attacks", "x:Dangerous attacks") and s["ru"] not in have] + base["stats"]
         elif m.ext.startswith("el:"):
             base.update(_el(m))
+            if not base.get("stats"):
+                base["stats"] = xs
         elif m.ext.startswith("nba:"):
             base.update(_nba(m))
+            if not base.get("stats"):
+                base["stats"] = xs
         else:
-            base["stats"] = _mb_stats(m)
+            base["stats"] = xs or _mb_stats(m)
     except Exception:  # noqa
         pass
     return base

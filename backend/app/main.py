@@ -36,6 +36,8 @@ MIGRATIONS = [
     "ALTER TABLE matches ADD COLUMN IF NOT EXISTS mb_id INTEGER",
     "ALTER TABLE matches ADD COLUMN IF NOT EXISTS live JSON",
     "CREATE INDEX IF NOT EXISTS ix_matches_mb_id ON matches (mb_id)",
+    "ALTER TABLE matches ADD COLUMN IF NOT EXISTS x_id INTEGER",
+    "CREATE INDEX IF NOT EXISTS ix_matches_x_id ON matches (x_id)",
 ]
 
 

@@ -23,7 +23,7 @@ function Tablo({ m }) {
     <div className="tablo">
       <div className="big">{m.score[0]}{m.sport === 'football' ? ':' : '–'}{m.score[1]}</div>
       <div className={`lbl${m.status === 'live' ? ' live' : ''}`}>
-        {m.status === 'live' ? <><span className="live-dot" />{m.minute === 'HT' ? t('ht') : /^[A-Z_]+$/.test(m.minute || '') ? periodLabel(m.minute, m.sport, t) : m.minute || t('live')}</> : t('finished')}
+        {m.status === 'live' ? <><span className="live-dot" />{m.minute === 'HT' ? t('ht') : /^[A-Z0-9_]+$/.test(m.minute || '') ? periodLabel(m.minute, m.sport, t) : m.minute || t('live')}</> : t('finished')}
       </div>
     </div>
   )

@@ -117,6 +117,16 @@ function CourtLines({ sport }) {
     </svg>)
 }
 
+const XPOS = { danger: 84, attack: 66, shot_on: 93, shot_off: 90, corner: 97, penalty: 88, p2: 88, p3: 82, ft: 88, score: 92, ace: 75, break: 70, df: 40 }
+export function xevLabel(e, sport, t) {
+  if (e.t === 'score') {
+    if (sport === 'football' || sport === 'hockey' || sport === 'waterpolo') return t('ev_goal')
+    if (sport === 'tennis' || sport === 'volleyball') return t('ev_set')
+    return `+${e.n}`
+  }
+  return t(`ev_${e.t}`)
+}
+
 // Where the ball should be and what to say, from real match data
 function useScene(m, data, t) {
   const live = m.status === 'live'
@@ -130,6 +140,16 @@ function useScene(m, data, t) {
   if (sc) prev.current = sc
   if (!live) return { x: 50, title: t('finished'), sub: sc ? `${H} ${sc[0]}${m.sport === 'football' ? ':' : '–'}${sc[1]} ${A}` : '', flash: false }
   if (m.minute === 'HT' || /PAUSE|BREAK|HALF_TIME/.test(m.minute || '')) return { x: 50, title: t('pause'), sub: `${H} – ${A}`, flash: false }
+  const xev = (data.xev || []).filter((e) => !['sub', 'foul', 'yellow', 'red', 'pen2'].includes(e.t) || true)
+  const lastX = xev[xev.length - 1]
+  const age = lastX ? (data.now || Date.now() / 1000) - lastX.at : 999
+  if (lastX && age < 50 && !(m.sport === 'basketball' && data.plays && data.plays.length)) {
+    const team = lastX.side === 0 ? H : A
+    const base = XPOS[lastX.t] ?? 50
+    const x = lastX.side === 0 ? base : 100 - base
+    const strong = ['score', 'shot_on', 'penalty', 'red', 'p3', 'break', 'ace'].includes(lastX.t)
+    return { x, y: lastX.t === 'corner' ? (Math.random() < 0.5 ? 10 : 90) : undefined, title: xevLabel(lastX, m.sport, t), sub: team, flash: strong }
+  }
   if (m.sport === 'football') {
     const mom = data.momentum || []
     const recent = mom.slice(-3)
@@ -169,8 +189,8 @@ function Court({ m, data, t }) {
       setTrail((tr) => [...tr.slice(-4), { ...pos, id: Date.now() }])
     }
     target.current = scene.x
-    setPos((p) => ({ x: scene.x, y: p.y }))
-  }, [scene.x]) // eslint-disable-line react-hooks/exhaustive-deps
+    setPos((p) => ({ x: scene.x, y: scene.y ?? p.y }))
+  }, [scene.x, scene.title]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!live) return
     const i = setInterval(() => {
@@ -238,9 +258,19 @@ function Periods({ m, lv, t }) {
 
 function Events({ m, data, t }) {
   const H = t.team(m.home), A = t.team(m.away)
+  const xev = (data.xev || []).filter((e) => e.t !== 'attack')
+  const XList = () => (
+    <div className="ev-list">{[...xev].reverse().slice(0, 30).map((e, i) => (
+      <div key={i} className="ev">
+        <span className="ev-min num">{e.ts ? `${Math.floor(e.ts / 60) + 1}'` : ''}</span>
+        <span className={`ev-ico${['score', 'shot_on', 'p3'].includes(e.t) ? ' goal' : ''}`}>{e.t === 'score' ? '●' : e.t === 'corner' ? '⚑' : e.t === 'yellow' ? '▮' : '•'}</span>
+        <div className="ev-body"><div className="ev-player ellip">{xevLabel(e, m.sport, t)}</div><div className="small ellip">{e.side === 0 ? H : A}</div></div>
+      </div>))}
+    </div>
+  )
   if (m.sport === 'football') {
     const evs = (data.events || []).filter((e) => e.type !== 'Half')
-    if (!evs.length) return <div className="empty" style={{ padding: 20 }}>{t('noEvents')}</div>
+    if (!evs.length) return xev.length ? <XList /> : <div className="empty" style={{ padding: 20 }}>{t('noEvents')}</div>
     return (
       <div className="ev-list">{[...evs].reverse().map((e, i) => (
         <div key={i} className="ev">
@@ -255,7 +285,7 @@ function Events({ m, data, t }) {
     )
   }
   const plays = data.plays || []
-  if (!plays.length) return <div className="empty" style={{ padding: 20 }}>{t('noEvents')}</div>
+  if (!plays.length) return xev.length ? <XList /> : <div className="empty" style={{ padding: 20 }}>{t('noEvents')}</div>
   return (
     <div className="ev-list">{[...plays].reverse().slice(0, 40).map((p, i) => (
       <div key={i} className="ev ev-wide">
@@ -278,7 +308,7 @@ export default function MatchCenter({ m, fallback = null }) {
   if (!data) return fallback
   const lv = data.live || {}
   const tabs = []
-  if (m.sport === 'football' ? (data.events || []).length : (data.plays || []).length) tabs.push(['events', t('events')])
+  if ((m.sport === 'football' ? (data.events || []).length : (data.plays || []).length) || (data.xev || []).some((e) => e.t !== 'attack')) tabs.push(['events', t('events')])
   if (m.sport !== 'football' && (lv.per || []).length) tabs.push(['periods', t('periods')])
   if ((data.stats || []).length) tabs.push(['stats', t('statistics')])
   if (m.sport === 'football' && !tabs.find((x) => x[0] === 'events')) tabs.unshift(['events', t('events')])
@@ -288,7 +318,7 @@ export default function MatchCenter({ m, fallback = null }) {
     <div className="center-card hero-center">
       <div className="hc-top">
         <span className="ellip">{t.league(m.league)}</span>
-        {live ? <span className="badge live"><span className="live-dot" style={{ marginRight: 6 }} />{m.minute === 'HT' ? t('ht') : /^[A-Z_]+$/.test(m.minute || '') ? periodLabel(m.minute, m.sport, t) : m.minute || t('live')}</span> : <span className="badge">{t('finished')}</span>}
+        {live ? <span className="badge live"><span className="live-dot" style={{ marginRight: 6 }} />{m.minute === 'HT' ? t('ht') : /^[A-Z0-9_]+$/.test(m.minute || '') ? periodLabel(m.minute, m.sport, t) : m.minute || t('live')}</span> : <span className="badge">{t('finished')}</span>}
       </div>
       <div className="hc-board">
         <Link to={`/klub/${m.home.id}`} className="hc-team"><Crest team={m.home} size={44} /><span className="hc-name">{t.team(m.home)}</span></Link>

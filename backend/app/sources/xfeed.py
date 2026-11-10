@@ -1,0 +1,62 @@
+"""Live match statistics from the public 22Bet live feed (1xBet platform)."""
+import time
+import httpx
+
+URL = "https://22bet.com/LiveFeed/Get1x2_VZip?sports={s}&count=300&lng=en&mode=4&country=1&getEmpty=true"
+UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36"
+SPORTS = {"football": 1, "hockey": 2, "basketball": 3, "tennis": 4, "volleyball": 6, "waterpolo": 17}
+
+STAT_NAMES = {  # en -> (sr, ru, is_pct)
+    "Attacks": ("Napadi", "Атаки", False), "Dangerous attacks": ("Opasni napadi", "Опасные атаки", False),
+    "Possession %": ("Posed lopte", "Владение мячом", True), "Shots on target": ("Šutevi u okvir", "Удары в створ", False),
+    "Shots off target": ("Šutevi pored gola", "Удары мимо", False), "Yellow cards": ("Žuti kartoni", "Жёлтые карточки", False),
+    "Corner": ("Korneri", "Угловые", False), "Red card": ("Crveni kartoni", "Красные карточки", False),
+    "Penalty": ("Penali", "Пенальти", False), "Substitutions": ("Izmene", "Замены", False),
+    "Fouls": ("Lične greške", "Фолы", False), "Timeouts remaining": ("Preostali tajm-auti", "Оставшиеся тайм-ауты", False),
+    "2-pointers": ("Pogođene dvojke", "Двухочковые", False), "3-pointers": ("Pogođene trojke", "Трёхочковые", False),
+    "Free throws": ("Slobodna bacanja", "Штрафные", False), "Free throws scored %": ("Uspeh slobodnih bacanja", "Реализация штрафных", True),
+    "Penalties": ("Isključenja", "Удаления", False), "Goals during powerplay": ("Golovi s igračem više", "Голы в большинстве", False),
+    "2-min penalties": ("Isključenja 2 min", "Удаления на 2 мин", False), "Aces": ("Asovi", "Эйсы", False),
+    "Win % 1st Serve": ("Poeni na 1. servis", "Выигрыш на 1-й подаче", True), "Break point %": ("Iskorišćene brejk lopte", "Реализация брейк-пойнтов", True),
+    "Double faults": ("Duple greške", "Двойные ошибки", False), "Win % 2nd Serve": ("Poeni na 2. servis", "Выигрыш на 2-й подаче", True),
+    "1st Serve %": ("Prvi servis u polju", "Попадание 1-й подачи", True), "Points on own serve": ("Poeni na svoj servis", "Очки на своей подаче", False),
+    "Breaks": ("Brejkovi", "Брейки", False),
+    "Max pts in a row": ("Najduži niz poena", "Макс. серия очков", False), "Points on opponent's serve": ("Poeni na servis protivnika", "Очки на подаче соперника", False),
+    "Timeouts": ("Tajm-auti", "Тайм-ауты", False), "Points on own serve ": ("Poeni na svoj servis", "Очки на своей подаче", False),
+}
+EVENT_KEYS = {  # stat that grew -> event type
+    "Dangerous attacks": "danger", "Attacks": "attack", "Shots on target": "shot_on", "Shots off target": "shot_off",
+    "Corner": "corner", "Yellow cards": "yellow", "Red card": "red", "Penalty": "penalty", "Substitutions": "sub",
+    "2-min penalties": "pen2", "2-pointers": "p2", "3-pointers": "p3", "Free throws": "ft", "Fouls": "foul",
+    "Aces": "ace", "Double faults": "df", "Breaks": "break",
+}
+
+
+def _num(v):
+    try:
+        return float(str(v).replace(",", "."))
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def fetch_all(client: httpx.Client) -> list[dict]:
+    out = []
+    for sport, sid in SPORTS.items():
+        try:
+            r = client.get(URL.format(s=sid), headers={"User-Agent": UA, "Accept": "application/json"}, timeout=15)
+            r.raise_for_status()
+            for g in r.json().get("Value") or []:
+                sc = g.get("SC") or {}
+                fs = sc.get("FS") or {}
+                stats = {}
+                for block in sc.get("ST") or []:
+                    for x in block.get("Value") or []:
+                        stats[x.get("N")] = [x.get("S1") or "0", x.get("S2") or "0"]
+                periods = [[(p.get("Value") or {}).get("S1", 0), (p.get("Value") or {}).get("S2", 0)] for p in sc.get("PS") or []]
+                out.append({"id": g.get("I"), "sport": sport, "home": g.get("O1") or "", "away": g.get("O2") or "",
+                            "start": g.get("S"), "score": [fs.get("S1", 0), fs.get("S2", 0)], "ts": sc.get("TS"),
+                            "period": sc.get("CPS") or "", "stats": stats, "periods": periods})
+        except Exception:  # noqa
+            pass
+        time.sleep(0.6)
+    return out
