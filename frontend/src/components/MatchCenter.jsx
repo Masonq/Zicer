@@ -1129,7 +1129,22 @@ function Arena({ m, data, t }) {
     .filter((e) => !pending.has(e.k))
   return (
     <div className="tennis-tracker trk">
-      <div className="tt-bar">
+      {sport === 'tennis' ? (
+        <div className="tt-bar tn-bar">
+          <span className="tt-player l"><span className="ellip">{H}</span></span>
+          <span className="tn-center">
+            <span className="tn-pt l">{live && !isBreak && server === 0 && <i className="tn-srv" />}{live && <b className="num"><span className="flip"><AnimatePresence mode="popLayout" initial={false}><motion.span key={`a${shown.ss[0]}`} initial={{ y: -14, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 14, opacity: 0 }} transition={{ duration: 0.26 }}>{shown.ss[0]}</motion.span></AnimatePresence></span></b>}</span>
+            <span className="tt-score num"><i className="c0b" />
+              <span className="flip"><AnimatePresence mode="popLayout" initial={false}><motion.span key={`s${scoreNow[0]}`} initial={{ y: -16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 16, opacity: 0 }} transition={{ duration: 0.28 }}>{scoreNow[0]}</motion.span></AnimatePresence></span>
+              <span className="colon">:</span>
+              <span className="flip"><AnimatePresence mode="popLayout" initial={false}><motion.span key={`s${scoreNow[1]}`} initial={{ y: -16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 16, opacity: 0 }} transition={{ duration: 0.28 }}>{scoreNow[1]}</motion.span></AnimatePresence></span>
+              <i className="c1b" /></span>
+            <span className="tn-pt r">{live && <b className="num"><span className="flip"><AnimatePresence mode="popLayout" initial={false}><motion.span key={`b${shown.ss[1]}`} initial={{ y: -14, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 14, opacity: 0 }} transition={{ duration: 0.26 }}>{shown.ss[1]}</motion.span></AnimatePresence></span></b>}{live && !isBreak && server === 1 && <i className="tn-srv" />}</span>
+          </span>
+          <span className="tt-player r"><span className="ellip">{A}</span></span>
+        </div>
+      ) : (
+        <div className="tt-bar">
         <span className="tt-player l"><IconShirtFilled size={18} className="c0i" /><span className="ellip">{H}</span></span>
         <span className="tt-score num"><i className="c0b" />
           <span className="flip"><AnimatePresence mode="popLayout" initial={false}><motion.span key={`l${boardL}`} initial={{ y: -16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 16, opacity: 0 }} transition={{ duration: 0.28 }}>{boardL}</motion.span></AnimatePresence></span>
@@ -1138,12 +1153,12 @@ function Arena({ m, data, t }) {
           <i className="c1b" /></span>
         <span className="tt-player r"><span className="ellip">{A}</span><IconShirtFilled size={18} className="c1i" /></span>
       </div>
+      )}
       {sport === 'basketball' && fouls && live ? (
         <div className="tt-sets num bb-sub">{bonusDots(fouls[0])}<span>{clock && /^\d{1,2}:\d{2}$/.test(String(clock.t).trim()) ? `Q${clock.q} ${String(clock.t).trim()}` : periodTxt}</span>{bonusDots(fouls[1])}</div>
       ) : (
         sport === 'tennis' ? (
           <div className="tt-sets num tn-sets">
-            <b>{dataScore[0]}:{dataScore[1]}</b>
             {shown.per.map((p, i) => <span key={i} className={i === shown.per.length - 1 && live ? 'cur' : ''}>{p[0] ?? 0}-{p[1] ?? 0}</span>)}
           </div>
         ) : <div className="tt-sets num">{[periodTxt, sport === 'football' ? '' : perTxt].filter(Boolean).join('   ') || '\u00a0'}</div>
