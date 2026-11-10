@@ -1045,7 +1045,7 @@ function Arena({ m, data, t }) {
   if (isBreak && phase.kind === 'idle') status = { side: null, title: sport === 'tennis' ? t('setBreak') : t('pause'), icon: 'timeout' }
   else if (phase.kind !== 'idle' && phase.ev) status = { side: phase.ev.side, title: phase.kind === 'finish' ? (net ? t('rally') : sport === 'basketball' ? t('shot') : t('ev_shot_on')) : bannerTitle(phase.ev, sport, t), icon: phase.kind === 'finish' ? null : (sport === 'tennis' ? 'ace' : 'score') }
   else if (infoShown) status = { side: infoShown.side, title: infoShown.t === 'bp' ? t('ev_bp') : xevLabel(infoShown, sport, t), icon: infoShown.t === 'bp' ? 'break' : infoShown.t }
-  else if (live && att !== null) status = { side: att, title: net ? t('serve') : sport === 'basketball' ? t('withBall') : (ttl && ![t('live'), t('finished'), t('pause'), t('ev_goal'), t('ev_set'), t('ev_vpoint'), `${t('goal')}!`].includes(ttl) && !ttl.startsWith('+') ? ttl : t('withBall')), arrow: !net }
+  else if (live && att !== null) status = { side: att, title: net ? t('serve') : sport === 'basketball' ? t('withBall') : sport === 'hockey' ? t('withPuck') : (ttl && ![t('live'), t('finished'), t('pause'), t('ev_goal'), t('ev_set'), t('ev_vpoint'), `${t('goal')}!`].includes(ttl) && !ttl.startsWith('+') ? ttl : (sport === 'hockey' ? t('withPuck') : t('withBall'))), arrow: !net }
   const ev = phase.ev
   const bannerScore = sport === 'tennis' ? (ev && ev.t === 'game' ? (shown.per[shown.per.length - 1] || [0, 0]) : shown.ss) : sport === 'volleyball' && ev && ev.t === 'point' ? (shown.per[shown.per.length - 1] || [0, 0]) : shown.score
   const mom = sport === 'football' ? data.momentum || [] : []
