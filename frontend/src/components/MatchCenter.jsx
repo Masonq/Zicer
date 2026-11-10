@@ -129,7 +129,15 @@ export default function MatchCenter({ m }) {
   const per = lv.per || []
   const cur = periodIndex(lv.p)
   const shown = per.slice(0, Math.max(cur, per.findLastIndex ? per.findLastIndex((x) => x[0] || x[1]) + 1 : per.length))
-  if (!shown.length && !lv.stats) return null
+  if (!shown.length && !(lv.stats && Object.keys(lv.stats).length)) {
+    if (!live) return null
+    return (
+      <section className="section">
+        <div className="section-head"><h2 className="h2">{t('matchCenter')}</h2><span className="badge live"><span className="live-dot" style={{ marginRight: 6 }} />{t('live')}</span></div>
+        <div className="center-card"><div className="empty" style={{ padding: 22 }}>{t('waitingData')}</div></div>
+      </section>
+    )
+  }
   const corners = lv.stats?.corners, yc = lv.stats?.yc
   return (
     <section className="section">

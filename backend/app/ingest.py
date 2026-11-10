@@ -209,8 +209,8 @@ def create_maxbet_basket(db: Session, offers: list[dict]) -> int:
             db.add(m)
             n += 1
         m.start = o["start"]
-        if o["live"] and m.status == "scheduled":
-            m.status = "live"
+        if m.status == "live" and m.start > datetime.utcnow() + timedelta(minutes=5):
+            m.status = "scheduled"
         m.odds = {"maxbet": {k: v for k, v in o["odds"].items() if v and v > 1.0}}
         m.odds_updated = now()
         m.is_derby = _is_derby(m.home, m.away) if m.home and m.away else False
@@ -247,8 +247,8 @@ def create_maxbet_other(db: Session, sport: str, offers: list[dict]) -> int:
             db.add(m)
             n += 1
         m.start = o["start"]
-        if o["live"] and m.status == "scheduled":
-            m.status = "live"
+        if m.status == "live" and m.start > datetime.utcnow() + timedelta(minutes=5):
+            m.status = "scheduled"
         m.odds = {"maxbet": {k: v for k, v in o["odds"].items() if v and v > 1.0}}
         m.odds_updated = now()
     db.commit()
@@ -284,8 +284,6 @@ def sync_other_results(db: Session) -> str:
             for m in [x for x in pending if x.sport == sport]:
                 r = res.get(int(m.ext.split(":")[1]))
                 if not r:
-                    if m.status == "scheduled":
-                        m.status = "live"
                     if m.start < datetime.utcnow() - timedelta(hours=8):
                         m.status = "cancelled"
                     continue
@@ -328,7 +326,7 @@ def sync_live(db: Session) -> str:
         if m.status == "finished" or m.settled:
             continue
         own_feed = m.ext.startswith("fm:") or m.ext.startswith("nba:")
-        if not own_feed and d["score"] is not None:
+        if not own_feed and d["score"] is not None and m.start <= datetime.utcnow() + timedelta(minutes=5):
             m.score_home, m.score_away = d["score"]
             m.status = "live"
         if not own_feed:

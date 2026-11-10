@@ -31,17 +31,22 @@ def _mm(text, tl, c):
 
 
 PROVIDERS = [_g1, _g2, _mm]
+_dead: dict = {}  # provider -> time it failed (skip for 30 min)
 
 
 def translate(text: str, tl: str) -> str:
     errs = []
-    with httpx.Client(headers={"User-Agent": UA}, timeout=12) as c:
+    import time
+    with httpx.Client(headers={"User-Agent": UA}, timeout=6) as c:
         for fn in PROVIDERS:
+            if time.time() - _dead.get(fn.__name__, 0) < 1800:
+                continue
             try:
                 out = (fn(text, tl, c) or "").strip()
                 if out:
                     return out
             except Exception as e:  # noqa
+                _dead[fn.__name__] = time.time()
                 errs.append(f"{fn.__name__}: {type(e).__name__} {str(e)[:80]}")
     last_error["msg"] = " | ".join(errs)
     raise RuntimeError(last_error["msg"])

@@ -27,6 +27,23 @@ SCHEDULE = [  # (name, fn, every_seconds)
 ]
 
 
+SLOW = {"names", "basketball_week", "football", "trends", "analysis"}
+_running: set = set()
+
+
+def _run_bg(name, fn):
+    import threading
+
+    def go():
+        try:
+            with SessionLocal() as db:
+                ingest.job(db, name, fn)
+        finally:
+            _running.discard(name)
+    _running.add(name)
+    threading.Thread(target=go, daemon=True).start()
+
+
 def main():
     from .main import migrate
     migrate()
@@ -46,6 +63,10 @@ def main():
         for name, fn, every in SCHEDULE:
             if time.time() - last[name] >= every:
                 last[name] = time.time()
+                if name in SLOW:
+                    if name not in _running:
+                        _run_bg(name, fn)
+                    continue
                 with SessionLocal() as db:
                     ingest.job(db, name, fn)
         time.sleep(5)
