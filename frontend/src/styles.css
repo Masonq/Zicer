@@ -309,10 +309,10 @@ img { display: block; max-width: 100%; }
 .scroll-x { overflow-x: auto; }
 
 /* sport switcher */
-.sports { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 2px 16px 4px; scroll-snap-type: x proximity; }
+.sports { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 2px 16px 6px; scroll-padding-inline: 16px; overscroll-behavior-x: contain; }
 .sports::-webkit-scrollbar { display: none; }
 .sport { flex: none; min-width: 84px; padding: 0 10px; height: 92px; border-radius: 18px; background: var(--surface); border: 1px solid var(--line-soft); color: var(--muted);
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; scroll-snap-align: start; transition: background .15s, color .15s, transform .15s; }
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; transition: background .15s, color .15s, transform .15s; }
 .sport:active { transform: scale(0.97); }
 .sport .sport-ico { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: var(--bg-deep); color: var(--chalk); }
 .sport .sport-name { font-size: 12px; font-weight: 700; color: var(--chalk); line-height: 1.1; white-space: nowrap; }
@@ -444,3 +444,7 @@ img { display: block; max-width: 100%; }
 .board { align-items: start; }
 .board-team { padding-top: 2px; }
 .board .tablo { align-self: start; }
+
+.is-loading { opacity: 0.6; transition: opacity .2s; pointer-events: none; }
+.center-skel { height: 470px; border-radius: var(--r-lg); }
+@media (min-width: 600px) { .center-skel { height: 520px; } }

@@ -42,14 +42,14 @@ export default function Home() {
   const [sp, setSp] = useSearchParams()
   const sport = sp.get('sport') || 'all'
   const setSport = (v) => { const n = new URLSearchParams(sp); if (v === 'all') n.delete('sport'); else n.set('sport', v); setSp(n, { replace: true }) }
-  const { data, loading } = usePoll(() => api(`/home?tz=${tz()}&sport=${sport}`), [user?.id, sport], 45000)
+  const { data, loading } = usePoll(() => api(`/home?tz=${tz()}&sport=${sport}`), [user?.id, sport], 45000, true)
   const switcher = <div style={{ margin: '20px 0 4px' }}><SportSwitcher value={sport} onChange={setSport} /></div>
   if (loading && !data) return <div>{switcher}<Skeleton h={180} n={3} /></div>
   if (!data) return <div>{switcher}<Empty title={t('error')} /></div>
   const d = data
   const allSports = sport === 'all'
   return (
-    <div>
+    <div className={loading ? 'is-loading' : ''}>
       {!user && (
         <div className="hero" style={{ marginBottom: 16 }}>
           <h1 className="hero-title">{t('heroTitle')}</h1>

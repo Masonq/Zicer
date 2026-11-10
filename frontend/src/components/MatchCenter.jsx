@@ -317,7 +317,7 @@ export default function MatchCenter({ m, fallback = null }) {
   const live = m.status === 'live'
   const { data } = usePoll(() => api(`/matches/${m.id}/center`), [m.id, m.status], live ? 15000 : 0, true)
   const [tab, setTab] = useState(null)
-  if (!data) return fallback
+  if (!data) return <div className="skeleton center-skel" />
   const lv = data.live || {}
   const tabs = []
   if ((m.sport === 'football' ? (data.events || []).length : (data.plays || []).length) || (data.xev || []).some((e) => e.t !== 'attack')) tabs.push(['events', t('events')])

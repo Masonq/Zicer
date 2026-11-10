@@ -2,13 +2,19 @@ import { createContext, useContext, useEffect, useMemo, useState, useCallback } 
 import { api, getToken, setToken } from './api'
 
 const AuthCtx = createContext(null)
+const USER_KEY = 'zicer_user'
+const cachedUser = () => { try { return getToken() ? JSON.parse(localStorage.getItem(USER_KEY) || 'null') : null } catch { return null } }
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null)
-  const [ready, setReady] = useState(false)
+  const [user, setUserState] = useState(cachedUser)
+  const [ready, setReady] = useState(() => !!cachedUser() || !getToken())
+  const setUser = useCallback((u) => {
+    setUserState(u)
+    try { u ? localStorage.setItem(USER_KEY, JSON.stringify(u)) : localStorage.removeItem(USER_KEY) } catch {}
+  }, [])
   const refresh = useCallback(async () => {
     if (!getToken()) { setUser(null); setReady(true); return null }
-    try { const u = await api('/me'); setUser(u); return u } catch { setUser(null); return null } finally { setReady(true) }
-  }, [])
+    try { const u = await api('/me'); setUser(u); return u } catch (e) { if (e.status === 401) setUser(null); return null } finally { setReady(true) }
+  }, [setUser])
   useEffect(() => { refresh() }, [refresh])
   const login = (token, u) => { setToken(token); setUser(u) }
   const logout = () => { setToken(''); setUser(null) }
@@ -44,6 +50,7 @@ export function usePoll(fn, deps, every = 0, keep = false) {
     let alive = true
     let timer
     if (!keep) setState({ data: null, error: null, loading: true })
+    else setState((s) => ({ ...s, loading: true }))
     const run = async (first) => {
       try { const d = await fn(); if (alive) setState({ data: d, error: null, loading: false }) }
       catch (e) { if (alive) setState((s) => ({ data: first ? null : s.data, error: e, loading: false })) }
