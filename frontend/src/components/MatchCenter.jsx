@@ -190,33 +190,65 @@ function useScene(m, data, t) {
   return { x: side === 'home' ? 75 : side === 'away' ? 25 : 50, title: per || t('live'), sub: side ? `${t.lang === 'ru' ? 'Последний результат' : t.serb('Poslednji poen')}: ${side === 'home' ? H : A}` : `${H} – ${A}`, flash: false }
 }
 
+const TICK = { tennis: 1150, volleyball: 1250, basketball: 1300, hockey: 850, waterpolo: 1400, football: 1600 }
+const rnd = (a, b) => a + Math.random() * (b - a)
+
+// Next ball position for a simple, sport-specific rally/attack pattern.
+function nextPos(sport, st) {
+  const att = st.att // 0 = home attacks to the right, 1 = away attacks to the left
+  const dir = (x) => (att === 0 ? x : 100 - x)
+  st.n += 1
+  if (sport === 'tennis' || sport === 'volleyball') {
+    // ball crosses the net every tick; after a few shots the rally restarts from a baseline
+    st.side = st.side === 0 ? 1 : 0
+    if (st.n % rnd(5, 9) < 1) { st.side = att ?? st.side }
+    const lo = sport === 'tennis' ? [11, 34] : [12, 40]
+    const x = st.side === 0 ? rnd(lo[0], lo[1]) : rnd(100 - lo[1], 100 - lo[0])
+    return { x, y: rnd(20, 80), hop: true }
+  }
+  const goal = { basketball: [93.5, 50], hockey: [92.5, 50], waterpolo: [95, 50], football: [96, 50] }[sport] || [92, 50]
+  const zone = { basketball: [58, 86], hockey: [56, 88], waterpolo: [60, 88], football: st.strong ? [70, 92] : [52, 76] }[sport] || [55, 85]
+  if (st.shot) {
+    // after a shot possession changes (basketball / hockey / water polo), football keeps pressure from data
+    st.shot = false
+    if (sport !== 'football' && st.dataAtt == null) st.att = st.att === 0 ? 1 : 0
+    return { x: dir(rnd(zone[0], zone[0] + 10)), y: rnd(30, 70), hop: false }
+  }
+  if (st.n % (sport === 'hockey' ? 5 : 4) === 0) { st.shot = true; return { x: dir(goal[0]), y: goal[1] + rnd(-6, 6), hop: sport === 'basketball' } }
+  return { x: dir(rnd(zone[0], zone[1])), y: rnd(18, 82), hop: sport === 'basketball' || sport === 'volleyball' }
+}
+
 function Court({ m, data, t }) {
   const live = m.status === 'live'
   const scene = useScene(m, data, t)
-  const [pos, setPos] = useState({ x: scene.x, y: 50 })
-  const [trail, setTrail] = useState([])
-  const target = useRef(scene.x)
+  const tick = TICK[m.sport] || 1500
+  const st = useRef({ n: 0, side: 0, att: 0, shot: false, strong: false, dataAtt: null })
+  const [pos, setPos] = useState({ x: 50, y: 50, hop: false, k: 0 })
+  // data tells us who is attacking: keep the simulated play on that side
   useEffect(() => {
-    if (Math.abs(target.current - scene.x) > 6) {
-      setTrail((tr) => [...tr.slice(-4), { ...pos, id: Date.now() }])
-    }
-    target.current = scene.x
-    setPos((p) => ({ x: scene.x, y: scene.y ?? p.y }))
-  }, [scene.x, scene.title]) // eslint-disable-line react-hooks/exhaustive-deps
+    const att = scene.x > 55 ? 0 : scene.x < 45 ? 1 : null
+    st.current.dataAtt = att
+    if (att != null) st.current.att = att
+    st.current.strong = Math.abs(scene.x - 50) > 28
+    if (scene.flash && live) setPos((p) => ({ x: scene.x, y: 50, hop: false, k: p.k + 1 }))
+  }, [scene.x, scene.title, scene.flash, live])
   useEffect(() => {
-    if (!live) return
+    if (!live) { setPos({ x: 50, y: 50, hop: false, k: 0 }); return }
     const i = setInterval(() => {
-      setPos({ x: Math.max(6, Math.min(94, target.current + (Math.random() - 0.5) * 6)), y: 35 + Math.random() * 30 })
-    }, 3600)
+      const p = nextPos(m.sport, st.current)
+      setPos((old) => ({ ...p, k: old.k + 1 }))
+    }, tick)
     return () => clearInterval(i)
-  }, [live])
+  }, [live, m.sport, tick])
   const mom = m.sport === 'football' ? data.momentum || [] : []
   return (
-    <div className={`court court-${m.sport}`}>
+    <div className={`court court-${m.sport}`} style={{ '--tick': `${tick}ms` }}>
       <CourtLines sport={m.sport} />
       {mom.length > 0 && <div className="bp-mom"><Momentum data={mom} /></div>}
-      {trail.map((p, i) => <span key={p.id} className="bp-trail" style={{ left: `${p.x}%`, top: `${p.y}%`, opacity: 0.12 + i * 0.08 }} />)}
-      <span className={`bp-ball ball-${m.sport}${scene.flash ? ' flash' : ''}`} style={{ left: `${pos.x}%`, top: `${pos.y}%` }} />
+      <span className="bp-shadow" style={{ left: `${pos.x}%`, top: `${pos.y}%` }} />
+      <span className="bp-wrap" style={{ left: `${pos.x}%`, top: `${pos.y}%` }}>
+        <span key={pos.k} className={`bp-ball ball-${m.sport}${scene.flash ? ' flash' : ''}${pos.hop ? ' hop' : ''}`} />
+      </span>
       <div className="bp-text">
         <div className="bp-title">{scene.title}</div>
         {scene.sub && <div className="bp-sub ellip">{scene.sub}</div>}
