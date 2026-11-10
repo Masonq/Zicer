@@ -213,6 +213,7 @@ export function CourtLines({ sport }) {
 
 const XPOS = { danger: 84, attack: 66, shot_on: 93, shot_off: 90, corner: 97, penalty: 88, p2: 88, p3: 82, ft: 88, score: 92, ace: 75, break: 70, df: 40 }
 export function xevLabel(e, sport, t) {
+  if (e.t === 'point' && sport !== 'tennis') return t('ev_vpoint')
   if (e.t === 'score') {
     if (sport === 'football' || sport === 'hockey' || sport === 'waterpolo') return t('ev_goal')
     if (sport === 'tennis' || sport === 'volleyball') return t('ev_set')
@@ -299,14 +300,14 @@ function nextPos(sport, st) {
   return { x: dir(rnd(zone[0], zone[1])), y: rnd(18, 82), hop: sport === 'basketball' || sport === 'volleyball' }
 }
 
-const TOAST = ['score', 'shot_on', 'shot_off', 'corner', 'penalty', 'red', 'yellow', 'pen2', 'p3', 'break', 'ace']
-const EVSPOT = { score: [95, 50], shot_on: [93, 50], shot_off: [93, 30], corner: [97, 6], penalty: [86, 50], p3: [80, 50], ace: [80, 50] }
+const TOAST = ['score', 'point', 'shot_on', 'shot_off', 'corner', 'penalty', 'red', 'yellow', 'pen2', 'p3', 'break', 'ace']
+const EVSPOT = { point: [76, 50], score: [95, 50], shot_on: [93, 50], shot_off: [93, 30], corner: [97, 6], penalty: [86, 50], p3: [80, 50], ace: [80, 50] }
 
 // Bookmaker-style tracker for football, basketball, hockey, volleyball, water polo:
 // possession wedge + "team / with the ball" card, event cards with icons, ball at the place of action.
 const SCORE_ICON = { football: IconBallFootball, hockey: IconTarget, waterpolo: IconTarget, basketball: IconBallBasketball, volleyball: IconBallVolleyball, tennis: IconBallTennis }
 const EV_ICON = {
-  break: IconBallTennis, ace: IconBallTennis, timeout: IconPlayerPause,
+  break: IconBallTennis, ace: IconBallTennis, timeout: IconPlayerPause, point: IconBallVolleyball,
   shot_on: IconTarget, shot_off: IconTarget, corner: IconFlag, yellow: 'yellow', red: 'red', foul: IconHandStop, pen2: IconStopwatch,
   p2: IconBallBasketball, p3: IconBallBasketball, ft: IconBallBasketball, sub: IconArrowsExchange, penalty: IconTarget, timeout: IconPlayerPause,
 }
@@ -365,7 +366,7 @@ function Extras({ m, data, t, items }) {
   for (const k of want) { const st = stats.find((x) => x.key === k); if (st && !picked.find((p) => p.ru === st.ru)) picked.push(st); if (picked.length === 3) break }
   return (
     <div className="trk-extras">
-      {live && (
+      {live && tot > 0 && (
         <div className="trk-press">
           <div className="trk-press-head"><span>{t('pressure')}</span><b className="num">{hp}% – {100 - hp}%</b></div>
           <div className="trk-press-bar"><motion.i className="c0b" animate={{ width: `${hp}%` }} transition={{ type: 'spring', stiffness: 120, damping: 20 }} /><motion.i className="c1b" animate={{ width: `${100 - hp}%` }} transition={{ type: 'spring', stiffness: 120, damping: 20 }} /></div>
@@ -405,6 +406,7 @@ function Extras({ m, data, t, items }) {
 }
 
 function evWhen(e, sport) {
+  if (e.when) return e.when
   if (e.clock) return e.clock
   if (e.ts) return sport === 'football' ? `${Math.floor(e.ts / 60) + 1}'` : ''
   return ''
@@ -504,12 +506,14 @@ function Court({ m, data, t }) {
   const per = (x.periods && x.periods.length ? x.periods : (lv.per || [])).filter((p) => p[0] || p[1])
   const periodTxt = !live ? t('finished') : m.sport === 'football' ? (m.minute === 'HT' ? t('ht') : m.minute || '') : periodLabel(lv.p, m.sport, t) || (/^[A-Z0-9_]+$/.test(m.minute || '') ? periodLabel(m.minute, m.sport, t) : m.minute)
   const scoresTxt = per.map((p) => `${p[0] ?? 0}-${p[1] ?? 0}`).join(', ')
-  const server = m.sport === 'volleyball' && x.server ? x.server - 1 : null
+  // volleyball: the team that won the last rally serves (feed value if present, otherwise from the last point)
+  const lastPt = m.sport === 'volleyball' ? [...(data.xev || [])].reverse().find((e) => e.t === 'point' || e.t === 'score') : null
+  const server = m.sport === 'volleyball' ? (x.server ? x.server - 1 : lastPt ? lastPt.side : null) : null
   const plays = data.plays || []
   // ---- events (real): basketball play-by-play or the live stats feed
   const evList = m.sport === 'basketball' && plays.length
     ? plays.map((p, i) => ({ k: `${p.q}-${p.clock}-${i}`, t: p.pts ? 'score' : p.pt === 'CM' || p.pt === 'CMU' || p.pt === 'CMT' ? 'foul' : p.pt === 'TOUT' ? 'timeout' : null, side: p.home ? 0 : 1, title: t.lang === 'ru' ? p.ru : t.serb(p.sr), sub: p.player, pts: p.pts, clock: p.clock ? `Q${p.q} ${p.clock}` : '' })).filter((e) => e.t)
-    : (data.xev || []).filter((e) => TOAST.includes(e.t) || e.t === 'foul').map((e) => ({ k: `${e.at}-${e.t}-${e.side}`, t: e.t, side: e.side, title: xevLabel(e, m.sport, t), sub: '', at: e.at, ts: e.ts }))
+    : (data.xev || []).filter((e) => TOAST.includes(e.t) || e.t === 'foul').map((e) => ({ k: `${e.at}-${e.t}-${e.side}`, t: e.t, side: e.side, title: xevLabel(e, m.sport, t), sub: e.ps ? `${e.ps[0]}:${e.ps[1]}` : '', at: e.at, ts: e.ts, when: e.ps ? `${e.ps[0]}:${e.ps[1]}` : '' }))
   const last = evList[evList.length - 1]
   const [phase, setPhase] = useState({ kind: 'idle', ev: null })
   const seen = useRef(null)
@@ -567,7 +571,7 @@ function Court({ m, data, t }) {
         <span className="tt-player r"><span className="ellip">{A}</span><IconShirtFilled size={18} className="c1i" /></span>
       </div>
       {m.sport === 'basketball' && fouls && live ? (
-        <div className="tt-sets num bb-sub">{bonusDots(fouls[0])}<span>{clock ? `Q${clock.q} ${clock.t}` : periodTxt}</span>{bonusDots(fouls[1])}</div>
+        <div className="tt-sets num bb-sub">{bonusDots(fouls[0])}<span>{clock && /^\d{1,2}:\d{2}$/.test(String(clock.t).trim()) ? `Q${clock.q} ${String(clock.t).trim()}` : periodTxt}</span>{bonusDots(fouls[1])}</div>
       ) : (
         <div className="tt-sets num">{[periodTxt, m.sport === 'football' ? '' : scoresTxt].filter(Boolean).join('   ') || '\u00a0'}</div>
       )}
@@ -834,7 +838,7 @@ function Events({ m, data, t }) {
 export default function MatchCenter({ m, fallback = null }) {
   const t = useT()
   const live = m.status === 'live'
-  const { data: loaded } = usePoll(() => api(`/matches/${m.id}/center`), [m.id, m.status], live ? (m.sport === 'tennis' ? 6000 : 15000) : 0, true)
+  const { data: loaded } = usePoll(() => api(`/matches/${m.id}/center`), [m.id, m.status], live ? (m.sport === 'tennis' || m.sport === 'volleyball' ? 6000 : 10000) : 0, true)
   const [tab, setTab] = useState(null)
   const data = loaded || { live: m.live || {} }
   const lv = data.live || {}

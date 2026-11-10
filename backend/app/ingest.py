@@ -1059,6 +1059,16 @@ def sync_xfeed(db: Session) -> str:
                 d = (g["score"][side] or 0) - (prev_score[side] or 0)
                 if d > 0:
                     new.append({"t": "score", "side": side, "at": now_ts, "ts": g.get("ts"), "n": int(d)})
+        # volleyball: every rally point from the current set score (FS holds sets, PS the points per set)
+        if m.sport == "volleyball" and g["periods"]:
+            pper = (live.get("x") or {}).get("periods") or []
+            cur = g["periods"][-1]
+            if pper and len(pper) == len(g["periods"]):
+                prev = pper[-1]
+                for side in (0, 1):
+                    d = int(cur[side] or 0) - int(prev[side] or 0)
+                    if 0 < d <= 3:
+                        new.append({"t": "point", "side": side, "at": now_ts, "ts": g.get("ts"), "n": d, "ps": [int(cur[0] or 0), int(cur[1] or 0)]})
         # tennis: point-by-point events from game score (SS) and games per set
         if m.sport == "tennis" and g.get("ss"):
             px = live.get("x") or {}
