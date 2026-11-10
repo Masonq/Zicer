@@ -347,16 +347,15 @@ function Events({ m, data, t }) {
 export default function MatchCenter({ m, fallback = null }) {
   const t = useT()
   const live = m.status === 'live'
-  const { data } = usePoll(() => api(`/matches/${m.id}/center`), [m.id, m.status], live ? 15000 : 0, true)
+  const { data: loaded } = usePoll(() => api(`/matches/${m.id}/center`), [m.id, m.status], live ? 15000 : 0, true)
   const [tab, setTab] = useState(null)
-  if (!data) return <div className="skeleton center-skel" />
+  const data = loaded || { live: m.live || {} }
   const lv = data.live || {}
-  const tabs = []
-  if ((m.sport === 'football' ? (data.events || []).length : (data.plays || []).length) || (data.xev || []).some((e) => e.t !== 'attack')) tabs.push(['events', t('events')])
-  if (m.sport !== 'football' && (lv.per || []).length) tabs.push(['periods', t('periods')])
-  if ((data.stats || []).length) tabs.push(['stats', t('statistics')])
-  if (m.sport === 'football' && !tabs.find((x) => x[0] === 'events')) tabs.unshift(['events', t('events')])
-  const active = tab && tabs.find((x) => x[0] === tab) ? tab : tabs[0] && tabs[0][0]
+  // fixed set of tabs per sport, so the card never changes height when data arrives
+  const tabs = m.sport === 'football' ? [['events', t('events')], ['stats', t('statistics')]]
+    : m.sport === 'basketball' ? [['events', t('events')], ['periods', t('periods')], ['stats', t('statistics')]]
+      : [['periods', t('periods')], ['stats', t('statistics')]]
+  const active = tab && tabs.find((x) => x[0] === tab) ? tab : tabs[0][0]
   const sep = m.sport === 'football' ? ':' : '–'
   return (
     <div className="center-card hero-center">
@@ -370,15 +369,16 @@ export default function MatchCenter({ m, fallback = null }) {
         <Link to={`/klub/${m.away.id}`} className="hc-team r"><Crest team={m.away} size={44} /><span className="hc-name">{t.team(m.away)}</span></Link>
       </div>
       <Court m={m} data={data} t={t} />
-      {tabs.length > 0 && (
-        <>
-          <div className="seg" style={{ margin: '12px 12px 0' }}>{tabs.map(([k, l]) => <button key={k} className={active === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}</div>
-          {active === 'events' && <Events m={m} data={data} t={t} />}
-          {active === 'periods' && <Periods m={m} lv={lv} t={t} />}
-          {active === 'stats' && <Stats stats={data.stats} t={t} />}
-        </>
-      )}
-      {tabs.length === 0 && <div style={{ height: 12 }} />}
+      <div className="seg" style={{ margin: '12px 12px 0' }}>{tabs.map(([k, l]) => <button key={k} className={active === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}</div>
+      <div className="center-body">
+        {!loaded ? <div className="skeleton" style={{ height: 140, margin: 14, borderRadius: 12 }} /> : (
+          <>
+            {active === 'events' && <Events m={m} data={data} t={t} />}
+            {active === 'periods' && <Periods m={m} lv={lv} t={t} />}
+            {active === 'stats' && <Stats stats={data.stats} t={t} />}
+          </>
+        )}
+      </div>
     </div>
   )
 }

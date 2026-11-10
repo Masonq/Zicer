@@ -44,13 +44,8 @@ export default function Home() {
   const setSport = (v) => { const n = new URLSearchParams(sp); if (v === 'all') n.delete('sport'); else n.set('sport', v); setSp(n, { replace: true }) }
   const { data, loading } = usePoll(() => api(`/home?tz=${tz()}&sport=${sport}`), [user?.id, sport], 45000, true)
   const switcher = <div style={{ margin: '20px 0 4px' }}><SportSwitcher value={sport} onChange={setSport} /></div>
-  if (loading && !data) return <div>{switcher}<Skeleton h={180} n={3} /></div>
-  if (!data) return <div>{switcher}<Empty title={t('error')} /></div>
-  const d = data
-  const allSports = sport === 'all'
-  return (
-    <div className={loading ? 'is-loading' : ''}>
-      {!user && (
+  const st = data?.stats || { users: 0, predictions_today: 0 }
+  const guestHero = (
         <div className="hero" style={{ marginBottom: 16 }}>
           <h1 className="hero-title">{t('heroTitle')}</h1>
           <p className="sub">{t('heroText')}</p>
@@ -59,11 +54,25 @@ export default function Home() {
             <Link to="/prijava" className="btn btn-line">{t('login')}</Link>
           </div>
           <div className="hero-stats">
-            <div><b>{fmtNum(d.stats.users)}</b><span>{t('users')}</span></div>
-            <div><b>{fmtNum(d.stats.predictions_today)}</b><span>{t('today24')}</span></div>
+            <div><b>{fmtNum(st.users)}</b><span>{t('users')}</span></div>
+            <div><b>{fmtNum(st.predictions_today)}</b><span>{t('today24')}</span></div>
           </div>
         </div>
-      )}
+  )
+  if (loading && !data) return (
+    <div>
+      {!user && guestHero}
+      <div className="skeleton" style={{ height: 306, borderRadius: 22 }} />
+      {switcher}
+      <div className="section"><div className="skeleton" style={{ height: 26, width: 160, borderRadius: 8, marginBottom: 12 }} /><Skeleton h={66} n={4} /></div>
+    </div>
+  )
+  if (!data) return <div>{switcher}<Empty title={t('error')} /></div>
+  const d = data
+  const allSports = sport === 'all'
+  return (
+    <div className={loading ? 'is-loading' : ''}>
+      {!user && guestHero}
 
       {allSports && d.derby && new Date(d.derby.start) - new Date() < 21 * 86400000 && (
         <Link to="/derbi" className="derby-banner" style={{ marginBottom: 16 }}>

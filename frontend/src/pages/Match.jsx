@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useParams, useNavigate } from 'react-router-dom'
+import { Link, useParams, useNavigate, useLocation } from 'react-router-dom'
 import { ChevronLeft, Languages, Sparkles, X } from 'lucide-react'
 import { buildMarkets, tt } from '../markets'
 import MatchCenter, { periodLabel } from '../components/MatchCenter'
@@ -212,9 +212,21 @@ export default function MatchPage() {
   const [ver, setVer] = useState(0)
   const [toast, setToast] = useState('')
   const [sel, setSel] = useState(null)
-  const { data: m, loading } = usePoll(() => api(`/matches/${id}`), [id, ver], 30000, true)
-  if (loading && !m) return <Skeleton h={220} n={2} />
+  const loc = useLocation()
+  const { data: full, loading } = usePoll(() => api(`/matches/${id}`), [id, ver], 30000, true)
+  const placeholder = loc.state?.m && String(loc.state.m.id) === String(id) ? loc.state.m : null
+  const m = full || placeholder
+  if (loading && !m) return <div><div className="skeleton" style={{ height: 22, width: 90, borderRadius: 8, marginBottom: 12 }} /><div className="skeleton" style={{ height: 300, borderRadius: 22 }} /><Skeleton h={120} n={2} /></div>
   if (!m) return <Empty title={t('error')} />
+  if (!full) {
+    return (
+      <div>
+        <button className="linkbtn" style={{ marginBottom: 12, fontSize: 14 }} onClick={() => nav(-1)}><ChevronLeft size={18} />{t('matches')}</button>
+        {m.status === 'live' || m.status === 'finished' ? <MatchCenter m={m} /> : <FeaturedMatch m={m} linkable={false} />}
+        <div style={{ marginTop: 16 }}><Skeleton h={120} n={3} /></div>
+      </div>
+    )
+  }
   const analysis = t.lang === 'ru' ? m.analysis.ru : t.serb(m.analysis.sr)
   return (
     <div>

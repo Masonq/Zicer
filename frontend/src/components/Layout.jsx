@@ -76,7 +76,7 @@ export default function Layout() {
           </div>
         </header>
         <main className="main">
-          <ErrorBoundary resetKey={loc.pathname + loc.search}><Outlet /></ErrorBoundary>
+          <div className="page-body"><ErrorBoundary resetKey={loc.pathname + loc.search}><Outlet /></ErrorBoundary></div>
           <div className="foot">{t('responsible')}</div>
         </main>
       </div>

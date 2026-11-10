@@ -91,7 +91,7 @@ export function MatchRow({ m }) {
   const hw = sc && sc[0] > sc[1], aw = sc && sc[1] > sc[0]
   const fin = m.status === 'finished'
   return (
-    <Link to={`/mec/${m.id}`} className="row">
+    <Link to={`/mec/${m.id}`} state={{ m }} className="row">
       <StatusTime m={m} />
       <div className="row-teams">
         <div className={`row-team${fin && aw ? ' lose' : ''}`}><Crest team={m.home} size={20} /><span className="name">{t.team(m.home)}</span>{sc && <span className="sc">{sc[0]}</span>}</div>

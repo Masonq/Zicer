@@ -460,3 +460,6 @@ img { display: block; max-width: 100%; }
 .court .bp-text { background: rgba(4, 12, 9, 0.45); padding: 6px 12px 7px; border-radius: 12px; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); left: 14px; top: 12px; }
 .court .bp-title { font-size: 20px; }
 @media (prefers-reduced-motion: reduce) { .bp-wrap, .bp-shadow { transition: none; } .bp-ball.hop { animation: none; } }
+
+.page-body { min-height: 100vh; }
+.center-body { min-height: 160px; }
