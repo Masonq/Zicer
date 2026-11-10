@@ -8,7 +8,7 @@ import { FeaturedMatch } from './Match'
 export default function Derby() {
   const t = useT()
   const { user } = useAuth()
-  const { data, loading } = usePoll(() => api('/derby'), [user?.id], 60000, true)
+  const { data, loading } = usePoll(() => api('/derby'), [user?.id], 60000, true, 'derby')
   if (loading && !data) return <Skeleton h={200} n={2} />
   if (!data) return <Empty title={t('error')} />
   const next = data.next[0]

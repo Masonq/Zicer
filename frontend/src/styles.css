@@ -462,7 +462,7 @@ img { display: block; max-width: 100%; }
 @media (prefers-reduced-motion: reduce) { .bp-wrap, .bp-shadow { transition: none; } .bp-ball.hop { animation: none; } }
 
 .page-body { min-height: 100vh; }
-.center-body { min-height: 160px; }
+.center-body { min-height: 178px; }
 
 /* tennis tracker */
 .tennis-tracker { margin: 0 14px; border-radius: 14px; overflow: hidden; background: #163E5F; --c0: #3D8EF0; --c1: #8BD12F; }
@@ -470,11 +470,11 @@ img { display: block; max-width: 100%; }
 .tt-player { display: flex; align-items: center; gap: 6px; min-width: 0; font-weight: 700; font-size: 13px; }
 .tt-player.r { justify-content: flex-end; }
 .c0i { color: var(--c0); flex: none; } .c1i { color: var(--c1); flex: none; }
-.tt-score { display: inline-flex; align-items: center; gap: 0; font-size: 22px; font-weight: 600; background: #0B1F31; border: 1px solid rgba(255,255,255,0.35); border-radius: 6px; padding: 2px 10px; height: 36px; line-height: 1; }
+.tt-score { min-width: 104px; justify-content: center; display: inline-flex; align-items: center; gap: 0; font-size: 22px; font-weight: 600; background: #0B1F31; border: 1px solid rgba(255,255,255,0.35); border-radius: 6px; padding: 2px 10px; height: 36px; line-height: 1; }
 .tt-score i { display: block; width: 4px; height: 26px; border-radius: 2px; margin: 0 8px 0 -6px; }
 .tt-score i.c1b { margin: 0 -6px 0 8px; }
 .c0b { background: var(--c0); } .c1b { background: var(--c1); }
-.tt-sets { width: max-content; margin: 0 auto; padding: 2px 14px; font-size: 13px; color: #D8E6F2; background: rgba(8, 24, 40, 0.55); border-radius: 0 0 10px 10px; }
+.tt-sets { min-height: 22px; line-height: 18px; width: max-content; margin: 0 auto; padding: 2px 14px; font-size: 13px; color: #D8E6F2; background: rgba(8, 24, 40, 0.55); border-radius: 0 0 10px 10px; }
 .tt-court { margin: 6px 0 0; border-radius: 0; height: 210px; }
 @media (min-width: 600px) { .tt-court { height: 250px; } }
 .tt-tag { position: absolute; z-index: 3; display: flex; flex-direction: column; gap: 1px; font-size: 13px; font-weight: 600; color: #fff; max-width: 42%; transform: translateY(-50%);
@@ -490,3 +490,5 @@ img { display: block; max-width: 100%; }
 .tt-big span { font-size: 52px; font-weight: 500; line-height: 1; color: #fff; text-shadow: 0 2px 10px rgba(0,0,0,0.35); }
 .tt-big i { display: block; width: 70px; height: 4px; border-radius: 2px; }
 @keyframes fadein { from { opacity: 0; } }
+.center-body.fixed { height: 300px; overflow-y: auto; overscroll-behavior: contain; }
+.center-body.fixed .ev-list { max-height: none; }

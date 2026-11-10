@@ -23,7 +23,7 @@ export function SportIcon({ sport, size = 24 }) {
 
 export function SportSwitcher({ value, onChange }) {
   const t = useT()
-  const { data } = usePoll(() => api(`/sports?tz=${tz()}`), [], 60000)
+  const { data } = usePoll(() => api(`/sports?tz=${tz()}`), [], 60000, false, 'sports')
   const list = [{ sport: 'all', live: (data || []).reduce((a, x) => a + x.live, 0), soon: (data || []).reduce((a, x) => a + x.soon, 0) }, ...(data || [{ sport: 'football' }, { sport: 'basketball' }])]
   return (
     <div className="sports" role="tablist" aria-label={t('allSports')}>

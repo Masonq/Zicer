@@ -42,7 +42,7 @@ export default function Home() {
   const [sp, setSp] = useSearchParams()
   const sport = sp.get('sport') || 'all'
   const setSport = (v) => { const n = new URLSearchParams(sp); if (v === 'all') n.delete('sport'); else n.set('sport', v); setSp(n, { replace: true }) }
-  const { data, loading } = usePoll(() => api(`/home?tz=${tz()}&sport=${sport}`), [user?.id, sport], 45000, true)
+  const { data, loading } = usePoll(() => api(`/home?tz=${tz()}&sport=${sport}`), [user?.id, sport], 45000, true, `home:${sport}:${user?.id || 0}`)
   const switcher = <div style={{ margin: '20px 0 4px' }}><SportSwitcher value={sport} onChange={setSport} /></div>
   const st = data?.stats || { users: 0, predictions_today: 0 }
   const guestHero = (

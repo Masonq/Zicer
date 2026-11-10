@@ -6,7 +6,7 @@ import { TrendCard } from './Home'
 
 export default function Trends() {
   const t = useT()
-  const { data, loading } = usePoll(() => api('/trends'), [], 120000)
+  const { data, loading } = usePoll(() => api('/trends'), [], 120000, false, 'trends')
   return (
     <div>
       <h1 className="h1">{t('trends')}</h1>

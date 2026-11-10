@@ -45,10 +45,37 @@ export function SlipProvider({ children }) {
 export const useSlip = () => useContext(SlipCtx)
 
 const POLL_CACHE = new Map()
+const STORE_KEY = 'zicer_cache_v1'
+const persisted = new Set()
+try {
+  const raw = JSON.parse(localStorage.getItem(STORE_KEY) || '{}')
+  for (const [k, v] of Object.entries(raw)) { POLL_CACHE.set(k, v); persisted.add(k) }
+} catch {}
+let saveTimer = null
+function persist() {
+  clearTimeout(saveTimer)
+  saveTimer = setTimeout(() => {
+    try {
+      const obj = {}
+      for (const k of [...persisted].slice(-30)) { if (POLL_CACHE.has(k)) obj[k] = POLL_CACHE.get(k) }
+      const str = JSON.stringify(obj)
+      if (str.length < 2500000) localStorage.setItem(STORE_KEY, str)
+    } catch {}
+  }, 800)
+}
+export function cachePut(key, data) {
+  POLL_CACHE.set(key, data)
+  persisted.delete(key); persisted.add(key)
+  persist()
+}
+export async function prefetch(key, fn) {
+  try { const d = await fn(); cachePut(key, d) } catch {}
+}
 
-export function usePoll(fn, deps, every = 0, keep = false) {
-  // responses are remembered per page + parameters, so going back to a page shows it instantly (then refreshes)
-  const key = fn.toString() + '|' + JSON.stringify(deps)
+export function usePoll(fn, deps, every = 0, keep = false, cacheKey = null) {
+  // responses are remembered per page + parameters (pages with a cacheKey survive reloads),
+  // so opening a page shows the last data instantly and then refreshes it quietly
+  const key = cacheKey || fn.toString() + '|' + JSON.stringify(deps)
   const [state, setState] = useState(() => {
     const c = POLL_CACHE.get(key)
     return { data: c ?? null, error: null, loading: true }
@@ -63,7 +90,7 @@ export function usePoll(fn, deps, every = 0, keep = false) {
     const run = async (first) => {
       try {
         const d = await fn()
-        POLL_CACHE.set(key, d)
+        if (cacheKey) cachePut(key, d); else POLL_CACHE.set(key, d)
         if (POLL_CACHE.size > 120) POLL_CACHE.delete(POLL_CACHE.keys().next().value)
         if (alive) setState({ data: d, error: null, loading: false })
       } catch (e) { if (alive) setState((s) => ({ data: first && cached === undefined && !keep ? null : s.data, error: e, loading: false })) }

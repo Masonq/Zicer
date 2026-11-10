@@ -70,7 +70,7 @@ export function ProfileView({ data, editable = false }) {
 export default function Profile() {
   const { username } = useParams()
   const t = useT()
-  const { data, loading } = usePoll(() => api(`/users/${encodeURIComponent(username)}`), [username])
+  const { data, loading } = usePoll(() => api(`/users/${encodeURIComponent(username)}`), [username], 0, false, `user:${username}`)
   if (loading && !data) return <Skeleton h={90} n={4} />
   if (!data) return <Empty title={t('error')} />
   return <ProfileView data={data} />

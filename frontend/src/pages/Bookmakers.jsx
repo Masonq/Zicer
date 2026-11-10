@@ -6,7 +6,7 @@ import { Skeleton } from '../components/ui'
 
 export default function Bookmakers() {
   const t = useT()
-  const { data } = usePoll(() => api('/bookmakers'), [])
+  const { data } = usePoll(() => api('/bookmakers'), [], 0, false, 'bookmakers')
   return (
     <div>
       <h1 className="h1">{t('bookmakers')}</h1>

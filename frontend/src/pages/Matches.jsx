@@ -12,7 +12,7 @@ export default function Matches() {
   const sport = sp.get('sport') || 'all'
   const serb = sp.get('srb') === '1'
   const set = (k, v) => { const n = new URLSearchParams(sp); n.set(k, v); setSp(n, { replace: true }) }
-  const { data, loading } = usePoll(() => api(`/matches?day=${day}&sport=${sport}&serbian=${serb}&tz=${tz()}`), [day, sport, serb], day === 'live' || day === 'today' ? 30000 : 0, true)
+  const { data, loading } = usePoll(() => api(`/matches?day=${day}&sport=${sport}&serbian=${serb}&tz=${tz()}`), [day, sport, serb], day === 'live' || day === 'today' ? 30000 : 0, true, `matches:${day}:${sport}:${serb}`)
   const days = [['live', t('live')], ['yesterday', t('yesterday')], ['today', t('today')], ['tomorrow', t('tomorrow')]]
   return (
     <div>

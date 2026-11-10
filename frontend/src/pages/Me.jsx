@@ -10,7 +10,7 @@ import { ProfileView } from './Profile'
 export default function Me() {
   const t = useT()
   const { user, ready, logout } = useAuth()
-  const { data } = usePoll(() => (user ? api(`/users/${user.username}`) : Promise.resolve(null)), [user?.id, user?.bank, user?.username, user?.avatar, user?.display_name, user?.bio], 0, true)
+  const { data } = usePoll(() => (user ? api(`/users/${user.username}`) : Promise.resolve(null)), [user?.id, user?.bank, user?.username, user?.avatar, user?.display_name, user?.bio], 0, true, `me:${user?.id || 0}`)
   const [tg, setTg] = useState(null)
   useEffect(() => { if (user) api('/me/telegram').then(setTg).catch(() => {}) }, [user?.id]) // eslint-disable-line
   if (!ready) return <Skeleton />

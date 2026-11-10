@@ -3,8 +3,8 @@ import { useEffect } from 'react'
 import { House, CalendarDays, Trophy, User, Flame, TrendingUp, Landmark, Swords, Wallet, Shield } from 'lucide-react'
 import { useT, LangCtx } from '../i18n'
 import { useContext } from 'react'
-import { useAuth, useSlip, usePoll } from '../store'
-import { api } from '../api'
+import { useAuth, useSlip, usePoll, prefetch } from '../store'
+import { api, tz } from '../api'
 import Slip from './Slip'
 import { ErrorBoundary } from './Sports'
 import { Crest, fmtNum } from './ui'
@@ -21,7 +21,7 @@ function LangSwitch() {
 
 function BattleMini() {
   const t = useT()
-  const { data } = usePoll(() => api('/clubs/battle?sport=football'), [], 120000)
+  const { data } = usePoll(() => api('/clubs/battle?sport=football'), [], 120000, false, 'battle')
   if (!data || !data.length) return null
   return (
     <div className="card">
@@ -44,6 +44,17 @@ export default function Layout() {
   const slip = useSlip()
   const loc = useLocation()
   useEffect(() => { window.scrollTo(0, 0) }, [loc.pathname])
+  useEffect(() => {
+    // warm up the pages people open most, so they appear instantly without placeholders
+    const id = setTimeout(() => {
+      prefetch(`home:all:${user?.id || 0}`, () => api(`/home?tz=${tz()}&sport=all`))
+      prefetch('matches:today:all:false', () => api(`/matches?day=today&sport=all&serbian=false&tz=${tz()}`))
+      prefetch('matches:live:all:false', () => api(`/matches?day=live&sport=all&serbian=false&tz=${tz()}`))
+      prefetch('rank:/ranking?period=month', () => api('/ranking?period=month'))
+      prefetch('sports', () => api(`/sports?tz=${tz()}`))
+    }, 1500)
+    return () => clearTimeout(id)
+  }, [user?.id])
   const nav = [
     ['/', t('home'), House], ['/mecevi', t('matches'), CalendarDays], ['/derbi', t('derby'), Swords],
     ['/trendovi', t('trends'), TrendingUp], ['/rang', t('ranking'), Trophy], ['/kladionice', t('bookmakers'), Landmark],

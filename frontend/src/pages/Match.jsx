@@ -213,25 +213,19 @@ export default function MatchPage() {
   const [toast, setToast] = useState('')
   const [sel, setSel] = useState(null)
   const loc = useLocation()
-  const { data: full, loading } = usePoll(() => api(`/matches/${id}`), [id, ver], 30000, true)
+  const { data: full, loading } = usePoll(() => api(`/matches/${id}`), [id, ver], 30000, true, `match:${id}`)
   const placeholder = loc.state?.m && String(loc.state.m.id) === String(id) ? loc.state.m : null
   const m = full || placeholder
   if (loading && !m) return <div><div className="skeleton" style={{ height: 22, width: 90, borderRadius: 8, marginBottom: 12 }} /><div className="skeleton" style={{ height: 300, borderRadius: 22 }} /><Skeleton h={120} n={2} /></div>
   if (!m) return <Empty title={t('error')} />
-  if (!full) {
-    return (
-      <div>
-        <button className="linkbtn" style={{ marginBottom: 12, fontSize: 14 }} onClick={() => nav(-1)}><ChevronLeft size={18} />{t('matches')}</button>
-        {m.status === 'live' || m.status === 'finished' ? <MatchCenter m={m} /> : <FeaturedMatch m={m} linkable={false} />}
-        <div style={{ marginTop: 16 }}><Skeleton h={120} n={3} /></div>
-      </div>
-    )
-  }
-  const analysis = t.lang === 'ru' ? m.analysis.ru : t.serb(m.analysis.sr)
+  const analysis = !full ? '' : t.lang === 'ru' ? m.analysis.ru : t.serb(m.analysis.sr)
   return (
     <div>
       <button className="linkbtn" style={{ marginBottom: 12, fontSize: 14 }} onClick={() => (window.history.length > 1 ? nav(-1) : nav('/mecevi'))}><ChevronLeft size={18} />{t('matches')}</button>
       {m.status === 'live' || m.status === 'finished' ? <MatchCenter m={m} fallback={<FeaturedMatch m={m} linkable={false} />} /> : <FeaturedMatch m={m} linkable={false} />}
+      {!full && <div style={{ marginTop: 16 }}><Skeleton h={120} n={3} /></div>}
+      {full && (
+        <>
 
       {m.mine ? (
         <div className="card pad" style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -309,6 +303,8 @@ export default function MatchPage() {
           ))}
         </div>
       </section>
+        </>
+      )}
       {sel && <div style={{ height: 180 }} />}
       <Toast text={toast} onDone={() => setToast('')} />
     </div>
