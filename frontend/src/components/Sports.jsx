@@ -7,7 +7,7 @@ import { IconBallFootball, IconBallBasketball, IconBallTennis, IconBallVolleybal
 
 function HockeyIcon({ size }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={size > 60 ? 1.1 : 2} strokeLinecap="round" strokeLinejoin="round">
       <path d="M5 3l6.2 13.2a2 2 0 0 0 1.8 1.1H20" /><path d="M19 3l-4.6 9.4" />
       <ellipse cx="6.5" cy="18" rx="3" ry="1.3" /><path d="M3.5 18v1.3c0 .7 1.3 1.3 3 1.3s3-.6 3-1.3V18" />
     </svg>
@@ -18,7 +18,7 @@ const ICONS = { football: IconBallFootball, basketball: IconBallBasketball, tenn
 export function SportIcon({ sport, size = 24 }) {
   if (sport === 'hockey') return <HockeyIcon size={size} />
   const I = ICONS[sport] || IconLayoutGrid
-  return <I size={size} stroke={1.9} />
+  return <I size={size} stroke={size > 60 ? 1.1 : 1.9} />
 }
 
 export function SportSwitcher({ value, onChange }) {

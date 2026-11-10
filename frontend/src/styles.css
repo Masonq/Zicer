@@ -423,14 +423,6 @@ img { display: block; max-width: 100%; }
 .pitch-lines { position: absolute; inset: 0; opacity: 0.55; pointer-events: none; z-index: 0; }
 .pitch-lines .court-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .pitch.pitch-football::before { display: none; }
-.pitch-basketball { background: linear-gradient(180deg, rgba(10,6,2,0.38) 0%, rgba(10,6,2,0.18) 45%, rgba(10,6,2,0.42) 100%), repeating-linear-gradient(90deg, rgba(60,30,8,0.18) 0 1px, transparent 1px 24px), repeating-linear-gradient(90deg, #C9935C 0 24px, #BE874F 24px 48px, #CF9B66 48px 72px, #C48C55 72px 96px), #C48C55; border-color: #9C6B3E; }
-.pitch-basketball .pitch-lines { opacity: 0.7; }
-.pitch-basketball .board-team .name, .pitch-basketball .pitch-top { text-shadow: 0 1px 6px rgba(0,0,0,0.6); }
-.pitch-basketball .pitch-top { color: #F3E6D6; }
-.pitch-hockey { background: radial-gradient(ellipse at 50% 40%, #2B4A63 0%, #172C3F 75%); border-color: #3A5A75; }
-.pitch-tennis { background: linear-gradient(180deg, #1E5D8C, #164466); border-color: #2C6FA0; }
-.pitch-volleyball { background: linear-gradient(180deg, #8A5226, #663A19); border-color: #9A6236; }
-.pitch-waterpolo { background: repeating-linear-gradient(170deg, rgba(255,255,255,0.03) 0 14px, rgba(0,0,0,0.03) 14px 28px), linear-gradient(180deg, #1478A8, #0D5578); border-color: #2A8ABA; }
 .pitch:not(.pitch-football)::before { display: none; }
 .pitch-top { gap: 8px; }
 .sport-chip { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; background: rgba(0,0,0,0.32);
@@ -439,3 +431,16 @@ img { display: block; max-width: 100%; }
 .league-sport { width: 22px; height: 22px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; flex: none; background: var(--surface-2); color: var(--chalk); }
 .ls-basketball { background: #B57A45; } .ls-hockey { background: #2B4A63; } .ls-tennis { background: #1E5D8C; }
 .ls-volleyball { background: #8A5226; } .ls-waterpolo { background: #1478A8; } .ls-football { background: #1F5541; }
+
+/* match card: one clean dark card, sport shown by colour + watermark */
+.sc-football { --sc: #4CC38A; } .sc-basketball { --sc: #F0954A; } .sc-tennis { --sc: #C9E35A; }
+.sc-hockey { --sc: #6AAEF0; } .sc-volleyball { --sc: #F5D547; } .sc-waterpolo { --sc: #3FBCEB; }
+.pitch[class*="sc-"] { background: radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--sc) 22%, transparent) 0%, transparent 55%),
+  radial-gradient(90% 80% at 100% 100%, color-mix(in srgb, var(--sc) 12%, transparent) 0%, transparent 60%), linear-gradient(180deg, #17352B, #112A21);
+  border-color: color-mix(in srgb, var(--sc) 35%, #2F5C4B); }
+.pitch[class*="sc-"]::before, .pitch[class*="sc-"]::after { display: none; }
+.pitch-mark { position: absolute; right: -54px; bottom: -64px; color: var(--sc); opacity: 0.09; transform: rotate(-14deg); pointer-events: none; z-index: 0; line-height: 0; }
+.pitch[class*="sc-"] .sport-chip { background: color-mix(in srgb, var(--sc) 18%, rgba(0,0,0,0.25)); color: var(--sc); border: 1px solid color-mix(in srgb, var(--sc) 35%, transparent); }
+.board { align-items: start; }
+.board-team { padding-top: 2px; }
+.board .tablo { align-self: start; }

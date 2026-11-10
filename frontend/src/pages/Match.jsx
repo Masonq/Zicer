@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import { ChevronLeft, Languages, Sparkles, X } from 'lucide-react'
 import { buildMarkets, tt } from '../markets'
-import MatchCenter, { periodLabel, CourtLines } from '../components/MatchCenter'
+import MatchCenter, { periodLabel } from '../components/MatchCenter'
 import { SportIcon } from '../components/Sports'
 import { api } from '../api'
 import { useT } from '../i18n'
@@ -49,7 +49,12 @@ export function FeaturedMatch({ m, label, linkable = true }) {
       {linkable && <Link to={`/mec/${m.id}`} className="btn btn-ghost btn-block" style={{ marginTop: 14 }}>{t('placePrediction')}{m.predictions?.length ? ` (${m.predictions.length})` : ''}</Link>}
     </>
   )
-  return <div className={`pitch pitch-${m.sport}`}><div className="pitch-lines"><CourtLines sport={m.sport} /></div>{inner}</div>
+  return (
+    <div className={`pitch sc-${m.sport}`}>
+      <span className="pitch-mark" aria-hidden="true"><SportIcon sport={m.sport} size={260} /></span>
+      {inner}
+    </div>
+  )
 }
 
 function MarketBoard({ m, sel, onSelect }) {
