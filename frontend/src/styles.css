@@ -526,3 +526,37 @@ img { display: block; max-width: 100%; }
 @keyframes arc { 0% { transform: translateY(0) scale(1); } 50% { transform: translateY(-26px) scale(1.35); } 100% { transform: translateY(0) scale(1); } }
 .bp-ball.toss { animation: toss 1.2s ease-in-out; }
 @keyframes toss { 0%, 100% { transform: translateY(0); } 45% { transform: translateY(-20px) scale(1.15); } }
+
+/* modern tracker extras */
+.trk-3d { position: absolute; left: 8px; bottom: 8px; z-index: 6; height: 24px; padding: 0 8px; border-radius: 6px; background: rgba(0,0,0,0.45); color: #fff; font-size: 11px; font-weight: 800; }
+.tt-court .plane { position: absolute; inset: 0; transition: transform .6s cubic-bezier(.3,.7,.2,1); transform-origin: 50% 70%; }
+.tt-court.p3d { perspective: 720px; }
+.tt-court.p3d .plane { transform: rotateX(34deg) scale(0.92) translateY(-4%); }
+.tt-court.p3d { background-blend-mode: normal; }
+.court-football.p3d, .court-basketball.p3d, .court-hockey.p3d, .court-volleyball.p3d, .court-waterpolo.p3d { background: radial-gradient(120% 90% at 50% 0%, #1b3b31 0%, #0e231c 70%); }
+.court-football.p3d .plane { background: repeating-linear-gradient(90deg, rgba(255,255,255,0.03) 0 9.09%, rgba(0,0,0,0.05) 9.09% 18.18%), linear-gradient(180deg, #23614A, #18452F); border-radius: 10px; box-shadow: 0 30px 40px rgba(0,0,0,0.45); }
+.court-basketball.p3d .plane { background: linear-gradient(180deg, rgba(10,6,2,0.06), rgba(10,6,2,0.22)), repeating-linear-gradient(90deg, rgba(60,30,8,0.18) 0 1px, transparent 1px 24px), repeating-linear-gradient(90deg, #C9935C 0 24px, #BE874F 24px 48px, #CF9B66 48px 72px, #C48C55 72px 96px); border-radius: 8px; box-shadow: 0 30px 40px rgba(0,0,0,0.45); }
+.court-hockey.p3d .plane { background: radial-gradient(ellipse at 50% 40%, #DDEBF5 0%, #B9D0E2 80%); border-radius: 40px; box-shadow: 0 30px 40px rgba(0,0,0,0.45); }
+.court-hockey.p3d .plane .court-svg rect { stroke: rgba(20,40,60,0.5); }
+.court-volleyball.p3d .plane { background: linear-gradient(180deg, #C77A3A, #A8602A); border-radius: 6px; box-shadow: 0 30px 40px rgba(0,0,0,0.45); }
+.court-waterpolo.p3d .plane { background: repeating-linear-gradient(170deg, rgba(255,255,255,0.05) 0 14px, rgba(0,0,0,0.03) 14px 28px), linear-gradient(180deg, #1A8CC2, #0F6A96); border-radius: 6px; box-shadow: 0 30px 40px rgba(0,0,0,0.45); }
+.trk-card { transform: none; }
+.trk-extras { padding: 12px 12px 14px; display: grid; gap: 12px; background: rgba(8, 24, 40, 0.35); }
+.trk-press-head { display: flex; justify-content: space-between; font-size: 12px; color: #cfdbe6; margin-bottom: 6px; font-weight: 700; }
+.trk-press-head b { color: #fff; font-weight: 500; }
+.trk-press-bar { display: flex; height: 8px; border-radius: 999px; overflow: hidden; gap: 2px; background: rgba(255,255,255,0.08); }
+.trk-press-bar i { display: block; height: 100%; border-radius: 999px; }
+.trk-line { display: grid; gap: 6px; }
+.trk-chip { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 10px; background: rgba(255,255,255,0.05); border-left: 3px solid var(--c0); }
+.trk-chip.s1 { border-left-color: var(--c1); }
+.trk-chip-ico { display: flex; color: #fff; } .trk-chip-ico svg { width: 20px; height: 20px; }
+.trk-chip-txt { font-size: 13px; color: #cfdbe6; } .trk-chip-txt b { color: #fff; font-weight: 700; margin-right: 6px; }
+.trk-chip-min { font-size: 13px; color: #F2C230; }
+.trk-keys { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.trk-key-label { font-size: 11px; color: #b8c7d4; text-align: center; margin-bottom: 2px; }
+.trk-key-top { display: flex; justify-content: space-between; align-items: baseline; }
+.trk-key-top b { color: #fff; font-size: 15px; font-weight: 500; }
+.trk-key-bar { display: flex; gap: 2px; height: 4px; margin-top: 5px; border-radius: 999px; overflow: hidden; background: rgba(255,255,255,0.08); }
+.trk-key-bar i { display: block; height: 100%; }
+@media (prefers-reduced-motion: reduce) { .tt-court .plane { transition: none; } }
+.trk-card { animation: none; }

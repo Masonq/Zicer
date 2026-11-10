@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
+import { motion, AnimatePresence } from 'motion/react'
+import confetti from 'canvas-confetti'
 import { Link } from 'react-router-dom'
-import { IconShirtFilled, IconHandStop, IconStopwatch, IconFlag, IconTarget, IconRectangleVerticalFilled, IconArrowsExchange, IconBallBasketball, IconBallFootball, IconBallVolleyball, IconPlayerPause } from '@tabler/icons-react'
+import { IconShirtFilled, IconHandStop, IconStopwatch, IconFlag, IconTarget, IconRectangleVerticalFilled, IconArrowsExchange, IconBallBasketball, IconBallFootball, IconBallVolleyball, IconPlayerPause, IconBallTennis } from '@tabler/icons-react'
 import { api } from '../api'
 import { useT } from '../i18n'
 import { usePoll } from '../store'
@@ -223,17 +225,110 @@ const EVSPOT = { score: [95, 50], shot_on: [93, 50], shot_off: [93, 30], corner:
 
 // Bookmaker-style tracker for football, basketball, hockey, volleyball, water polo:
 // possession wedge + "team / with the ball" card, event cards with icons, ball at the place of action.
+const SCORE_ICON = { football: IconBallFootball, hockey: IconTarget, waterpolo: IconTarget, basketball: IconBallBasketball, volleyball: IconBallVolleyball, tennis: IconBallTennis }
 const EV_ICON = {
-  score: { football: IconBallFootball, hockey: IconTarget, waterpolo: IconTarget, basketball: IconBallBasketball, volleyball: IconBallVolleyball },
+  break: IconBallTennis, ace: IconBallTennis, timeout: IconPlayerPause,
   shot_on: IconTarget, shot_off: IconTarget, corner: IconFlag, yellow: 'yellow', red: 'red', foul: IconHandStop, pen2: IconStopwatch,
   p2: IconBallBasketball, p3: IconBallBasketball, ft: IconBallBasketball, sub: IconArrowsExchange, penalty: IconTarget, timeout: IconPlayerPause,
 }
 function EvIconBig({ type, sport }) {
-  let I = EV_ICON[type]
-  if (I && typeof I === 'object') I = I[sport]
+  let I = type === 'score' ? SCORE_ICON[sport] : EV_ICON[type]
   if (I === 'yellow' || I === 'red') return <IconRectangleVerticalFilled size={30} style={{ color: I === 'yellow' ? '#F5D547' : '#E5544B' }} />
   if (!I) return null
   return <I size={30} stroke={1.6} />
+}
+
+// ---------- modern extras shared by all trackers ----------
+const KEY_STATS = {
+  football: ['x:Dangerous attacks', 'ShotsOnTarget', 'x:Shots on target', 'BallPossesion', 'x:Possession %', 'corners', 'x:Corner'],
+  basketball: ['FG2', 'FG3', 'TotalRebounds', 'x:2-pointers', 'x:3-pointers', 'x:Free throws', 'Turnovers', 'x:Fouls'],
+  hockey: ['x:Attacks', 'x:Possession %', 'x:2-min penalties'],
+  tennis: ['x:Aces', 'x:Double faults', 'x:1st Serve %', 'x:Breaks'],
+  volleyball: ['x:Points on own serve', 'x:Max pts in a row'],
+  waterpolo: ['x:Attacks', 'x:Possession %'],
+}
+const W8 = { danger: 3, attack: 1, shot_on: 4, shot_off: 2, corner: 2, score: 5, p2: 2, p3: 3, ft: 1, ace: 2, break: 4 }
+
+function use3D() {
+  const [on, setOn] = useState(() => { try { return localStorage.getItem('winly_3d') !== '0' } catch { return true } })
+  const toggle = () => setOn((v) => { try { localStorage.setItem('winly_3d', v ? '0' : '1') } catch {} return !v })
+  return [on, toggle]
+}
+
+function celebrate(el, side) {
+  if (!el) return
+  try {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const r = el.getBoundingClientRect()
+    const x = (r.left + r.width * (side === 0 ? 0.8 : 0.2)) / window.innerWidth
+    const y = (r.top + r.height * 0.5) / window.innerHeight
+    confetti({ particleCount: 70, spread: 70, startVelocity: 32, ticks: 140, scalar: 0.8, origin: { x, y }, colors: side === 0 ? ['#3D8EF0', '#F2C230', '#ffffff'] : ['#8BD12F', '#F2C230', '#ffffff'], disableForReducedMotion: true })
+    if (navigator.vibrate) navigator.vibrate([40, 30, 40])
+  } catch {}
+}
+
+function Extras({ m, data, t, items }) {
+  const live = m.status === 'live'
+  const H = t.team(m.home), A = t.team(m.away)
+  // pressure: football momentum or weighted live events of the last ~8 minutes
+  let ph = 0, pa = 0
+  const mom = m.sport === 'football' ? (data.momentum || []).slice(-6) : []
+  if (mom.length) { for (const [, v] of mom) { if (v > 0) ph += v; else pa -= v } }
+  else {
+    const now = data.now || Date.now() / 1000
+    for (const e of data.xev || []) { if (now - e.at > 480) continue; const w = W8[e.t] || 0; if (e.side === 0) ph += w; else pa += w }
+  }
+  const tot = ph + pa
+  const hp = tot ? Math.round((ph / tot) * 100) : 50
+  const stats = (data.stats || [])
+  const want = KEY_STATS[m.sport] || []
+  const picked = []
+  for (const k of want) { const st = stats.find((x) => x.key === k); if (st && !picked.find((p) => p.ru === st.ru)) picked.push(st); if (picked.length === 3) break }
+  return (
+    <div className="trk-extras">
+      {live && (
+        <div className="trk-press">
+          <div className="trk-press-head"><span>{t('pressure')}</span><b className="num">{hp}% – {100 - hp}%</b></div>
+          <div className="trk-press-bar"><motion.i className="c0b" animate={{ width: `${hp}%` }} transition={{ type: 'spring', stiffness: 120, damping: 20 }} /><motion.i className="c1b" animate={{ width: `${100 - hp}%` }} transition={{ type: 'spring', stiffness: 120, damping: 20 }} /></div>
+        </div>
+      )}
+      {items.length > 0 && (
+        <div className="trk-line">
+          <AnimatePresence initial={false}>
+            {items.slice(-4).reverse().map((e) => (
+              <motion.div key={e.k} layout initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }} className={`trk-chip s${e.side}`}>
+                <span className="trk-chip-ico"><EvIconBig type={e.t} sport={m.sport} /></span>
+                <span className="trk-chip-txt ellip"><b>{e.title}</b>{e.side === 0 ? H : A}</span>
+                {e.when && <span className="trk-chip-min num">{e.when}</span>}
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+      )}
+      {picked.length > 0 && (
+        <div className="trk-keys">
+          {picked.map((st) => {
+            const raw = st.w || st.v
+            const a = parseFloat(raw[0]) || 0, b = parseFloat(raw[1]) || 0
+            const sum = a + b || 1
+            return (
+              <div key={st.key} className="trk-key">
+                <div className="trk-key-label ellip">{t.lang === 'ru' ? st.ru : t.serb(st.sr)}</div>
+                <div className="trk-key-top"><b className="num">{st.v[0]}{st.pct ? '%' : ''}</b><b className="num">{st.v[1]}{st.pct ? '%' : ''}</b></div>
+                <div className="trk-key-bar"><i className="c0b" style={{ width: `${(a / sum) * 100}%` }} /><i className="c1b" style={{ width: `${(b / sum) * 100}%` }} /></div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function evWhen(e, sport) {
+  if (e.clock) return e.clock
+  if (e.ts) return sport === 'football' ? `${Math.floor(e.ts / 60) + 1}'` : ''
+  return ''
 }
 
 // who has the ball in basketball, from the real play-by-play
@@ -263,17 +358,20 @@ function Court({ m, data, t }) {
   const plays = data.plays || []
   // ---- events (real): basketball play-by-play or the live stats feed
   const evList = m.sport === 'basketball' && plays.length
-    ? plays.map((p, i) => ({ k: `${p.q}-${p.clock}-${i}`, t: p.pts ? 'score' : p.pt === 'CM' || p.pt === 'CMU' || p.pt === 'CMT' ? 'foul' : p.pt === 'TOUT' ? 'timeout' : null, side: p.home ? 0 : 1, title: t.lang === 'ru' ? p.ru : t.serb(p.sr), sub: p.player, pts: p.pts })).filter((e) => e.t)
-    : (data.xev || []).filter((e) => TOAST.includes(e.t) || e.t === 'foul').map((e) => ({ k: `${e.at}-${e.t}-${e.side}`, t: e.t, side: e.side, title: xevLabel(e, m.sport, t), sub: '', at: e.at }))
+    ? plays.map((p, i) => ({ k: `${p.q}-${p.clock}-${i}`, t: p.pts ? 'score' : p.pt === 'CM' || p.pt === 'CMU' || p.pt === 'CMT' ? 'foul' : p.pt === 'TOUT' ? 'timeout' : null, side: p.home ? 0 : 1, title: t.lang === 'ru' ? p.ru : t.serb(p.sr), sub: p.player, pts: p.pts, clock: p.clock ? `Q${p.q} ${p.clock}` : '' })).filter((e) => e.t)
+    : (data.xev || []).filter((e) => TOAST.includes(e.t) || e.t === 'foul').map((e) => ({ k: `${e.at}-${e.t}-${e.side}`, t: e.t, side: e.side, title: xevLabel(e, m.sport, t), sub: '', at: e.at, ts: e.ts }))
   const last = evList[evList.length - 1]
   const [phase, setPhase] = useState({ kind: 'idle', ev: null })
   const seen = useRef(null)
+  const courtRef = useRef(null)
+  const [p3d, toggle3d] = use3D()
   useEffect(() => {
     if (!data.now) return
     if (seen.current === null) { seen.current = last ? last.k : ''; return }
     if (!last || last.k === seen.current || !live) return
     seen.current = last.k
     const bigScore = last.t === 'score' && m.sport !== 'basketball'
+    if (bigScore) celebrate(courtRef.current, last.side)
     setPhase({ kind: 'event', ev: last })
     const a = setTimeout(() => setPhase(bigScore ? { kind: 'big', ev: last } : { kind: 'idle', ev: null }), 2600)
     const b = setTimeout(() => setPhase({ kind: 'idle', ev: null }), bigScore ? 5200 : 2700)
@@ -317,7 +415,9 @@ function Court({ m, data, t }) {
       ) : (
         <div className="tt-sets num">{[periodTxt, m.sport === 'football' ? '' : scoresTxt].filter(Boolean).join('   ') || '\u00a0'}</div>
       )}
-      <div className={`court court-${m.sport} tt-court`}>
+      <div ref={courtRef} className={`court court-${m.sport} tt-court${p3d ? ' p3d' : ''}`}>
+        <button className="trk-3d" onClick={toggle3d} aria-label="2D/3D">{p3d ? '2D' : '3D'}</button>
+        <div className="plane">
         <CourtLines sport={m.sport} />
         {live && att !== null && phase.kind === 'idle' && server === null && (
           <svg className="poss" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
@@ -331,9 +431,12 @@ function Court({ m, data, t }) {
             <span className="bp-wrap" style={{ left: `${ball.x}%`, top: `${ball.y}%` }}><span className={`bp-ball ball-${m.sport} live`} /></span>
           </>
         )}
+        </div>
+        <AnimatePresence>
         {card && (
-          <div key={(card.title || '') + card.side} className={`trk-card${card.side === 1 ? ' s1' : card.side === 0 ? ' s0' : ''}`}
-            style={{ top: ball.y >= 50 ? '30%' : '70%', left: `${Math.max(32, Math.min(68, ball.x))}%` }}>
+          <motion.div key={(card.title || '') + card.side} className={`trk-card${card.side === 1 ? ' s1' : card.side === 0 ? ' s0' : ''}`}
+            initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.22 }}
+            style={{ top: ball.y >= 50 ? '30%' : '70%', left: `${Math.max(32, Math.min(68, ball.x))}%`, x: '-50%', y: '-50%' }}>
             {card.side !== null && card.arrow && <span className={`trk-arrow ${card.side === 0 ? 'r' : 'l'}`} />}
             <div className="trk-txt">
               {card.side !== null && <b>{names[card.side]}</b>}
@@ -341,8 +444,9 @@ function Court({ m, data, t }) {
               {card.sub && <small>{card.sub}</small>}
             </div>
             {card.icon && <span className="trk-ico"><EvIconBig type={card.icon} sport={m.sport} /></span>}
-          </div>
+          </motion.div>
         )}
+        </AnimatePresence>
         {phase.kind === 'big' && sc && (
           <div className="tt-big num">
             <div><span>{sc[0]}</span><i className="c0b" /></div>
@@ -351,6 +455,7 @@ function Court({ m, data, t }) {
         )}
         {!live && <div className="tt-toast">{t('finished')}</div>}
       </div>
+      <Extras m={m} data={data} t={t} items={evList.map((e) => ({ ...e, when: evWhen(e, m.sport) }))} />
     </div>
   )
 }
@@ -369,11 +474,13 @@ function TennisCourt({ m, data, t }) {
   const last = evs[evs.length - 1]
   const [phase, setPhase] = useState({ kind: 'idle', ev: null })
   const seen = useRef(null)
+  const tcRef = useRef(null)
   useEffect(() => {
     if (!data.now) return // placeholder data, wait for real data
     if (seen.current === null) { seen.current = last ? last.at : 0; return } // events that already happened are not replayed
     if (!last || last.at <= seen.current || !live) return
     seen.current = last.at
+    if (last.t === 'game') celebrate(tcRef.current, last.side)
     setPhase({ kind: 'toast', ev: last })
     const a = setTimeout(() => setPhase({ kind: 'big', ev: last }), 1500)
     const b = setTimeout(() => setPhase({ kind: 'idle', ev: null }), 4200)
@@ -444,7 +551,7 @@ function TennisCourt({ m, data, t }) {
         <span className="tt-player r"><span className="ellip">{A}</span><IconShirtFilled size={18} className="c1i" /></span>
       </div>
       <div className="tt-sets num">{setsTxt || '\u00a0'}</div>
-      <div className="court court-tennis tt-court" style={{ '--tick': '1400ms' }}>
+      <div ref={tcRef} className="court court-tennis tt-court" style={{ '--tick': '1400ms' }}>
         <CourtLines sport="tennis" />
         {live && phase.kind !== 'big' && (
           <>
@@ -462,6 +569,7 @@ function TennisCourt({ m, data, t }) {
         )}
         {!live && <div className="tt-toast">{t('finished')}</div>}
       </div>
+      <Extras m={m} data={data} t={t} items={evs.map((e) => ({ k: `${e.at}-${e.t}`, t: e.t === 'game' ? 'score' : e.t === 'bp' ? 'break' : 'ace', side: e.side, title: e.t === 'game' ? (e.brk ? t('ev_break') : t('ev_game')) : e.t === 'bp' ? t('ev_bp') : t('ev_point'), when: (e.ss || []).join(':') }))} />
     </div>
   )
 }
