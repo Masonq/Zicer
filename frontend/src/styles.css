@@ -627,3 +627,21 @@ img { display: block; max-width: 100%; }
 .trk-st-arrow { flex: none; width: 0; height: 0; border-top: 6px solid transparent; border-bottom: 6px solid transparent; }
 .trk-st-arrow.r { border-left: 9px solid var(--gold); } .trk-st-arrow.l { border-right: 9px solid var(--gold); }
 .trk-st.muted-st { color: var(--muted); font-weight: 600; justify-content: center; }
+
+/* directed live arena */
+.tt-score .flip { display: inline-flex; overflow: hidden; height: 1.15em; align-items: center; }
+.tt-score .flip span { display: inline-block; }
+.tt-score .colon { margin: 0 2px; opacity: 0.7; }
+.arena-banner { position: absolute; left: 50%; bottom: 10%; z-index: 6; translate: -50% 0; display: flex; align-items: center; gap: 14px; min-width: 230px; max-width: 88%;
+  padding: 10px 14px 10px 0; border-radius: 14px; overflow: hidden; background: rgba(8, 20, 15, 0.86); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.10); box-shadow: 0 14px 34px rgba(0,0,0,0.45); }
+.ab-bar { align-self: stretch; width: 6px; flex: none; }
+.arena-banner.s0 .ab-bar { background: var(--c0); } .arena-banner.s1 .ab-bar { background: var(--c1); }
+.arena-banner.s0 { background: linear-gradient(90deg, rgba(61,142,240,0.28), rgba(8,20,15,0.88) 55%); }
+.arena-banner.s1 { background: linear-gradient(90deg, rgba(139,209,47,0.26), rgba(8,20,15,0.88) 55%); }
+.ab-main { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.ab-main b { font-family: var(--display); font-size: 24px; font-weight: 700; line-height: 1.05; color: #fff; text-transform: uppercase; }
+.ab-main span { font-size: 13px; color: #cfd8d3; font-weight: 600; }
+.ab-score { display: flex; align-items: baseline; gap: 4px; font-size: 26px; color: rgba(255,255,255,0.7); padding-left: 12px; border-left: 1px solid rgba(255,255,255,0.14); }
+.ab-score .hl { color: var(--gold); text-shadow: 0 0 14px rgba(242,194,48,0.45); }
+.ab-score i { font-style: normal; opacity: 0.6; }

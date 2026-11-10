@@ -748,6 +748,329 @@ function TennisCourt({ m, data, t }) {
   )
 }
 
+// =====================================================================================
+// Live arena: the court is "directed" like a broadcast. Play loops until a real scoring
+// event arrives; then the play is finished on the court (final shot into the court / net /
+// hoop), a short whistle pause, a banner slides in and only then the scoreboard changes.
+// Several events in one update are played one after another.
+// =====================================================================================
+const SCORING = new Set(['score', 'point', 'game'])
+const HOOP_X = (1.575 / 28) * 100
+
+function useArenaEngine(cfgNow) {
+  const ballEl = useRef(null), shadowEl = useRef(null), trailEl = useRef(null), rippleEl = useRef(null), marksEl = useRef(null)
+  const cfg = useRef(cfgNow); cfg.current = cfgNow
+  const api = useRef(null)
+  const e = useRef({ pos: { x: 50, y: 50 }, from: { x: 50, y: 50 }, to: { x: 50, y: 50 }, t0: 0, dur: 1, hop: 0, side: 0, toss: 0, stopped: false, strike: null, trail: [], lastTrail: 0, marks: [], shot: 0 })
+  useEffect(() => {
+    const s = e.current
+    let raf = 0
+    const net = () => ['tennis', 'volleyball'].includes(cfg.current.sport)
+    const place = (p, h = 0) => {
+      const b = ballEl.current, sh = shadowEl.current
+      if (b) { b.style.left = `${p.x}%`; b.style.top = `${p.y}%`; b.style.transform = `translate(-50%, calc(-50% - ${h * 24}px)) scale(${1 + h * 0.3})` }
+      if (sh) { sh.style.left = `${p.x}%`; sh.style.top = `${p.y}%`; sh.style.opacity = String(0.5 - h * 0.25) }
+    }
+    const mark = (p) => {
+      if (!net()) return
+      s.marks.push(p); if (s.marks.length > 3) s.marks.shift()
+      if (marksEl.current) marksEl.current.innerHTML = s.marks.map((m) => `<circle cx="${m.x}" cy="${m.y}" r="0.9" />`).join('')
+    }
+    const ripple = (p) => {
+      const r = rippleEl.current; if (!r) return
+      r.style.left = `${p.x}%`; r.style.top = `${p.y}%`; r.classList.remove('go'); void r.offsetWidth; r.classList.add('go')
+    }
+    const seg = (to, dur, hop) => { s.from = { ...s.pos }; s.to = to; s.t0 = performance.now(); s.dur = dur; s.hop = hop }
+    const next = () => {
+      const c = cfg.current
+      if (net()) { // rally: every shot crosses the net
+        s.side = s.side === 0 ? 1 : 0
+        s.shot += 1
+        if (s.shot === 1 && c.sport === 'tennis') { // serve into the diagonal service box
+          return { to: { x: s.side === 1 ? rnd(54, 72) : rnd(28, 46), y: c.rcvY > 50 ? rnd(54, 84) : rnd(16, 46) }, dur: 820, hop: 1 }
+        }
+        const deep = c.sport === 'tennis' ? [70, 96] : [58, 92]
+        return { to: { x: s.side === 1 ? rnd(deep[0], deep[1]) : rnd(100 - deep[1], 100 - deep[0]), y: rnd(16, 84) }, dur: c.sport === 'tennis' ? 960 : rnd(1050, 1250), hop: 1 }
+      }
+      const a = c.att, k = c.intensity
+      const [d0, d1] = { football: [1300, 2000], hockey: [520, 820], basketball: [650, 1000], waterpolo: [1000, 1500] }[c.sport] || [900, 1400]
+      if (a === null || a === undefined) return { to: { x: rnd(36, 64), y: Math.max(18, Math.min(82, s.pos.y + rnd(-30, 30))) }, dur: rnd(d0, d1), hop: 0 }
+      const depth = c.sport === 'basketball' ? [62, 90] : [52 + 12 * k, 66 + 26 * k]
+      let x = rnd(depth[0], depth[1]); if (a === 1) x = 100 - x
+      const y = Math.max(18, Math.min(82, s.pos.y + rnd(-(c.sport === 'hockey' ? 46 : 34), c.sport === 'hockey' ? 46 : 34)))
+      return { to: { x, y }, dur: rnd(d0, d1) * (c.sport === 'football' ? 1 - 0.25 * k : 1), hop: c.sport === 'basketball' ? 0.25 : 0 }
+    }
+    const serveFrom = (side) => { // toss at the server, behind the baseline
+      const c = cfg.current
+      s.side = side; s.shot = 0
+      s.pos = { x: side === 0 ? -3 : 103, y: c.sport === 'tennis' ? c.srvY : rnd(30, 70) }
+      s.toss = performance.now() + 900
+      s.trail = []; s.marks = []; if (marksEl.current) marksEl.current.innerHTML = ''
+    }
+    const frame = (now) => {
+      raf = requestAnimationFrame(frame)
+      if (!cfg.current.live || s.stopped) return
+      if (s.toss) {
+        if (now < s.toss) {
+          const k = 1 - Math.abs((now - (s.toss - 900)) / 450 - 1)
+          place(s.pos, k * 0.9); if (trailEl.current) trailEl.current.setAttribute('points', ''); return
+        }
+        s.toss = 0; const n = next(); seg(n.to, n.dur, n.hop)
+      }
+      const tt = Math.min(1, (now - s.t0) / s.dur)
+      const ease = s.hop ? tt : (tt < 0.5 ? 2 * tt * tt : 1 - Math.pow(-2 * tt + 2, 2) / 2)
+      const p = { x: s.from.x + (s.to.x - s.from.x) * ease, y: s.from.y + (s.to.y - s.from.y) * ease }
+      const h = s.hop ? 4 * tt * (1 - tt) * s.hop : 0
+      s.pos = p; place(p, h)
+      if (now - s.lastTrail > 60) {
+        s.lastTrail = now; s.trail.push(p); if (s.trail.length > (net() ? 40 : 22)) s.trail.shift()
+        if (trailEl.current) trailEl.current.setAttribute('points', s.trail.map((q) => `${q.x.toFixed(2)},${q.y.toFixed(2)}`).join(' '))
+      }
+      if (tt < 1) return
+      mark(s.to)
+      const st = s.strike
+      if (st && st.launched) { // the deciding ball has landed
+        s.strike = null; s.stopped = true; ripple(s.to); st.cb && st.cb(); return
+      }
+      if (st) { st.launched = true; seg(st.spot, st.dur, st.hop); return }
+      if (s.poke) { const pk = s.poke; s.poke = null; seg(pk, 600, 0.2); return }
+      const n = next(); seg(n.to, n.dur, n.hop)
+    }
+    api.current = {
+      // finish the play with a deciding ball to `spot`; field sports cut in right away, net sports finish the current shot first
+      strike(spot, hop, cb) {
+        s.strike = { spot, hop, dur: hop > 0.6 ? 760 : 620, cb, launched: false }
+        if (!net()) { s.strike.launched = true; seg(spot, s.strike.dur, hop) }
+      },
+      poke(spot) { if (!s.strike) s.poke = spot },
+      resume({ serveSide = null, reset = null } = {}) {
+        s.stopped = false
+        if (net()) { serveFrom(serveSide ?? 0); return }
+        if (reset) { s.pos = { ...reset }; s.trail = [] }
+        const n = next(); seg(n.to, n.dur, n.hop)
+      },
+      serve(side) { if (net()) { s.stopped = false; s.strike = null; serveFrom(side) } },
+    }
+    if (net()) serveFrom(cfg.current.server ?? 0)
+    else { const n = next(); seg(n.to, n.dur, n.hop) }
+    raf = requestAnimationFrame(frame)
+    return () => cancelAnimationFrame(raf)
+  }, [cfgNow.sport]) // eslint-disable-line react-hooks/exhaustive-deps
+  return { ballEl, shadowEl, trailEl, rippleEl, marksEl, api }
+}
+
+function scoreEvents(m, data, t) {
+  if (m.sport === 'basketball' && (data.plays || []).length) {
+    return data.plays.filter((p) => p.pts > 0).map((p) => ({ k: `b-${p.q}-${p.clock}-${p.player}-${p.pts}-${p.home ? 0 : 1}`, t: 'score', side: p.home ? 0 : 1, n: p.pts, title: `+${p.pts}`, sub: [p.player, t.lang === 'ru' ? p.ru : t.serb(p.sr)].filter(Boolean).join(', ') }))
+  }
+  return (data.xev || []).filter((e) => SCORING.has(e.t) && (m.sport === 'tennis' ? e.t !== 'score' : e.t !== 'game'))
+    .map((e) => ({ k: `x-${e.at}-${e.t}-${e.side}-${(e.ss || e.ps || []).join(':')}`, t: e.t, side: e.side, n: e.n || 1, ss: e.ss, ps: e.ps, brk: e.brk }))
+}
+
+function bannerTitle(ev, sport, t) {
+  if (sport === 'tennis') return ev.t === 'game' ? (ev.brk ? t('ev_break') : t('ev_game')) : t('ev_point')
+  if (sport === 'volleyball') return ev.t === 'score' ? t('ev_set') : t('ev_vpoint')
+  if (sport === 'basketball') return `+${ev.n}`
+  return t('ev_goal')
+}
+
+function strikeSpot(ev, sport) {
+  const s = ev.side
+  if (sport === 'tennis') return { x: s === 0 ? rnd(80, 97) : rnd(3, 20), y: rnd(18, 82) }
+  if (sport === 'volleyball') return { x: s === 0 ? rnd(62, 92) : rnd(8, 38), y: rnd(20, 80) }
+  if (sport === 'basketball') return { x: s === 0 ? 100 - HOOP_X : HOOP_X, y: 50 }
+  return { x: s === 0 ? 100.6 : -0.6, y: rnd(46, 54) }
+}
+
+function Arena({ m, data, t }) {
+  const live = m.status === 'live'
+  const sport = m.sport
+  const net = sport === 'tennis' || sport === 'volleyball'
+  const scene = useScene(m, data, t)
+  const lv = data.live || {}
+  const x = lv.x || {}
+  const H = t.team(m.home), A = t.team(m.away)
+  const names = [H, A]
+  const dataSS = x.ss || (lv.game ? lv.game.map(String) : ['0', '0'])
+  const dataPer = (x.periods && x.periods.length ? x.periods : (lv.per || [])).filter((p) => p[0] || p[1])
+  const dataScore = data.score || m.score || [0, 0] // centre data is fresher than the page data
+  // ---------- displayed (directed) state ----------
+  const [shown, setShown] = useState(() => ({ score: dataScore, ss: dataSS, per: dataPer }))
+  const [phase, setPhase] = useState({ kind: 'idle', ev: null })
+  const queue = useRef([])
+  const seen = useRef(null)
+  const [, force] = useState(0)
+  const evs = scoreEvents(m, data, t)
+  useEffect(() => {
+    if (!data.now) return
+    if (seen.current === null) { seen.current = new Set(evs.map((e) => e.k)); setShown({ score: dataScore, ss: dataSS, per: dataPer }); return }
+    const fresh = evs.filter((e) => !seen.current.has(e.k))
+    fresh.forEach((e) => seen.current.add(e.k))
+    if (live && fresh.length) {
+      queue.current.push(...fresh)
+      // too far behind: settle the oldest ones silently so the court stays close to real time
+      while (queue.current.length > 3) commit(queue.current.shift())
+      force((v) => v + 1)
+    }
+    if (!queue.current.length && phase.kind === 'idle') setShown({ score: dataScore, ss: dataSS, per: dataPer })
+  }, [data]) // eslint-disable-line react-hooks/exhaustive-deps
+  function commit(ev) {
+    setShown((sh) => {
+      const n = { ...sh, score: [...sh.score], per: sh.per.map((p) => [...p]) }
+      if (sport === 'tennis') {
+        if (ev.t === 'game') { n.ss = ['0', '0']; const cur = n.per[n.per.length - 1]; if (cur) cur[ev.side] = (cur[ev.side] || 0) + 1 } else if (ev.ss) n.ss = ev.ss
+      } else if (sport === 'volleyball') {
+        if (ev.t === 'score') { n.score[ev.side] += 1; n.per.push([0, 0]) } else if (ev.ps) { if (!n.per.length) n.per.push([0, 0]); n.per[n.per.length - 1] = [...ev.ps] }
+      } else { n.score[ev.side] += ev.n || 1; const cur = n.per[n.per.length - 1]; if (cur && sport !== 'football') cur[ev.side] = (cur[ev.side] || 0) + (ev.n || 1) }
+      return n
+    })
+  }
+  // ---------- possession / serve ----------
+  const plays = data.plays || []
+  const lastPt = sport === 'volleyball' ? [...(data.xev || [])].reverse().find((e) => e.t === 'point' || e.t === 'score') : null
+  const PVs = { 0: 0, 15: 1, 30: 2, 40: 3, A: 4 }
+  const totalPts = (PVs[shown.ss[0]] ?? 0) + (PVs[shown.ss[1]] ?? 0)
+  const deuce = totalPts % 2 === 0
+  const tServer = x.server ? x.server - 1 : (lv.spl === 'AWAY' ? 1 : 0)
+  const server = sport === 'tennis' ? tServer : sport === 'volleyball' ? (x.server ? x.server - 1 : lastPt ? lastPt.side : 0) : null
+  const srvY = server === 0 ? (deuce ? 68 : 32) : (deuce ? 32 : 68)
+  const rcvY = 100 - srvY
+  let att = null
+  if (sport === 'basketball' && plays.length) att = bballPossession(plays)
+  else if (net) att = server
+  else att = scene.x > 55 ? 0 : scene.x < 45 ? 1 : null
+  const ttl = scene.title || ''
+  const intensity = ttl === t('dangerAttack') || ttl === t('ev_danger') ? 0.95 : ttl === t('attack') || ttl === t('ev_attack') ? 0.6 : 0.3
+  const eng = useArenaEngine({ live, sport, att, intensity, server, srvY, rcvY })
+  // ---------- the director ----------
+  useEffect(() => {
+    if (phase.kind !== 'idle' || !queue.current.length || !live || !eng.api.current) return
+    const ev = queue.current[0]
+    setPhase({ kind: 'finish', ev })
+    let done = false
+    const land = () => {
+      if (done) return; done = true
+      setPhase({ kind: 'pause', ev })
+      setTimeout(() => {
+        commit(ev)
+        setPhase({ kind: 'banner', ev })
+        setTimeout(() => {
+          queue.current.shift()
+          setPhase({ kind: 'idle', ev: null })
+          const nextServer = sport === 'volleyball' ? ev.side : sport === 'tennis' ? (ev.t === 'game' ? 1 - server : server) : null
+          if (net) eng.api.current.resume({ serveSide: nextServer })
+          else eng.api.current.resume({ reset: { x: sport === 'basketball' ? (ev.side === 0 ? 8 : 92) : 50, y: 50 } })
+        }, 2300)
+      }, 450)
+    }
+    eng.api.current.strike(strikeSpot(ev, sport), sport === 'basketball' ? 1 : net ? 1 : 0.15, land)
+    const guard = setTimeout(land, 4500) // never get stuck (e.g. hidden tab)
+    return () => clearTimeout(guard)
+  }, [phase.kind, queue.current.length, live]) // eslint-disable-line react-hooks/exhaustive-deps
+  // non-scoring events: short info in the status row, ball goes to the spot (shot, corner...)
+  const info = (data.xev || []).filter((e) => !SCORING.has(e.t) && ['shot_on', 'shot_off', 'corner', 'yellow', 'red', 'penalty', 'pen2', 'foul', 'bp', 'ace', 'df'].includes(e.t))
+  const lastInfo = info[info.length - 1]
+  const [infoShown, setInfoShown] = useState(null)
+  const infoSeen = useRef(null)
+  useEffect(() => {
+    if (!data.now) return
+    if (infoSeen.current === null) { infoSeen.current = lastInfo ? lastInfo.at + lastInfo.t : ''; return }
+    if (!lastInfo || lastInfo.at + lastInfo.t === infoSeen.current || !live) return
+    infoSeen.current = lastInfo.at + lastInfo.t
+    setInfoShown(lastInfo)
+    const sp = EVSPOT[lastInfo.t]
+    if (sp && eng.api.current) eng.api.current.poke({ x: lastInfo.side === 0 ? sp[0] : 100 - sp[0], y: lastInfo.t === 'corner' ? (lastInfo.at % 2 ? sp[1] : 100 - sp[1]) : sp[1] })
+    const id = setTimeout(() => setInfoShown(null), 4000)
+    return () => clearTimeout(id)
+  }, [lastInfo?.at, lastInfo?.t, data.now]) // eslint-disable-line react-hooks/exhaustive-deps
+  // ---------- texts ----------
+  const periodTxt = !live ? t('finished') : sport === 'football' ? (m.minute === 'HT' ? t('ht') : m.minute || '') : periodLabel(lv.p, sport, t) || (/^[A-Z0-9_]+$/.test(m.minute || '') ? periodLabel(m.minute, sport, t) : m.minute)
+  const perTxt = shown.per.map((p) => `${p[0] ?? 0}-${p[1] ?? 0}`).join(', ')
+  const fouls = data.fouls, clock = data.clock
+  const bonusDots = (n) => <span className="bonus"><b>BONUS</b>{[0, 1, 2, 3, 4].map((i) => <i key={i} className={i < Math.min(5, n) ? 'on' : ''} />)}</span>
+  const boardL = sport === 'tennis' ? (live ? shown.ss[0] : dataScore[0]) : shown.score[0]
+  const boardR = sport === 'tennis' ? (live ? shown.ss[1] : dataScore[1]) : shown.score[1]
+  let status = null
+  if (phase.kind !== 'idle' && phase.ev) status = { side: phase.ev.side, title: phase.kind === 'finish' ? (net ? t('rally') : sport === 'basketball' ? t('shot') : t('ev_shot_on')) : bannerTitle(phase.ev, sport, t), icon: phase.kind === 'finish' ? null : (sport === 'tennis' ? 'ace' : 'score') }
+  else if (infoShown) status = { side: infoShown.side, title: infoShown.t === 'bp' ? t('ev_bp') : xevLabel(infoShown, sport, t), icon: infoShown.t === 'bp' ? 'break' : infoShown.t }
+  else if (live && att !== null) status = { side: att, title: net ? t('serve') : sport === 'basketball' ? t('withBall') : (ttl && ![t('live'), t('finished'), t('pause'), t('ev_goal'), t('ev_set'), t('ev_vpoint'), `${t('goal')}!`].includes(ttl) && !ttl.startsWith('+') ? ttl : t('withBall')), arrow: !net }
+  const ev = phase.ev
+  const bannerScore = sport === 'tennis' ? (ev && ev.t === 'game' ? (shown.per[shown.per.length - 1] || [0, 0]) : shown.ss) : sport === 'volleyball' && ev && ev.t === 'point' ? (shown.per[shown.per.length - 1] || [0, 0]) : shown.score
+  const mom = sport === 'football' ? data.momentum || [] : []
+  // event feed under the court: scoring events appear only after they were played on the court
+  const pending = new Set([...queue.current.map((q) => q.k), ...(phase.kind === 'finish' || phase.kind === 'pause' ? [phase.ev?.k] : [])])
+  const feed = (sport === 'basketball' && plays.length
+    ? plays.map((p) => ({ k: `b-${p.q}-${p.clock}-${p.player}-${p.pts}-${p.home ? 0 : 1}`, t: p.pts ? 'score' : ['CM', 'CMU', 'CMT'].includes(p.pt) ? 'foul' : p.pt === 'TOUT' ? 'timeout' : null, side: p.home ? 0 : 1, title: t.lang === 'ru' ? p.ru : t.serb(p.sr), when: p.clock ? `Q${p.q} ${p.clock}` : '' })).filter((e) => e.t)
+    : (data.xev || []).filter((e) => [...TOAST, 'foul', 'game', 'bp'].includes(e.t) && (sport !== 'tennis' || e.t !== 'score')).map((e) => ({
+      k: SCORING.has(e.t) ? `x-${e.at}-${e.t}-${e.side}-${(e.ss || e.ps || []).join(':')}` : `i-${e.at}-${e.t}-${e.side}`,
+      t: sport === 'tennis' ? (e.t === 'game' ? 'score' : e.t === 'bp' ? 'break' : 'ace') : e.t, side: e.side,
+      title: sport === 'tennis' ? (e.t === 'game' ? (e.brk ? t('ev_break') : t('ev_game')) : e.t === 'bp' ? t('ev_bp') : t('ev_point')) : xevLabel(e, sport, t),
+      when: e.ss ? e.ss.join(':') : e.ps ? `${e.ps[0]}:${e.ps[1]}` : e.ts ? (sport === 'football' ? `${Math.floor(e.ts / 60) + 1}'` : '') : '' })))
+    .filter((e) => !pending.has(e.k))
+  return (
+    <div className="tennis-tracker trk">
+      <div className="tt-bar">
+        <span className="tt-player l"><IconShirtFilled size={18} className="c0i" /><span className="ellip">{H}</span></span>
+        <span className="tt-score num"><i className="c0b" />
+          <span className="flip"><AnimatePresence mode="popLayout" initial={false}><motion.span key={`l${boardL}`} initial={{ y: -16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 16, opacity: 0 }} transition={{ duration: 0.28 }}>{boardL}</motion.span></AnimatePresence></span>
+          <span className="colon">:</span>
+          <span className="flip"><AnimatePresence mode="popLayout" initial={false}><motion.span key={`r${boardR}`} initial={{ y: -16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 16, opacity: 0 }} transition={{ duration: 0.28 }}>{boardR}</motion.span></AnimatePresence></span>
+          <i className="c1b" /></span>
+        <span className="tt-player r"><span className="ellip">{A}</span><IconShirtFilled size={18} className="c1i" /></span>
+      </div>
+      {sport === 'basketball' && fouls && live ? (
+        <div className="tt-sets num bb-sub">{bonusDots(fouls[0])}<span>{clock && /^\d{1,2}:\d{2}$/.test(String(clock.t).trim()) ? `Q${clock.q} ${String(clock.t).trim()}` : periodTxt}</span>{bonusDots(fouls[1])}</div>
+      ) : (
+        <div className="tt-sets num">{(sport === 'tennis' ? perTxt : [periodTxt, sport === 'football' ? '' : perTxt].filter(Boolean).join('   ')) || '\u00a0'}</div>
+      )}
+      <div className="trk-status">
+        <AnimatePresence mode="wait" initial={false}>
+          {status ? (
+            <motion.div key={(status.title || '') + status.side + phase.kind} className={`trk-st s${status.side ?? 'n'}`} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.18 }}>
+              {status.icon ? <span className="trk-st-ico"><EvIconBig type={status.icon} sport={sport} /></span> : null}
+              <span className="trk-st-txt ellip">{status.side !== null && status.side !== undefined && <b>{names[status.side]}</b>}{status.title}</span>
+              {status.arrow && <span className={`trk-st-arrow ${status.side === 0 ? 'r' : 'l'}`} />}
+            </motion.div>
+          ) : <motion.div key="none" className="trk-st muted-st" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>{live ? t('live') : t('finished')}</motion.div>}
+        </AnimatePresence>
+      </div>
+      <div className={`court court-${sport} tt-court`} style={{ aspectRatio: courtAspect(sport) }}>
+        <CourtLines sport={sport} />
+        <div className="field" style={fieldStyle(sport)}>
+          {live && att !== null && !net && <div className={`terr t${att}`} aria-hidden="true" />}
+          {mom.length > 0 && phase.kind !== 'banner' && <div className="bp-mom"><Momentum data={mom} /></div>}
+          <svg className="arena-fx" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+            <polyline ref={eng.trailEl} points="" fill="none" stroke={sport === 'tennis' ? 'rgba(215,242,90,0.55)' : 'rgba(255,255,255,0.4)'} strokeWidth="1.4" strokeDasharray="3 4" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+            <g ref={eng.marksEl} fill="none" stroke="rgba(255,255,255,0.75)" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
+          </svg>
+          <span ref={eng.rippleEl} className="ripple" />
+          <span ref={eng.shadowEl} className="eng-shadow" style={{ opacity: live ? 0.5 : 0 }} />
+          <span ref={eng.ballEl} className={`eng-ball ball-${sport}`} style={{ opacity: live ? 1 : 0 }} />
+          {sport === 'tennis' && [0, 1].map((side) => (
+            <div key={side} className={`tt-tag ${side === 0 ? 'l' : 'r'}`} style={{ top: `${side === server ? srvY : rcvY}%` }}>
+              <span className="ellip">{names[side]}</span>{live && side === server && phase.kind === 'idle' && <b>{t('serve')}</b>}
+            </div>
+          ))}
+        </div>
+        <AnimatePresence>
+          {phase.kind === 'banner' && ev && (
+            <motion.div key={'b' + ev.k} className={`arena-banner s${ev.side}`} initial={{ opacity: 0, y: 18, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -10 }} transition={{ type: 'spring', stiffness: 260, damping: 24 }}>
+              <span className="ab-bar" />
+              <div className="ab-main">
+                <motion.b initial={{ letterSpacing: '0.12em', opacity: 0 }} animate={{ letterSpacing: '0.02em', opacity: 1 }} transition={{ duration: 0.4 }}>{bannerTitle(ev, sport, t)}</motion.b>
+                <span className="ellip">{names[ev.side]}{ev.sub ? `, ${ev.sub}` : ''}</span>
+              </div>
+              <div className="ab-score num"><span className={ev.side === 0 ? 'hl' : ''}>{bannerScore[0]}</span><i>:</i><span className={ev.side === 1 ? 'hl' : ''}>{bannerScore[1]}</span></div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        {!live && <div className="tt-toast">{t('finished')}</div>}
+      </div>
+      <Extras m={m} data={data} t={t} items={feed} />
+    </div>
+  )
+}
+
 function Stats({ stats, t }) {
   if (!stats || !stats.length) return <div className="empty" style={{ padding: 20 }}>{t('noStats')}</div>
   return (
@@ -854,7 +1177,7 @@ export default function MatchCenter({ m, fallback = null }) {
         <span className="ellip">{t.league(m.league)}</span>
         {live ? <span className="badge live"><span className="live-dot" style={{ marginRight: 6 }} />{m.minute === 'HT' ? t('ht') : /^[A-Z0-9_]+$/.test(m.minute || '') ? periodLabel(m.minute, m.sport, t) : m.minute || t('live')}</span> : <span className="badge">{t('finished')}</span>}
       </div>
-      {m.sport === 'tennis' ? <TennisCourt m={m} data={data} t={t} /> : <Court m={m} data={data} t={t} />}
+      <Arena m={m} data={data} t={t} />
       <div className="seg" style={{ margin: '12px 12px 0' }}>{tabs.map(([k, l]) => <button key={k} className={active === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}</div>
       <div className={`center-body${active === 'periods' ? '' : ' fixed'}`}>
         {!loaded ? <div className="skeleton" style={{ height: active === 'periods' ? 150 : 272, margin: 14, borderRadius: 12 }} /> : (
