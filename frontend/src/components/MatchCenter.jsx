@@ -971,7 +971,10 @@ function Arena({ m, data, t }) {
   const PVs = { 0: 0, 15: 1, 30: 2, 40: 3, A: 4 }
   const totalPts = (PVs[shown.ss[0]] ?? 0) + (PVs[shown.ss[1]] ?? 0)
   const deuce = totalPts % 2 === 0
-  const tServer = x.server ? x.server - 1 : (lv.spl === 'AWAY' ? 1 : 0)
+  const feedServer = x.server ? x.server - 1 : (lv.spl === 'AWAY' ? 1 : 0)
+  // after a game the serve changes hands at once on the court, even if the feed reports it a bit later
+  const [srvOverride, setSrvOverride] = useState(null)
+  const tServer = srvOverride && srvOverride.base === feedServer ? srvOverride.val : feedServer
   const server = sport === 'tennis' ? tServer : sport === 'volleyball' ? (x.server ? x.server - 1 : lv.spl ? (lv.spl === 'AWAY' ? 1 : 0) : lastPt ? lastPt.side : 0) : null
   const srvY = server === 0 ? (deuce ? 68 : 32) : (deuce ? 32 : 68)
   const rcvY = 100 - srvY
@@ -1004,11 +1007,12 @@ function Arena({ m, data, t }) {
       setPhase({ kind: 'pause', ev })
       setTimeout(() => {
         commit(ev)
+        if (sport === 'tennis' && ev.t === 'game') setSrvOverride({ base: feedServer, val: 1 - tServer })
         setPhase({ kind: 'banner', ev })
         setTimeout(() => {
           queue.current.shift()
           setPhase({ kind: 'idle', ev: null })
-          const nextServer = sport === 'volleyball' ? ev.side : sport === 'tennis' ? (ev.t === 'game' ? 1 - server : server) : null
+          const nextServer = sport === 'volleyball' ? ev.side : sport === 'tennis' ? (ev.t === 'game' ? 1 - tServer : tServer) : null
           if (net) eng.api.current.resume({ serveSide: nextServer })
           else eng.api.current.resume({ reset: { x: sport === 'basketball' ? (ev.side === 0 ? 8 : 92) : 50, y: 50 } })
         }, 2300)
