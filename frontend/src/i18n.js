@@ -122,7 +122,17 @@ export function useT() {
   t.serb = (s) => (lang === 'sr-cyr' ? toCyr(s) : s)
   t.team = (team) => {
     if (!team) return ''
-    return lang === 'sr-cyr' && (team.serbian || team.national) ? toCyr(team.short) : team.short
+    const n = team.names || {}
+    if (lang === 'ru') return n.ru || team.short
+    if (lang === 'sr-cyr') return n.cyr || ((team.serbian || team.national) ? toCyr(team.short) : team.short)
+    return n.sr || team.short
+  }
+  t.league = (league) => {
+    if (!league) return ''
+    const n = league.names || {}
+    if (lang === 'ru') return n.ru || league.name
+    const s = n.sr || league.name
+    return lang === 'sr-cyr' ? toCyr(s) : s
   }
   t.locale = lang === 'ru' ? 'ru-RU' : 'sr-Latn-RS'
   t.n = (n, key) => {

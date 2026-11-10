@@ -3,13 +3,13 @@ from datetime import datetime, timedelta
 import httpx
 from ..config import UA
 
-URL = "https://api-live.euroleague.net/v2/competitions/E/seasons/{s}/games"
+URL = "https://api-live.euroleague.net/v2/competitions/{c}/seasons/{c}{y}/games"
+COMPS = {"E": ("EuroLeague", 2), "U": ("EuroCup", 8)}
 SERBIAN_CODES = {"PAR", "RED", "CZV", "MER"}
 
 
-def season_code(today: datetime) -> str:
-    y = today.year if today.month >= 8 else today.year - 1
-    return f"E{y}"
+def season_year(today: datetime) -> int:
+    return today.year if today.month >= 8 else today.year - 1
 
 
 def _team(c: dict) -> dict:
@@ -22,9 +22,10 @@ def _team(c: dict) -> dict:
             "serbian": serbian}
 
 
-def fetch(client: httpx.Client) -> list[dict]:
+def fetch(client: httpx.Client, comp: str = "E") -> list[dict]:
     now = datetime.utcnow()
-    r = client.get(URL.format(s=season_code(now)), headers={"User-Agent": UA}, timeout=25)
+    lname, prio = COMPS[comp]
+    r = client.get(URL.format(c=comp, y=season_year(now)), headers={"User-Agent": UA}, timeout=25)
     r.raise_for_status()
     out = []
     for g in r.json().get("data", []):
@@ -47,7 +48,7 @@ def fetch(client: httpx.Client) -> list[dict]:
         out.append({
             "ext": f"el:{g['identifier']}",
             "sport": "basketball",
-            "league": {"ext": "el:E", "name": "EuroLeague", "country": "EU", "priority": 2},
+            "league": {"ext": f"el:{comp}", "name": lname, "country": "EU", "priority": prio},
             "home": _team(loc["club"]), "away": _team(road["club"]),
             "start": start, "status": status, "minute": "",
             "score_home": sh if status != "scheduled" and (sh or sa) else None,

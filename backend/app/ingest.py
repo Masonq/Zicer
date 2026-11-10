@@ -12,8 +12,8 @@ from sqlalchemy.orm import Session
 from . import config
 from .models import (Team, League, Match, Prediction, Ticket, TicketItem, ScorePick, Trend, User,
                      JobStatus, Translation, TgSent, Meta, now)
-from .sources import fotmob, euroleague, maxbet
-from .textutil import similarity
+from .sources import fotmob, euroleague, maxbet, espn_nba
+from .textutil import similarity, to_cyr, to_lat
 
 log = logging.getLogger("zicer")
 MATCH_THRESHOLD = 0.85
@@ -134,9 +134,113 @@ def backfill_football(db: Session, days: int = 60) -> str:
 
 
 def sync_basketball(db: Session) -> str:
+    n = 0
     with httpx.Client() as c:
-        n = upsert_matches(db, euroleague.fetch(c))
+        for comp in ("E", "U"):
+            try:
+                n += upsert_matches(db, euroleague.fetch(c, comp))
+                db.commit()
+            except Exception:  # noqa
+                db.rollback()
+                log.exception("euroleague %s", comp)
+        for i in (-1, 0, 1):
+            n += upsert_matches(db, espn_nba.fetch_day(date.today() + timedelta(days=i), c))
+            db.commit()
     return f"basketball upserted {n}"
+
+
+def sync_basketball_week(db: Session) -> str:
+    n = 0
+    with httpx.Client() as c:
+        for i in range(2, 8):
+            n += upsert_matches(db, espn_nba.fetch_day(date.today() + timedelta(days=i), c))
+            db.commit()
+    return f"nba week upserted {n}"
+
+
+SERBIAN_BASKET = ("partizan", "zvezda", "mega", "fmp", "borac", "spartak", "zlatibor", "vojvodina", "dynamic",
+                  "sloga", "metalac", "okk beograd", "mladost", "radnički", "radnicki", "tamiš", "tamis", "split")
+
+
+def _resolve_bteam(db: Session, mb_id, name: str, cache: list, serbian_league: bool) -> Team:
+    ext = f"mbt:{mb_id}"
+    t = db.scalar(select(Team).where(Team.ext == ext))
+    if t:
+        return t
+    best, bs = None, 0.0
+    for cand in cache:
+        sc = max(similarity(name, cand.name), similarity(name, cand.short_name or cand.name))
+        if sc > bs:
+            best, bs = cand, sc
+    if best and bs >= 0.9:
+        return best
+    low = name.lower()
+    ser = serbian_league or any(w in low for w in SERBIAN_BASKET[:2])
+    t = Team(ext=ext, sport="basketball", name=name, short_name=name.replace("C.Zvezda", "Crvena zvezda"),
+             is_serbian=ser, country="SRB" if ser else "")
+    db.add(t)
+    db.flush()
+    cache.append(t)
+    return t
+
+
+def create_maxbet_basket(db: Session, offers: list[dict]) -> int:
+    n = 0
+    cache = None
+    for o in offers:
+        lg = maxbet.basket_league(o["league"])
+        if not lg or not o.get("id"):
+            continue
+        ext = f"mbb:{o['id']}"
+        m = db.scalar(select(Match).where(Match.ext == ext))
+        if m and m.status == "finished":
+            continue
+        if not m:
+            if cache is None:
+                cache = db.scalars(select(Team).where(Team.sport == "basketball")).all()
+            lname, cc, prio = lg
+            league = _league(db, "basketball", {"ext": f"mbl:{lname}", "name": lname, "country": cc, "priority": prio})
+            h = _resolve_bteam(db, o.get("home_id"), o["home"], cache, cc == "SRB")
+            a = _resolve_bteam(db, o.get("away_id"), o["away"], cache, cc == "SRB")
+            db.flush()
+            m = Match(ext=ext, sport="basketball", league_id=league.id, home_id=h.id, away_id=a.id, odds={}, start=o["start"])
+            db.add(m)
+            n += 1
+        m.start = o["start"]
+        if o["live"] and m.status == "scheduled":
+            m.status = "live"
+        m.odds = {"maxbet": {k: v for k, v in o["odds"].items() if v and v > 1.0}}
+        m.odds_updated = now()
+        m.is_derby = _is_derby(m.home, m.away) if m.home and m.away else False
+    db.commit()
+    return n
+
+
+def sync_maxbet_results(db: Session) -> str:
+    pending = db.scalars(select(Match).where(Match.ext.like("mbb:%"), Match.status.in_(["scheduled", "live"]),
+                                             Match.start < datetime.utcnow())).all()
+    if not pending:
+        return "no pending"
+    res = {}
+    with httpx.Client() as c:
+        for i in (0, -1):
+            try:
+                res.update(maxbet.fetch_results(date.today() + timedelta(days=i), c))
+            except Exception:  # noqa
+                log.exception("maxbet results")
+    n = 0
+    for m in pending:
+        r = res.get(int(m.ext.split(":")[1]))
+        if not r:
+            if m.start < datetime.utcnow() - timedelta(hours=2, minutes=30) and m.status == "scheduled":
+                m.status = "live"
+            continue
+        m.score_home, m.score_away = r["h"], r["a"]
+        m.reg_home, m.reg_away = r["rh"], r["ra"]
+        m.status = "finished" if r["end"] else "live"
+        n += 1
+    db.commit()
+    return f"maxbet results {n}"
 
 
 def sync_odds(db: Session) -> str:
@@ -144,10 +248,12 @@ def sync_odds(db: Session) -> str:
     with httpx.Client() as c:
         for sport in ("football", "basketball"):
             offers = maxbet.fetch(sport, c)
+            if sport == "basketball":
+                matched += create_maxbet_basket(db, offers)
             lo = datetime.utcnow() - timedelta(hours=3)
             hi = datetime.utcnow() + timedelta(days=8)
             ms = db.scalars(select(Match).where(Match.sport == sport, Match.start >= lo, Match.start <= hi,
-                                                Match.status.in_(["scheduled", "live"]))).all()
+                                                Match.status.in_(["scheduled", "live"]), ~Match.ext.like("mbb:%"))).all()
             for m in ms:
                 best, best_s = None, 0.0
                 for o in offers:
@@ -612,3 +718,128 @@ def tg_reminders(db: Session) -> str:
             except Exception:  # noqa
                 pass
     return f"reminders {n}"
+
+
+# ---------- names in SR / CYR / RU ----------
+LEAGUE_NAMES = {  # ext prefix "fm:{pid}" -> (sr, ru)
+    182: ("Superliga Srbije", "Суперлига Сербии"), 42: ("Liga šampiona", "Лига чемпионов"), 73: ("Liga Evrope", "Лига Европы"),
+    10216: ("Liga konferencija", "Лига конференций"), 47: ("Premijer liga", "Премьер-лига"), 87: ("La Liga", "Ла Лига"),
+    55: ("Serija A", "Серия A"), 54: ("Bundesliga", "Бундеслига"), 53: ("Liga 1", "Лига 1"), 61: ("Liga Portugal", "Чемпионат Португалии"),
+    57: ("Eredivizi", "Эредивизи"), 71: ("Super liga Turske", "Суперлига Турции"), 135: ("Super liga Grčke", "Суперлига Греции"),
+    252: ("HNL", "Чемпионат Хорватии"), 267: ("Premijer liga BiH", "Премьер-лига Боснии"), 232: ("Prva liga Crne Gore", "Чемпионат Черногории"),
+    132: ("FA kup", "Кубок Англии"), 133: ("Liga kup Engleske", "Кубок английской лиги"), 138: ("Kup kralja", "Кубок Испании"),
+    141: ("Kup Italije", "Кубок Италии"), 209: ("Kup Nemačke", "Кубок Германии"), 134: ("Kup Francuske", "Кубок Франции"),
+    186: ("Kup Portugala", "Кубок Португалии"), 48: ("Čempionšip", "Чемпионшип"), 140: ("La Liga 2", "Сегунда"),
+    86: ("Serija B", "Серия B"), 146: ("2. Bundesliga", "2-я Бундеслига"), 110: ("Liga 2", "Лига 2"), 40: ("Prva liga Belgije", "Чемпионат Бельгии"),
+    64: ("Premijeršip Škotske", "Чемпионат Шотландии"), 38: ("Bundesliga Austrije", "Чемпионат Австрии"), 69: ("Super liga Švajcarske", "Чемпионат Швейцарии"),
+    46: ("Superliga Danske", "Чемпионат Дании"), 63: ("Premijer liga Rusije", "РПЛ"), 441: ("Premijer liga Ukrajine", "Чемпионат Украины"),
+    196: ("Ekstraklasa", "Экстракласа"), 122: ("Prva liga Češke", "Чемпионат Чехии"), 189: ("Superliga Rumunije", "Чемпионат Румынии"),
+    270: ("Prva liga Bugarske", "Чемпионат Болгарии"), 212: ("NB I Mađarske", "Чемпионат Венгрии"), 173: ("Prva liga Slovenije", "Чемпионат Словении"),
+    249: ("Prva liga Makedonije", "Чемпионат Северной Македонии"), 268: ("Serija A Brazila", "Серия A Бразилии"), 112: ("Liga Argentine", "Чемпионат Аргентины"),
+    130: ("MLS", "MLS"), 536: ("Saudijska Pro liga", "Про-лига Саудовской Аравии"), 114: ("Prijateljske utakmice", "Товарищеские матчи"),
+    50: ("Evropsko prvenstvo", "Чемпионат Европы"), 77: ("Svetsko prvenstvo", "Чемпионат мира"),
+    9806: ("Liga nacija A", "Лига наций A"), 9807: ("Liga nacija B", "Лига наций B"),
+}
+LEAGUE_EXT = {"el:E": ("Evroliga", "Евролига"), "el:U": ("Evrokup", "Еврокубок"), "nba": ("NBA", "НБА"),
+              "mbl:ABA liga": ("ABA liga", "Лига ABA"), "mbl:KLS Srbija": ("KLS Srbija", "Чемпионат Сербии"),
+              "mbl:Liga šampiona FIBA": ("Liga šampiona FIBA", "Лига чемпионов FIBA"), "mbl:FIBA Evropski kup": ("FIBA Evropski kup", "Кубок Европы FIBA")}
+
+
+def _gtx(text: str, tl: str) -> str:
+    r = httpx.get("https://translate.googleapis.com/translate_a/single",
+                  params={"client": "gtx", "sl": "auto", "tl": tl, "dt": "t", "q": text},
+                  headers={"User-Agent": config.UA}, timeout=15)
+    r.raise_for_status()
+    return "".join(p[0] for p in r.json()[0] if p and p[0]).strip()
+
+
+def _strip_ctx(s: str) -> str:
+    return s.split("(")[0].strip().strip(".,") if "(" in s else s.strip()
+
+
+def _league_names(lg: League) -> tuple[str, str]:
+    if lg.ext in LEAGUE_EXT:
+        return LEAGUE_EXT[lg.ext]
+    parts = lg.ext.split(":")
+    if parts[0] == "fm" and len(parts) > 1 and parts[1].isdigit():
+        pid = int(parts[1])
+        grp = ""
+        if " Grp. " in lg.name:
+            grp = lg.name.split(" Grp. ")[1].strip()
+        if pid in LEAGUE_NAMES:
+            sr, ru = LEAGUE_NAMES[pid]
+            if grp:
+                sr, ru = f"{sr}, grupa {grp}", f"{ru}, группа {grp}"
+            return sr, ru
+    base = lg.name
+    cyr = _strip_ctx(_gtx(f"{base} (football league)" if lg.sport == "football" else f"{base} (basketball league)", "sr"))
+    ru = _strip_ctx(_gtx(f"{base} (football league)" if lg.sport == "football" else f"{base} (basketball league)", "ru"))
+    return to_lat(cyr), ru
+
+
+_RU2LAT = dict(zip("абвгдеёжзийклмнопрстуфхцчшщъыьэюя", ["a", "b", "v", "g", "d", "e", "e", "zh", "z", "i", "y", "k", "l", "m", "n", "o", "p", "r", "s", "t", "u", "f", "h", "ts", "ch", "sh", "sch", "", "y", "", "e", "yu", "ya"]))
+
+
+def _back_lat(s: str) -> str:
+    from .textutil import strip_accents
+    s = to_lat(s).lower()
+    s = "".join(_RU2LAT.get(ch, ch) for ch in s)
+    return strip_accents(s)
+
+
+def _close(orig: str, translated: str) -> bool:
+    from difflib import SequenceMatcher
+    from .textutil import strip_accents
+    a = strip_accents(orig).lower()
+    b = _back_lat(translated)
+    return SequenceMatcher(None, a, b).ratio() >= 0.65
+
+
+def _top_team_ids(db: Session) -> set:
+    rows = db.execute(select(Match.home_id, Match.away_id).join(League, Match.league_id == League.id).where(League.priority <= 16)).all()
+    return {x for r in rows for x in r}
+
+
+def translate_names(db: Session, limit: int = 120) -> str:
+    import time
+    done = 0
+    for lg in db.scalars(select(League).where(League.name_ru == "").limit(40)).all():
+        try:
+            lg.name_sr, lg.name_ru = _league_names(lg)
+            db.commit()
+            done += 1
+        except Exception:  # noqa
+            db.rollback()
+        time.sleep(0.15)
+    from sqlalchemy import case
+    soon = select(Match.home_id).where(Match.start > datetime.utcnow() - timedelta(days=1)).union(
+        select(Match.away_id).where(Match.start > datetime.utcnow() - timedelta(days=1)))
+    teams = db.scalars(select(Team).where(Team.name_ru == "")
+                       .order_by(case((Team.id.in_(soon), 0), else_=1), Team.is_serbian.desc(), Team.id).limit(limit)).all()
+    top = _top_team_ids(db) if teams else set()
+    for t in teams:
+        short = t.short_name or t.name
+        try:
+            nation = t.name in fotmob.NATIONS_SR
+            if t.is_serbian or nation:
+                t.name_sr = short
+                t.name_cyr = to_cyr(short)
+                ctx = "national football team" if nation else ("football club" if t.sport == "football" else "basketball club")
+                src = t.name if nation else short
+                t.name_ru = _strip_ctx(_gtx(f"{src} ({ctx})", "ru")) or short
+            else:
+                ctx = "football club" if t.sport == "football" else "basketball club"
+                trusted = t.id in top or t.ext.startswith(("nba:", "el:"))
+                cyr = _strip_ctx(_gtx(f"{short} ({ctx})", "sr")) or short
+                ru = _strip_ctx(_gtx(f"{short} ({ctx})", "ru")) or short
+                if trusted or _close(short, cyr):
+                    t.name_cyr, t.name_sr = cyr, to_lat(cyr)
+                else:
+                    t.name_cyr, t.name_sr = short, short
+                t.name_ru = ru if (trusted or _close(short, ru)) else short
+            db.commit()
+            done += 1
+        except Exception:  # noqa
+            db.rollback()
+        time.sleep(0.15)
+    return f"names {done}"

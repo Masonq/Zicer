@@ -20,7 +20,7 @@ export default function Derby() {
         <>
           {next.status === 'scheduled' && (
             <div className="derby-banner" style={{ margin: '12px 0 16px', gridTemplateColumns: 'minmax(0,1fr) auto' }}>
-              <div><div className="t">{t('derbyNext')}</div><div className="s">{next.league.name}</div></div>
+              <div><div className="t">{t('derbyNext')}</div><div className="s">{t.league(next.league)}</div></div>
               <Countdown to={next.start} />
             </div>
           )}

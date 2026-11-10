@@ -99,8 +99,7 @@ export function MatchRow({ m }) {
 }
 
 export function leagueLabel(m, t) {
-  const n = m.league.name
-  return t.lang === 'sr-cyr' && m.league.country === 'SRB' ? t.serb(n) : n
+  return t.league(m.league)
 }
 
 export function MatchList({ matches }) {
@@ -114,7 +113,7 @@ export function MatchList({ matches }) {
   }
   return groups.map((g) => (
     <div className="league" key={g.key}>
-      <div className="league-head">{g.league.country && g.league.country !== 'INT' && <span className="flag">{g.league.country}</span>}<span className="ellip">{leagueLabel(g.sample, t)}</span></div>
+      <div className="league-head">{g.league.country && g.league.country !== 'INT' && <span className="flag">{g.league.country === 'EU' ? 'EU' : g.league.country}</span>}<span className="ellip">{leagueLabel(g.sample, t)}</span></div>
       <div className="rows">{g.items.map((m) => <MatchRow key={m.id} m={m} />)}</div>
     </div>
   ))

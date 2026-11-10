@@ -12,7 +12,7 @@ const ago = (iso) => {
   if (s < 86400) return `${Math.round(s / 3600)} ч назад`
   return new Date(iso).toLocaleString('ru-RU')
 }
-const JOB_RU = { football_live: 'Футбол лайв', football: 'Футбол (расписание)', basketball: 'Евролига', odds: 'Кэфы MaxBet', settle: 'Расчёт прогнозов', trends: 'Тренды', analysis: 'Разборы матчей', backfill: 'История за 60 дней', tg_poll: 'Telegram: привязка', tg_reminders: 'Telegram: напоминания' }
+const JOB_RU = { football_live: 'Футбол лайв', football: 'Футбол (расписание)', basketball: 'Евролига', odds: 'Кэфы MaxBet', settle: 'Расчёт прогнозов', trends: 'Тренды', analysis: 'Разборы матчей', backfill: 'История за 60 дней', basketball_week: 'NBA на неделю', maxbet_results: 'Результаты баскетбола (MaxBet)', names: 'Перевод названий', tg_poll: 'Telegram: привязка', tg_reminders: 'Telegram: напоминания' }
 
 function Dashboard() {
   const [ver, setVer] = useState(0)

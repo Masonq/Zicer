@@ -19,6 +19,9 @@ class Team(Base):
     logo: Mapped[str] = mapped_column(String(512), default="")
     country: Mapped[str] = mapped_column(String(8), default="")
     is_serbian: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    name_sr: Mapped[str] = mapped_column(String(128), default="")
+    name_cyr: Mapped[str] = mapped_column(String(128), default="")
+    name_ru: Mapped[str] = mapped_column(String(128), default="")
 
 
 class League(Base):
@@ -29,6 +32,8 @@ class League(Base):
     name: Mapped[str] = mapped_column(String(128))
     country: Mapped[str] = mapped_column(String(8), default="")
     priority: Mapped[int] = mapped_column(Integer, default=50)
+    name_sr: Mapped[str] = mapped_column(String(128), default="")
+    name_ru: Mapped[str] = mapped_column(String(128), default="")
 
 
 class Match(Base):

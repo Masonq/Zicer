@@ -64,3 +64,19 @@ def similarity(a: str, b: str) -> float:
     if na in nb or nb in na:
         seq = max(seq, 0.9)
     return max(seq, overlap * 0.95)
+
+
+_CYR2LAT = {"љ": "lj", "њ": "nj", "џ": "dž", "Љ": "Lj", "Њ": "Nj", "Џ": "Dž"}
+_C1 = "абвгдђежзијклмнопрстћуфхцчшАБВГДЂЕЖЗИЈКЛМНОПРСТЋУФХЦЧШ"
+_L1 = "abvgdđežzijklmnoprstćufhcčšABVGDĐEŽZIJKLMNOPRSTĆUFHCČŠ"
+
+
+def to_lat(s: str) -> str:
+    out = []
+    for ch in s:
+        if ch in _CYR2LAT:
+            out.append(_CYR2LAT[ch])
+        else:
+            i = _C1.find(ch)
+            out.append(_L1[i] if i >= 0 else ch)
+    return "".join(out)

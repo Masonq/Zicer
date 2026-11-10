@@ -104,10 +104,44 @@ def fetch(sport: str, client: httpx.Client) -> list[dict]:
         if not all(k in o for k in ("1", "3")):
             continue
         out.append({
+            "id": m.get("id"), "home_id": m.get("homeId"), "away_id": m.get("awayId"),
             "home": m.get("home", ""), "away": m.get("away", ""),
             "start": datetime.utcfromtimestamp(m["kickOffTime"] / 1000),
             "league": m.get("leagueName", ""),
             "odds": markets(sport, o, m.get("params") or {}, cs),
             "live": bool(m.get("live")),
         })
+    return out
+
+
+RESULTS = "https://www.maxbet.rs/restapi/results/sr/day/{d}?annex=3&desktopVersion=2.36.3.9&locale=sr"
+# MaxBet basketball leagues we take fixtures from (not covered by official feeds)
+BASKET_LEAGUES = {
+    "aba liga": ("ABA liga", "ABA", 3),
+    "serbia": ("KLS Srbija", "SRB", 5),
+    "ch. league": ("Liga šampiona FIBA", "EU", 9),
+    "fiba europe cup": ("FIBA Evropski kup", "EU", 12),
+}
+
+
+def basket_league(name: str):
+    n = name.lower().replace("košarka", "").replace("коšarka", "").strip()
+    return BASKET_LEAGUES.get(n)
+
+
+def fetch_results(d, client: httpx.Client, sport: str = "B") -> dict:
+    """Return {maxbet_match_id: {"h":..,"a":..,"rh":..,"ra":..,"end":bool}}."""
+    r = client.get(RESULTS.format(d=d.strftime("%d.%m.%Y.")), headers={"User-Agent": UA}, timeout=25)
+    r.raise_for_status()
+    out = {}
+    for m in (r.json().get("resultsMap") or {}).get(sport, []):
+        mr = m.get("matchResult") or {}
+        hs, as_ = mr.get("hs") or {}, mr.get("as") or {}
+        ft_h = hs.get("OVERTIME") if (hs.get("OVERTIME") or -1) >= 0 else hs.get("FULLTIME")
+        ft_a = as_.get("OVERTIME") if (as_.get("OVERTIME") or -1) >= 0 else as_.get("FULLTIME")
+        if ft_h is None or ft_a is None or ft_h < 0 or ft_a < 0:
+            continue
+        rh = (hs.get("FIRST_HALF", -1) + hs.get("SECOND_HALF", -1)) if hs.get("FIRST_HALF", -1) >= 0 and hs.get("SECOND_HALF", -1) >= 0 else None
+        ra = (as_.get("FIRST_HALF", -1) + as_.get("SECOND_HALF", -1)) if as_.get("FIRST_HALF", -1) >= 0 and as_.get("SECOND_HALF", -1) >= 0 else None
+        out[m["id"]] = {"h": ft_h, "a": ft_a, "rh": rh, "ra": ra, "end": mr.get("p") == "END"}
     return out

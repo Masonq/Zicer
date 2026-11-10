@@ -12,6 +12,9 @@ SCHEDULE = [  # (name, fn, every_seconds)
     ("football_live", ingest.sync_football_live, 60),
     ("football", ingest.sync_football, 900),
     ("basketball", ingest.sync_basketball, 180),
+    ("basketball_week", ingest.sync_basketball_week, 1800),
+    ("maxbet_results", ingest.sync_maxbet_results, 180),
+    ("names", ingest.translate_names, 300),
     ("odds", ingest.sync_odds, 180),
     ("settle", ingest.settle, 60),
     ("trends", ingest.build_trends, 1800),
@@ -28,6 +31,7 @@ def main():
     with SessionLocal() as db:
         ingest.job(db, "football", ingest.sync_football)
         ingest.job(db, "basketball", ingest.sync_basketball)
+        ingest.job(db, "basketball_week", ingest.sync_basketball_week)
         ingest.job(db, "backfill", ingest.backfill_football)
         for n in ("odds", "settle", "trends", "analysis"):
             ingest.job(db, n, dict((a, b) for a, b, _ in SCHEDULE)[n])
