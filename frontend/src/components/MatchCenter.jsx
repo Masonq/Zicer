@@ -36,7 +36,7 @@ function Momentum({ data, colors }) {
   const W = 600, H = 120, mid = H / 2
   const maxMin = Math.max(90, ...data.map((d) => d[0]))
   const bw = W / (maxMin + 1)
-  const hc = '#F2C230', ac = '#EEF3EE'
+  const hc = '#C8F51E', ac = '#EEF3EE'
   return (
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="momentum" aria-hidden="true">
       <line x1="0" x2={W} y1={mid} y2={mid} stroke="rgba(238,243,238,0.25)" strokeWidth="1" />
@@ -262,7 +262,7 @@ function celebrate(el, side) {
     const r = el.getBoundingClientRect()
     const x = (r.left + r.width * (side === 0 ? 0.8 : 0.2)) / window.innerWidth
     const y = (r.top + r.height * 0.5) / window.innerHeight
-    confetti({ particleCount: 70, spread: 70, startVelocity: 32, ticks: 140, scalar: 0.8, origin: { x, y }, colors: side === 0 ? ['#3D8EF0', '#F2C230', '#ffffff'] : ['#8BD12F', '#F2C230', '#ffffff'], disableForReducedMotion: true })
+    confetti({ particleCount: 70, spread: 70, startVelocity: 32, ticks: 140, scalar: 0.8, origin: { x, y }, colors: side === 0 ? ['#3D8EF0', '#C8F51E', '#ffffff'] : ['#8BD12F', '#C8F51E', '#ffffff'], disableForReducedMotion: true })
     if (navigator.vibrate) navigator.vibrate([40, 30, 40])
   } catch {}
 }

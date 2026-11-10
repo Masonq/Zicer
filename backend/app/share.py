@@ -12,7 +12,7 @@ from .models import Ticket
 
 router = APIRouter()
 FD = os.path.join(os.path.dirname(__file__), "fonts")
-BG, SURF, LINE, CHALK, MUTED, GOLD, WIN, LOSS = "#0F2A22", "#16382D", "#2A5244", "#EEF3EE", "#93AFA3", "#F2C230", "#4CC38A", "#E5544B"
+BG, SURF, LINE, CHALK, MUTED, GOLD, WIN, LOSS = "#0B0F0D", "#151C19", "#29332F", "#F4F5F3", "#95A39D", "#C8F51E", "#4CC38A", "#E5544B"
 
 
 @lru_cache(maxsize=32)
@@ -40,8 +40,13 @@ def render_ticket(t: Ticket) -> bytes:
     # pitch lines
     d.rectangle([40, 40, W - 40, H - 40], outline=LINE, width=3)
     d.line([W - 330, 40, W - 330, H - 40], fill=LINE, width=3)
-    d.text((80, 66), "WINLY", font=font("Oswald.ttf", 54, "Bold"), fill=GOLD)
-    d.text((80, 132), f"tiket @{t.user.username}", font=font("Manrope.ttf", 26, "SemiBold"), fill=MUTED)
+    try:
+        lg = Image.open(os.path.join(FD, "logo-88.png")).convert("RGBA").resize((68, 68))
+        im.paste(lg, (76, 62), lg)
+    except Exception:  # noqa
+        pass
+    d.text((156, 66), "Winly", font=font("Oswald.ttf", 54, "Bold"), fill=CHALK)
+    d.text((80, 140), f"tiket @{t.user.username}", font=font("Manrope.ttf", 26, "SemiBold"), fill=MUTED)
     status = {"won": ("PROŠAO", WIN), "lost": ("PAO", LOSS), "void": ("VRAĆEN", MUTED)}.get(t.status, ("U IGRI", CHALK))
     sf = font("Oswald.ttf", 92, "Bold")
     sw = d.textlength(status[0], font=sf)
