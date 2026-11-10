@@ -68,7 +68,7 @@ function Crest({ team, size }) {
 }
 
 const L = { stroke: 'rgba(255,255,255,0.24)', strokeWidth: 2, fill: 'none' }
-function CourtLines({ sport }) {
+export function CourtLines({ sport }) {
   if (sport === 'basketball') return (
     <svg viewBox="0 0 600 300" preserveAspectRatio="none" className="court-svg">
       <rect x="6" y="6" width="588" height="288" rx="6" {...L} /><line x1="300" y1="6" x2="300" y2="294" {...L} /><circle cx="300" cy="150" r="36" {...L} />

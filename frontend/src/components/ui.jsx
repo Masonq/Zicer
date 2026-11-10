@@ -4,6 +4,7 @@ import { useT } from '../i18n'
 import { useSlip } from '../store'
 import { pickText } from '../markets'
 import { periodLabel } from './MatchCenter'
+import { SportIcon } from './Sports'
 
 export function Crest({ team, size = 22 }) {
   const [bad, setBad] = useState(false)
@@ -116,7 +117,7 @@ export function MatchList({ matches }) {
   }
   return groups.map((g) => (
     <div className="league" key={g.key}>
-      <div className="league-head">{g.league.country && g.league.country !== 'INT' && <span className="flag">{g.league.country === 'EU' ? 'EU' : g.league.country}</span>}<span className="ellip">{leagueLabel(g.sample, t)}</span></div>
+      <div className="league-head"><span className={`league-sport ls-${g.sample.sport}`} title={t(g.sample.sport)}><SportIcon sport={g.sample.sport} size={14} /></span>{g.league.country && g.league.country !== 'INT' && <span className="flag">{g.league.country === 'EU' ? 'EU' : g.league.country}</span>}<span className="ellip">{leagueLabel(g.sample, t)}</span></div>
       <div className="rows">{g.items.map((m) => <MatchRow key={m.id} m={m} />)}</div>
     </div>
   ))

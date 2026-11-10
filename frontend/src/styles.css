@@ -418,3 +418,21 @@ img { display: block; max-width: 100%; }
 @keyframes flashball { 50% { transform: scale(1.7); } }
 .ev.ev-wide { grid-template-columns: 72px 28px minmax(0, 1fr); }
 .ev-wide .ev-ico { width: 28px; height: 28px; font-size: 11px; font-weight: 800; }
+
+/* sport identity on match cards */
+.pitch-lines { position: absolute; inset: 0; opacity: 0.55; pointer-events: none; z-index: 0; }
+.pitch-lines .court-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.pitch.pitch-football::before { display: none; }
+.pitch-basketball { background: repeating-linear-gradient(90deg, rgba(255,255,255,0.025) 0 22px, rgba(0,0,0,0.05) 22px 44px), linear-gradient(180deg, #6A4426, #4A2F1A); border-color: #7A5536; }
+.pitch-hockey { background: radial-gradient(ellipse at 50% 40%, #2B4A63 0%, #172C3F 75%); border-color: #3A5A75; }
+.pitch-tennis { background: linear-gradient(180deg, #1E5D8C, #164466); border-color: #2C6FA0; }
+.pitch-volleyball { background: linear-gradient(180deg, #8A5226, #663A19); border-color: #9A6236; }
+.pitch-waterpolo { background: repeating-linear-gradient(170deg, rgba(255,255,255,0.03) 0 14px, rgba(0,0,0,0.03) 14px 28px), linear-gradient(180deg, #1478A8, #0D5578); border-color: #2A8ABA; }
+.pitch:not(.pitch-football)::before { display: none; }
+.pitch-top { gap: 8px; }
+.sport-chip { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; background: rgba(0,0,0,0.32);
+  color: var(--chalk); font-size: 12px; font-weight: 700; flex: none; }
+.pitch .tablo { background: rgba(6, 16, 12, 0.88); }
+.league-sport { width: 22px; height: 22px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; flex: none; background: var(--surface-2); color: var(--chalk); }
+.ls-basketball { background: #6A4426; } .ls-hockey { background: #2B4A63; } .ls-tennis { background: #1E5D8C; }
+.ls-volleyball { background: #8A5226; } .ls-waterpolo { background: #1478A8; } .ls-football { background: #1F5541; }

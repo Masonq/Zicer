@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import { ChevronLeft, Languages, Sparkles, X } from 'lucide-react'
 import { buildMarkets, tt } from '../markets'
-import MatchCenter, { periodLabel } from '../components/MatchCenter'
+import MatchCenter, { periodLabel, CourtLines } from '../components/MatchCenter'
+import { SportIcon } from '../components/Sports'
 import { api } from '../api'
 import { useT } from '../i18n'
 import { useAuth, usePoll, useSlip } from '../store'
@@ -34,8 +35,9 @@ export function FeaturedMatch({ m, label, linkable = true }) {
   const inner = (
     <>
       <div className="pitch-top">
-        {label ? <span className="tag"><Sparkles size={15} />{label}</span> : <span className="ellip">{leagueLabel(m, t)}</span>}
-        {label && <span className="ellip">{leagueLabel(m, t)}</span>}
+        <span className="sport-chip"><SportIcon sport={m.sport} size={16} />{t(m.sport)}</span>
+        {label && <span className="tag"><Sparkles size={15} />{label}</span>}
+        <span className="ellip" style={{ marginLeft: 'auto', textAlign: 'right' }}>{leagueLabel(m, t)}</span>
       </div>
       <div className="board">
         <Link to={`/klub/${m.home.id}`} className="board-team"><Crest team={m.home} size={58} /><span className="name">{t.team(m.home)}</span></Link>
@@ -47,7 +49,7 @@ export function FeaturedMatch({ m, label, linkable = true }) {
       {linkable && <Link to={`/mec/${m.id}`} className="btn btn-ghost btn-block" style={{ marginTop: 14 }}>{t('placePrediction')}{m.predictions?.length ? ` (${m.predictions.length})` : ''}</Link>}
     </>
   )
-  return <div className="pitch">{inner}</div>
+  return <div className={`pitch pitch-${m.sport}`}><div className="pitch-lines"><CourtLines sport={m.sport} /></div>{inner}</div>
 }
 
 function MarketBoard({ m, sel, onSelect }) {
