@@ -1,11 +1,13 @@
+import { Shield } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 import { api } from '../api'
 import { useT } from '../i18n'
-import { usePoll } from '../store'
+import { usePoll, useAuth } from '../store'
 import { Avatar, Crest, fmtNum, fmtOdds, pickLabel, Skeleton, Empty } from '../components/ui'
 
 export function ProfileView({ data, editable = false }) {
   const t = useT()
+  const { user: me } = useAuth()
   const u = data.user, s = data.stats
   return (
     <div>
@@ -21,7 +23,12 @@ export function ProfileView({ data, editable = false }) {
         </div>
       </div>
       {u.bio && <p style={{ margin: '12px 0 0', lineHeight: 1.5 }}>{u.bio}</p>}
-      {editable && <Link to="/profil/uredi" className="btn btn-ghost btn-block" style={{ marginTop: 14, height: 42 }}>{t('editProfile')}</Link>}
+      {editable && (
+        <div style={{ display: 'grid', gridTemplateColumns: me?.is_admin ? '1fr 1fr' : '1fr', gap: 10, marginTop: 14 }}>
+          <Link to="/profil/uredi" className="btn btn-ghost btn-block" style={{ height: 42 }}>{t('editProfile')}</Link>
+          {me?.is_admin && <Link to="/admin" className="btn btn-ghost btn-block" style={{ height: 42, gap: 8 }}><Shield size={17} />{t('admin')}</Link>}
+        </div>
+      )}
       <div className="kv" style={{ marginTop: 16 }}>
         <div><b className={s.profit >= 0 ? 'pos' : 'neg'}>{s.profit > 0 ? '+' : ''}{fmtNum(s.profit)}</b><span>{t('profit')}</span></div>
         <div><b>{s.roi}%</b><span>{t('roi')}</span></div>
