@@ -571,15 +571,20 @@ function Court({ m, data, t }) {
       ) : (
         <div className="tt-sets num">{[periodTxt, m.sport === 'football' ? '' : scoresTxt].filter(Boolean).join('   ') || '\u00a0'}</div>
       )}
+      <div className="trk-status">
+        <AnimatePresence mode="wait" initial={false}>
+          {card ? (
+            <motion.div key={(card.title || '') + card.side} className={`trk-st s${card.side ?? 'n'}`} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.18 }}>
+              {card.icon ? <span className="trk-st-ico"><EvIconBig type={card.icon} sport={m.sport} /></span> : null}
+              <span className="trk-st-txt ellip">{card.side !== null && <b>{names[card.side]}</b>}{card.title}{card.sub ? <small>{card.sub}</small> : null}</span>
+              {card.arrow && card.side !== null && <span className={`trk-st-arrow ${card.side === 0 ? 'r' : 'l'}`} />}
+            </motion.div>
+          ) : <motion.div key="none" className="trk-st muted-st" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>{live ? t('live') : t('finished')}</motion.div>}
+        </AnimatePresence>
+      </div>
       <div ref={courtRef} className={`court court-${m.sport} tt-court`} style={{ aspectRatio: courtAspect(m.sport) }}>
         <CourtLines sport={m.sport} />
         <div className="field" style={fieldStyle(m.sport)}>
-        {live && att !== null && phase.kind === 'idle' && server === null && (
-          <svg className="poss" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-            <defs><linearGradient id={`pg${att}`} x1={att === 0 ? '0' : '1'} x2={att === 0 ? '1' : '0'} y1="0" y2="0"><stop offset="0" stopColor="#fff" stopOpacity="0.02" /><stop offset="1" stopColor="#fff" stopOpacity="0.22" /></linearGradient></defs>
-            <polygon fill={`url(#pg${att})`} points={att === 0 ? '18,0 50,0 64,50 50,100 18,100 32,50' : '82,0 50,0 36,50 50,100 82,100 68,50'} />
-          </svg>
-        )}
         {live && att !== null && server === null && (
           <div className={`terr t${att}`} aria-hidden="true" />
         )}
@@ -591,21 +596,7 @@ function Court({ m, data, t }) {
         <span ref={engine.shadowEl} className="eng-shadow" style={{ opacity: live ? 0.5 : 0 }} />
         <span ref={engine.ballEl} className={`eng-ball ball-${m.sport}`} style={{ opacity: live && phase.kind !== 'big' ? 1 : 0 }} />
         </div>
-        <AnimatePresence>
-        {card && (
-          <motion.div key={(card.title || '') + card.side} className={`trk-card${card.side === 1 ? ' s1' : card.side === 0 ? ' s0' : ''}`}
-            initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.22 }}
-            style={{ top: ball.y >= 50 ? '30%' : '70%', left: `${Math.max(32, Math.min(68, ball.x))}%`, x: '-50%', y: '-50%' }}>
-            {card.side !== null && card.arrow && <span className={`trk-arrow ${card.side === 0 ? 'r' : 'l'}`} />}
-            <div className="trk-txt">
-              {card.side !== null && <b>{names[card.side]}</b>}
-              <span>{card.title}</span>
-              {card.sub && <small>{card.sub}</small>}
-            </div>
-            {card.icon && <span className="trk-ico"><EvIconBig type={card.icon} sport={m.sport} /></span>}
-          </motion.div>
-        )}
-        </AnimatePresence>
+
         {phase.kind === 'big' && sc && (
           <div className="tt-big num">
             <div><span>{sc[0]}</span><i className="c0b" /></div>
@@ -661,26 +652,21 @@ function TennisCourt({ m, data, t }) {
     cancelAnimationFrame(raf.current)
     if (!live || phase.kind !== 'idle' || !ballEl.current) return
     const start = { x: server === 0 ? -3 : 103, y: srvY }
-    let pts = [], shot = 0, t0 = 0, marks = [], restartT = 0
+    let pts = [], shot = 0, t0 = 0, marks = [], side = server
     const dur = (i) => (i === 0 ? 820 : 960)
-    const build = () => { // serve into the diagonal service box, then the rally; every shot crosses the net
-      pts = [start]; let side = server
-      const n = 4 + Math.floor(Math.random() * 5)
-      for (let i = 0; i < n; i++) {
-        side = 1 - side
-        if (i === 0) pts.push({ x: side === 1 ? 54 + Math.random() * 18 : 28 + Math.random() * 18, y: rcvY > 50 ? 54 + Math.random() * 30 : 16 + Math.random() * 30 })
-        else pts.push({ x: side === 1 ? 72 + Math.random() * 24 : 4 + Math.random() * 24, y: 16 + Math.random() * 68 })
-      }
-      // the last ball runs past the player (winner) and leaves the court, so play never "freezes"
-      const lp = pts[pts.length - 1]
-      pts.push({ x: lp.x > 50 ? 112 : -12, y: Math.max(4, Math.min(96, lp.y + (Math.random() - 0.5) * 30)) })
+    const nextShot = () => { // every shot crosses the net; the rally goes on until the real point arrives
+      side = 1 - side
+      return { x: side === 1 ? 70 + Math.random() * 26 : 4 + Math.random() * 26, y: 14 + Math.random() * 72 }
+    }
+    const build = () => { // one serve per point: toss, serve into the diagonal service box
+      side = 1 - server
+      pts = [start, { x: side === 1 ? 54 + Math.random() * 18 : 28 + Math.random() * 18, y: rcvY > 50 ? 54 + Math.random() * 30 : 16 + Math.random() * 30 }]
       shot = 0; marks = []; t0 = performance.now() + 900
       if (marksEl.current) marksEl.current.innerHTML = ''
     }
     const draw = (now) => {
       const el = ballEl.current, sh = shadowEl.current, tr = trailEl.current
       if (!el || !sh || !tr) return
-      if (restartT) { if (now < restartT) { raf.current = requestAnimationFrame(draw); return } restartT = 0; build() }
       if (now < t0) { // toss
         const k = 1 - Math.abs((now - (t0 - 900)) / 450 - 1)
         el.style.left = `${start.x}%`; el.style.top = `${start.y}%`; el.style.transform = `translate(-50%, calc(-50% - ${k * 22}px)) scale(${1 + k * 0.25})`
@@ -696,10 +682,10 @@ function TennisCourt({ m, data, t }) {
       sh.style.left = `${x}%`; sh.style.top = `${y}%`; sh.style.opacity = String(0.55 - h * 0.3)
       tr.setAttribute('points', [...pts.slice(Math.max(0, shot - 2), shot + 1), { x, y }].map((p) => `${p.x},${p.y}`).join(' '))
       if (tt >= 1) {
-        marks.push(p1)
-        if (marksEl.current) marksEl.current.innerHTML = marks.slice(-3).map((m) => `<circle cx="${m.x}" cy="${m.y}" r="0.9" />`).join('')
+        marks.push(p1); if (marks.length > 3) marks.shift()
+        if (marksEl.current) marksEl.current.innerHTML = marks.map((m) => `<circle cx="${m.x}" cy="${m.y}" r="0.9" />`).join('')
+        pts.push(nextShot()); if (pts.length > 8) { pts.shift(); shot -= 1 }
         shot += 1; t0 = now
-        if (shot >= pts.length - 1) restartT = now + 700 // next rally right away: play continues until the real point arrives
       }
       raf.current = requestAnimationFrame(draw)
     }

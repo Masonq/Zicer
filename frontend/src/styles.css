@@ -613,3 +613,17 @@ img { display: block; max-width: 100%; }
   .main { padding-top: calc(72px + env(safe-area-inset-top, 0px)); }
 }
 .center-body:not(.fixed) { min-height: 150px; }
+
+/* status row (instead of cards over the court) */
+.trk-status { height: 40px; padding: 4px 12px; display: flex; align-items: center; background: rgba(0,0,0,0.22); }
+.trk-st { display: flex; align-items: center; gap: 10px; width: 100%; min-width: 0; font-size: 14px; color: #fff; }
+.trk-st-ico { display: flex; flex: none; } .trk-st-ico svg { width: 20px; height: 20px; }
+.trk-st-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.trk-st-dot.s0 { background: var(--c0); } .trk-st-dot.s1 { background: var(--c1); }
+.trk-st-txt { flex: 1; min-width: 0; font-weight: 600; }
+.trk-st-txt b { color: var(--gold); font-weight: 800; margin-right: 8px; }
+.trk-st-txt small { color: var(--muted); font-weight: 500; margin-left: 8px; font-size: 13px; }
+.trk-st.s0 { border-left: 3px solid var(--c0); padding-left: 10px; } .trk-st.s1 { border-left: 3px solid var(--c1); padding-left: 10px; }
+.trk-st-arrow { flex: none; width: 0; height: 0; border-top: 6px solid transparent; border-bottom: 6px solid transparent; }
+.trk-st-arrow.r { border-left: 9px solid var(--gold); } .trk-st-arrow.l { border-right: 9px solid var(--gold); }
+.trk-st.muted-st { color: var(--muted); font-weight: 600; justify-content: center; }
