@@ -967,6 +967,8 @@ function StatsBoard({ sport, data, t, title, names, winner }) {
   )
 }
 
+const fmtLeft = (until) => { const s = Math.max(0, Math.round((until - Date.now()) / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` }
+
 function Arena({ m, data, t }) {
   const sport = m.sport
   const statusNow = data.status || m.status
@@ -988,6 +990,8 @@ function Arena({ m, data, t }) {
   const dataScore = data.score || m.score || [0, 0] // centre data is fresher than the page data
   // ---------- displayed (directed) state ----------
   const [shown, setShown] = useState(() => ({ score: dataScore, ss: dataSS, per: dataPer }))
+  const shownRef = useRef(shown)
+  shownRef.current = shown
   const [phase, setPhase] = useState({ kind: 'idle', ev: null })
   const queue = useRef([])
   const seen = useRef(null)
@@ -1027,6 +1031,8 @@ function Arena({ m, data, t }) {
   // after a game the serve changes hands at once on the court, even if the feed reports it a bit later
   const [srvOverride, setSrvOverride] = useState(null)
   const tServer = srvOverride && srvOverride.base === feedServer ? srvOverride.val : feedServer
+  const tServerRef = useRef(tServer)
+  tServerRef.current = tServer
   const server = sport === 'tennis' ? tServer : sport === 'volleyball' ? (x.server ? x.server - 1 : lv.spl ? (lv.spl === 'AWAY' ? 1 : 0) : lastPt ? lastPt.side : 0) : null
   const srvY = server === 0 ? (deuce ? 68 : 32) : (deuce ? 32 : 68)
   const rcvY = 100 - srvY
@@ -1041,9 +1047,22 @@ function Arena({ m, data, t }) {
   const curSet = dataPer[dataPer.length - 1] || [0, 0]
   const nowS = data.now || Date.now() / 1000
   const isBreak = live && (/PAUSE|BREAK|HALF_TIME|INTERVAL/.test(`${lv.p || ''} ${m.minute || ''}`) || /break|pause|half-time|interval/i.test(x.period || '')
-    || (sport === 'tennis' && dataPer.length > 1 && !curSet[0] && !curSet[1] && dataSS[0] === '0' && dataSS[1] === '0' && lastGame && nowS - lastGame.at < 240))
+    || (sport === 'tennis' && dataPer.length > 1 && !curSet[0] && !curSet[1] && dataSS[0] === '0' && dataSS[1] === '0' && lastGame && nowS - lastGame.at < 130))
   const eng = useArenaEngine({ live, sport, att, intensity, server, srvY, rcvY })
-  useEffect(() => { if (phase.kind === 'stats' && eng.api.current) eng.api.current.pause() }, [phase.kind])
+  const [, tick] = useState(0)
+  useEffect(() => {
+    if (phase.kind !== 'stats') return
+    eng.api.current && eng.api.current.pause()
+    const id = setInterval(() => {
+      tick((v) => v + 1)
+      if (Date.now() >= phase.until || queue.current.length) {
+        clearInterval(id)
+        setPhase({ kind: 'idle', ev: null })
+        eng.api.current && eng.api.current.resume({ serveSide: tServerRef.current })
+      }
+    }, 1000)
+    return () => clearInterval(id)
+  }, [phase.kind]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!eng.api.current) return
     if (!live) { eng.api.current.pause(); return }
@@ -1065,13 +1084,18 @@ function Arena({ m, data, t }) {
         setPhase({ kind: 'banner', ev })
         setTimeout(() => {
           queue.current.shift()
-          if (sport === 'tennis' && ev.t === 'game' && !queue.current.length) { // changeover: show the match stats, then play on
-            setPhase({ kind: 'stats', ev })
-            setTimeout(() => {
-              setPhase({ kind: 'idle', ev: null })
-              eng.api.current && eng.api.current.resume({ serveSide: 1 - tServer })
-            }, 7000)
-            return
+          if (sport === 'tennis' && ev.t === 'game') {
+            // ITF/ATP/WTA rules: players change ends after odd games; 90 s rest, no rest after the 1st game of a set;
+            // 120 s between sets. The real next point (if it arrives earlier, the feed lags) ends the pause.
+            const cur = (shownRef.current.per[shownRef.current.per.length - 1]) || [0, 0]
+            const g = (cur[0] || 0) + (cur[1] || 0)
+            const hi = Math.max(cur[0] || 0, cur[1] || 0), lo = Math.min(cur[0] || 0, cur[1] || 0)
+            const setOver = (hi >= 6 && hi - lo >= 2) || hi === 7
+            const rest = setOver ? 120 : g % 2 === 1 && g > 1 ? 90 : 0
+            if (rest) {
+              setPhase({ kind: 'stats', ev, until: Date.now() + rest * 1000, setBreak: setOver })
+              return
+            }
           }
           setPhase({ kind: 'idle', ev: null })
           const nextServer = sport === 'volleyball' ? ev.side : sport === 'tennis' ? (ev.t === 'game' ? 1 - tServer : tServer) : null
@@ -1109,7 +1133,7 @@ function Arena({ m, data, t }) {
   const boardR = sport === 'tennis' ? (live ? shown.ss[1] : scoreNow[1]) : finished ? scoreNow[1] : shown.score[1]
   let status = null
   if (finished) status = null
-  else if (phase.kind === 'stats') status = { side: null, title: t('changeover'), icon: 'timeout' }
+  else if (phase.kind === 'stats') status = { side: null, title: `${phase.setBreak ? t('setBreak') : t('changeover')} ${fmtLeft(phase.until)}`, icon: 'timeout' }
   else if (isBreak && phase.kind === 'idle') status = { side: null, title: sport === 'tennis' ? t('setBreak') : t('pause'), icon: 'timeout' }
   else if (phase.kind !== 'idle' && phase.ev) status = { side: phase.ev.side, title: phase.kind === 'finish' ? (net ? t('rally') : sport === 'basketball' ? t('shot') : t('ev_shot_on')) : bannerTitle(phase.ev, sport, t), icon: phase.kind === 'finish' ? null : (sport === 'tennis' ? 'ace' : 'score') }
   else if (infoShown) status = { side: infoShown.side, title: infoShown.t === 'bp' ? t('ev_bp') : xevLabel(infoShown, sport, t), icon: infoShown.t === 'bp' ? 'break' : infoShown.t }
@@ -1207,7 +1231,7 @@ function Arena({ m, data, t }) {
           {(finished || (isBreak && phase.kind === 'idle') || phase.kind === 'stats') && (
             <motion.div key={finished ? 'fin' : 'brk'} className="arena-break" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
               <StatsBoard sport={sport} data={data} t={t} names={names}
-                title={finished ? t('matchOver') : phase.kind === 'stats' ? t('changeover') : sport === 'tennis' ? t('setBreak') : t('pause')}
+                title={finished ? t('matchOver') : phase.kind === 'stats' ? `${phase.setBreak ? t('setBreak') : t('changeover')} ${fmtLeft(phase.until)}` : sport === 'tennis' ? t('setBreak') : t('pause')}
                 winner={finished && scoreNow[0] !== scoreNow[1] ? (scoreNow[0] > scoreNow[1] ? 0 : 1) : null} />
             </motion.div>
           )}
