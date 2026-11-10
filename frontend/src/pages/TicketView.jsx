@@ -26,7 +26,7 @@ export default function TicketView() {
     <div>
       {sp.get('novi') && <div className="card pad" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, borderColor: 'var(--win)' }}><CheckCircle2 color="var(--win)" /><b>{t('ticketPlaced')}</b></div>}
       <div className="pitch">
-        <div className="pitch-top"><Link to={`/u/${tk.user.username}`} style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--chalk)' }}><Avatar user={tk.user} size={26} />@{tk.user.username}</Link><span>#{tk.id}</span></div>
+        <div className="pitch-top"><Link to={`/u/${tk.user.username}`} style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--chalk)' }}><Avatar user={tk.user} size={26} />{tk.user.name || tk.user.username}</Link><span>#{tk.id}</span></div>
         <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, margin: '18px 0 6px' }}>
           <div className="tablo" style={{ textAlign: 'left' }}><div className="big" style={{ fontSize: 40 }}>{fmtOdds(tk.total_odds)}</div><div className="lbl" style={{ justifyContent: 'flex-start' }}>{t('totalOdds')}</div></div>
           <div className="right"><div className="h1" style={{ color, margin: 0 }}>{t(`status_${tk.status}`)}</div><div className="small">{tk.status === 'won' ? t('win') : t('potentialWin')}: <b className="num" style={{ color: 'var(--chalk)', fontSize: 16 }}>{fmtNum(tk.potential)}</b></div></div>

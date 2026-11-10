@@ -42,7 +42,7 @@ export default function Ranking() {
             {tab === 'tiketi' && data.map((tk) => (
               <Link key={tk.id} to={`/tiket/${tk.id}`} className="list-row">
                 <Avatar user={tk.user} size={34} />
-                <div className="grow"><div className="ellip" style={{ fontWeight: 700 }}>@{tk.user.username}</div><div className="small">{t('totalOdds')} {fmtOdds(tk.total_odds)}</div></div>
+                <div className="grow"><div className="ellip" style={{ fontWeight: 700 }}>{tk.user.name || tk.user.username}</div><div className="small">{t('totalOdds')} {fmtOdds(tk.total_odds)}</div></div>
                 <span className="num pos" style={{ fontSize: 17 }}>+{fmtNum(tk.profit)}</span>
               </Link>
             ))}

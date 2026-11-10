@@ -10,14 +10,14 @@ import { ProfileView } from './Profile'
 export default function Me() {
   const t = useT()
   const { user, ready, logout } = useAuth()
-  const { data } = usePoll(() => (user ? api(`/users/${user.username}`) : Promise.resolve(null)), [user?.id, user?.bank])
+  const { data } = usePoll(() => (user ? api(`/users/${user.username}`) : Promise.resolve(null)), [user?.id, user?.bank, user?.username, user?.avatar, user?.display_name, user?.bio])
   const [tg, setTg] = useState(null)
   useEffect(() => { if (user) api('/me/telegram').then(setTg).catch(() => {}) }, [user?.id]) // eslint-disable-line
   if (!ready) return <Skeleton />
   if (!user) return <Navigate to="/prijava" replace />
   return (
     <div>
-      {data ? <ProfileView data={data} /> : <Skeleton h={90} n={2} />}
+      {data ? <ProfileView data={data} editable /> : <Skeleton h={90} n={2} />}
       <section className="section">
         <div className="section-head"><h2 className="h2">{t('settings')}</h2></div>
         <div className="card">

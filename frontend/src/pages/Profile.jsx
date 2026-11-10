@@ -4,21 +4,24 @@ import { useT } from '../i18n'
 import { usePoll } from '../store'
 import { Avatar, Crest, fmtNum, fmtOdds, pickLabel, Skeleton, Empty } from '../components/ui'
 
-export function ProfileView({ data }) {
+export function ProfileView({ data, editable = false }) {
   const t = useT()
   const u = data.user, s = data.stats
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        <Avatar user={u} size={64} />
+        <Avatar user={u} size={72} />
         <div style={{ minWidth: 0 }}>
-          <h1 className="h1 ellip" style={{ margin: 0 }}>{u.username}</h1>
+          <h1 className="h1 ellip" style={{ margin: 0 }}>{u.name || u.username}</h1>
+          <div className="small">@{u.username}</div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 4 }}>
             {u.fav_football && <Link to={`/klub/${u.fav_football.id}`} className="small" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Crest team={u.fav_football} size={18} />{t.team(u.fav_football)}</Link>}
             {u.fav_basket && <Link to={`/klub/${u.fav_basket.id}`} className="small" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Crest team={u.fav_basket} size={18} />{t.team(u.fav_basket)}</Link>}
           </div>
         </div>
       </div>
+      {u.bio && <p style={{ margin: '12px 0 0', lineHeight: 1.5 }}>{u.bio}</p>}
+      {editable && <Link to="/profil/uredi" className="btn btn-ghost btn-block" style={{ marginTop: 14, height: 42 }}>{t('editProfile')}</Link>}
       <div className="kv" style={{ marginTop: 16 }}>
         <div><b className={s.profit >= 0 ? 'pos' : 'neg'}>{s.profit > 0 ? '+' : ''}{fmtNum(s.profit)}</b><span>{t('profit')}</span></div>
         <div><b>{s.roi}%</b><span>{t('roi')}</span></div>

@@ -1,9 +1,12 @@
+import io
+import os
 import random
 import re
 import secrets
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+from PIL import Image, ImageOps
 from pydantic import BaseModel, Field
 from sqlalchemy import select, func, or_, case, and_
 from sqlalchemy.orm import Session
@@ -72,6 +75,9 @@ def me(u: User = Depends(current_user)):
 
 class MePatch(BaseModel):
     lang: str | None = None
+    display_name: str | None = None
+    username: str | None = None
+    bio: str | None = None
     fav_football_id: int | None = None
     fav_basket_id: int | None = None
     clear_basket: bool = False
@@ -83,6 +89,19 @@ def patch_me(body: MePatch, u: User = Depends(current_user), db: Session = Depen
     u = db.merge(u)
     if body.lang in ("sr", "sr-cyr", "ru"):
         u.lang = body.lang
+    if body.display_name is not None:
+        dn = re.sub(r"\s+", " ", body.display_name).strip()[:48]
+        u.display_name = dn
+    if body.bio is not None:
+        u.bio = body.bio.strip()[:160]
+    if body.username is not None and body.username.strip().lstrip("@") != u.username:
+        un = body.username.strip().lstrip("@")
+        if not re.fullmatch(r"[A-Za-z0-9_.]{3,24}", un):
+            raise HTTPException(400, "username_invalid")
+        other = db.scalar(select(User).where(func.lower(User.username) == un.lower(), User.id != u.id))
+        if other:
+            raise HTTPException(400, "username_taken")
+        u.username = un
     if body.fav_football_id:
         t = db.get(Team, body.fav_football_id)
         if not t or t.sport != "football":
@@ -99,6 +118,62 @@ def patch_me(body: MePatch, u: User = Depends(current_user), db: Session = Depen
         u.fav_football_id = None
     db.commit()
     db.refresh(u)
+    return user_me(u)
+
+
+class PwIn(BaseModel):
+    old: str
+    new: str = Field(min_length=6, max_length=128)
+
+
+@router.post("/me/password")
+def change_pw(body: PwIn, u: User = Depends(current_user), db: Session = Depends(get_db)):
+    u = db.merge(u)
+    if not check_pw(body.old, u.pw_hash):
+        raise HTTPException(400, "bad_password")
+    u.pw_hash = hash_pw(body.new)
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/me/avatar")
+async def upload_avatar(file: UploadFile = File(...), u: User = Depends(current_user), db: Session = Depends(get_db)):
+    data = await file.read()
+    if len(data) > 8 * 1024 * 1024:
+        raise HTTPException(400, "file_big")
+    try:
+        im = Image.open(io.BytesIO(data))
+        im = ImageOps.exif_transpose(im).convert("RGB")
+    except Exception:  # noqa
+        raise HTTPException(400, "file_bad")
+    w, h = im.size
+    side = min(w, h)
+    im = im.crop(((w - side) // 2, (h - side) // 2, (w - side) // 2 + side, (h - side) // 2 + side)).resize((320, 320), Image.LANCZOS)
+    os.makedirs(os.path.join(config.MEDIA_DIR, "avatars"), exist_ok=True)
+    name = f"{u.id}_{secrets.token_hex(6)}.webp"
+    im.save(os.path.join(config.MEDIA_DIR, "avatars", name), "WEBP", quality=86)
+    u = db.merge(u)
+    old = u.avatar
+    u.avatar = name
+    db.commit()
+    if old:
+        try:
+            os.remove(os.path.join(config.MEDIA_DIR, "avatars", old))
+        except OSError:
+            pass
+    return user_me(u)
+
+
+@router.delete("/me/avatar")
+def delete_avatar(u: User = Depends(current_user), db: Session = Depends(get_db)):
+    u = db.merge(u)
+    if u.avatar:
+        try:
+            os.remove(os.path.join(config.MEDIA_DIR, "avatars", u.avatar))
+        except OSError:
+            pass
+    u.avatar = ""
+    db.commit()
     return user_me(u)
 
 
@@ -200,7 +275,7 @@ def match_detail(mid: int, u: User | None = Depends(current_user_opt), db: Sessi
                          "user_stats": None} for p in preds],
         "mine": {"pick": mine.pick, "odds": mine.odds, "stake": mine.stake, "status": mine.status, "profit": mine.profit} if mine else None,
         "open": m.status == "scheduled" and m.start > utcnow() and bool(m.odds),
-    })
+    }, full=True)
     if m.is_derby:
         out["score_picks"] = _score_summary(db, m, u)
     return out
@@ -227,7 +302,7 @@ def predict(mid: int, body: PredictIn, u: User = Depends(current_user), db: Sess
     m = db.get(Match, mid)
     if not m or m.status != "scheduled" or m.start <= utcnow():
         raise HTTPException(400, "closed")
-    if body.pick not in ("1", "X", "2"):
+    if not body.pick or len(body.pick) > 32:
         raise HTTPException(400, "pick")
     odds = ingest.best_odds(m, body.pick)
     if not odds:
@@ -297,7 +372,7 @@ def create_ticket(body: TicketIn, u: User = Depends(current_user), db: Session =
     total = 1.0
     for it in body.items:
         m = db.get(Match, it.match_id)
-        if not m or m.status != "scheduled" or m.start <= utcnow() or it.pick not in ("1", "X", "2"):
+        if not m or m.status != "scheduled" or m.start <= utcnow() or not it.pick or len(it.pick) > 32:
             raise HTTPException(400, "closed")
         o = ingest.best_odds(m, it.pick)
         if not o:
@@ -404,7 +479,7 @@ def profile(username: str, db: Session = Depends(get_db)):
                            func.sum(Prediction.stake)).where(Prediction.user_id == u.id, Prediction.status.in_(["won", "lost"]))).one()
     cnt, won, profit, staked = st
     tickets = db.scalars(select(Ticket).where(Ticket.user_id == u.id).order_by(Ticket.created_at.desc()).limit(10)).all()
-    return {"user": {**user_short(u), "created": iso(u.created_at), "bank": round(u.bank, 2),
+    return {"user": {**user_short(u), "created": iso(u.created_at), "bank": round(u.bank, 2), "bio": u.bio or "",
                      "fav_football": team_out(u.fav_football), "fav_basket": team_out(u.fav_basket)},
             "stats": {"count": cnt or 0, "won": int(won or 0), "profit": round(profit or 0, 2),
                       "roi": round(100 * (profit or 0) / staked, 1) if staked else 0,

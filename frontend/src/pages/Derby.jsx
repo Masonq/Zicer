@@ -48,7 +48,7 @@ export default function Derby() {
               <Link key={r.user.id} to={`/u/${r.user.username}`} className="list-row">
                 <span className={`rank${i < 3 ? ' top' : ''}`}>{i + 1}</span>
                 <Avatar user={r.user} size={32} />
-                <span className="grow ellip" style={{ fontWeight: 700 }}>{r.user.username}</span>
+                <span className="grow ellip" style={{ fontWeight: 700 }}>{r.user.name || r.user.username}</span>
                 <span className="num" style={{ color: 'var(--muted)' }}>{r.score[0]}:{r.score[1]}</span>
                 <span className="badge gold" style={{ minWidth: 64 }}>{fmtNum(r.points)} {t('points')}</span>
               </Link>

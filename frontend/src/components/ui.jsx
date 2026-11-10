@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useT } from '../i18n'
 import { useSlip } from '../store'
+import { pickText } from '../markets'
 
 export function Crest({ team, size = 22 }) {
   const [bad, setBad] = useState(false)
@@ -14,7 +15,18 @@ export function Crest({ team, size = 22 }) {
 
 export function Avatar({ user, size = 32 }) {
   if (!user) return null
-  return <span className="avatar" style={{ width: size, height: size, background: user.color || '#2E7D5B', fontSize: size * 0.42 }}>{user.username.slice(0, 1).toUpperCase()}</span>
+  if (user.avatar) return <img className="avatar" src={user.avatar} alt="" width={size} height={size} style={{ width: size, height: size, objectFit: 'cover' }} loading="lazy" />
+  const n = (user.name || user.username || '?').trim()
+  return <span className="avatar" style={{ width: size, height: size, background: user.color || '#2E7D5B', fontSize: size * 0.42 }}>{n.slice(0, 1).toUpperCase()}</span>
+}
+
+export function UserName({ user, sub }) {
+  return (
+    <div style={{ minWidth: 0 }}>
+      <div className="ellip" style={{ fontWeight: 700 }}>{user.name || user.username}</div>
+      <div className="small ellip">@{user.username}{sub ? <>, {sub}</> : null}</div>
+    </div>
+  )
 }
 
 export function fmtTime(iso, locale) {
@@ -62,7 +74,6 @@ export function OddsButtons({ m, wide = false }) {
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (b && open) slip.toggle(m, k, b.odds) }}>
             <span className="k">{k}</span>
             <span className="v">{b ? fmtOdds(b.odds) : '—'}</span>
-            {wide && b && <span className="bk">{b.bk === 'maxbet' ? 'MaxBet' : b.bk}</span>}
           </button>
         )
       })}
@@ -163,6 +174,5 @@ export function Toast({ text, onDone }) {
 }
 
 export function pickLabel(t, m, pick) {
-  if (pick === 'X') return t('draw')
-  return t.team(pick === '1' ? m.home : m.away)
+  return pickText(pick, m, t)
 }

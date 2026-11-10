@@ -1,4 +1,7 @@
 import logging
+import os
+from fastapi.staticfiles import StaticFiles
+from .config import MEDIA_DIR
 from fastapi import FastAPI
 from sqlalchemy import select
 from .db import engine, Base, SessionLocal
@@ -18,9 +21,29 @@ SEED_BMS = [
 ]
 
 
+MIGRATIONS = [
+    "ALTER TABLE predictions ALTER COLUMN pick TYPE VARCHAR(32)",
+    "ALTER TABLE ticket_items ALTER COLUMN pick TYPE VARCHAR(32)",
+    "ALTER TABLE trends ALTER COLUMN pick TYPE VARCHAR(32)",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name VARCHAR(48) DEFAULT ''",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT DEFAULT ''",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar VARCHAR(256) DEFAULT ''",
+]
+
+
+def migrate():
+    Base.metadata.create_all(engine)
+    if engine.dialect.name != "postgresql":
+        return
+    from sqlalchemy import text
+    with engine.begin() as c:
+        for q in MIGRATIONS:
+            c.execute(text(q))
+
+
 @app.on_event("startup")
 def startup():
-    Base.metadata.create_all(engine)
+    migrate()
     with SessionLocal() as db:
         if not db.scalar(select(Bookmaker)):
             for i, (n, url, col) in enumerate(SEED_BMS):
@@ -35,6 +58,8 @@ def health():
     return {"ok": True, "app": "zicer"}
 
 
+os.makedirs(MEDIA_DIR, exist_ok=True)
+app.mount("/media", StaticFiles(directory=MEDIA_DIR), name="media")
 app.include_router(api.router)
 app.include_router(admin.router)
 app.include_router(share.router)

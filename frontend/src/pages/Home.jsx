@@ -27,8 +27,8 @@ export function TipsterRow({ r, i }) {
       <span className={`rank${i < 3 ? ' top' : ''}`}>{i + 1}</span>
       <Avatar user={r.user} size={34} />
       <div className="grow">
-        <div className="ellip" style={{ fontWeight: 700 }}>{r.user.username}</div>
-        <div className="small ellip">{t.n(r.count, 'predictions')}, {r.winrate}% {t('wonOf')}</div>
+        <div className="ellip" style={{ fontWeight: 700 }}>{r.user.name || r.user.username}</div>
+        <div className="small ellip">@{r.user.username}, {t.n(r.count, 'predictions')}, {r.winrate}% {t('wonOf')}</div>
       </div>
       <div className="right"><div className={`num ${r.profit >= 0 ? 'pos' : 'neg'}`} style={{ fontSize: 17 }}>{r.profit > 0 ? '+' : ''}{fmtNum(r.profit)}</div><div className="small">ROI {r.roi}%</div></div>
     </Link>
@@ -130,7 +130,7 @@ export default function Home() {
             {d.tickets.map((tk) => (
               <Link key={tk.id} to={`/tiket/${tk.id}`} className="card pad" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <Avatar user={tk.user} size={34} />
-                <div className="grow"><div style={{ fontWeight: 700 }} className="ellip">@{tk.user.username}</div><div className="small">{t('totalOdds')} {fmtOdds(tk.total_odds)}</div></div>
+                <div className="grow"><div style={{ fontWeight: 700 }} className="ellip">{tk.user.name || tk.user.username}</div><div className="small">{t('totalOdds')} {fmtOdds(tk.total_odds)}</div></div>
                 <span className="num pos" style={{ fontSize: 18 }}>+{fmtNum(tk.profit)}</span>
               </Link>
             ))}

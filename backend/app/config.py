@@ -11,3 +11,4 @@ LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4o-mini")
 START_BANK = 10000.0
 MAX_STAKE = 1000.0
 UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130 Safari/537.36"
+MEDIA_DIR = os.getenv("MEDIA_DIR", os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "media"))

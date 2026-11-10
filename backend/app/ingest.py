@@ -161,7 +161,7 @@ def sync_odds(db: Session) -> str:
                         best, best_s = o, sh + sa
                 if best:
                     odds = dict(m.odds or {})
-                    odds["maxbet"] = {k: v for k, v in best["odds"].items() if v}
+                    odds["maxbet"] = {k: v for k, v in best["odds"].items() if v and v > 1.0}
                     m.odds = odds
                     m.odds_updated = now()
                     matched += 1
@@ -195,8 +195,63 @@ plural_ru = plural_sr
 
 
 def best_odds(m: Match, pick: str) -> float | None:
-    vals = [bk.get(pick) for bk in (m.odds or {}).values() if bk.get(pick)]
+    vals = [bk.get(pick) for bk in (m.odds or {}).values() if isinstance(bk, dict) and bk.get(pick)]
     return max(vals) if vals else None
+
+
+def _f(x: str) -> float:
+    return float(x)
+
+
+def settle_key(m: Match, key: str) -> str | None:
+    """Return 'won' / 'lost' / 'void' for a market key, or None if not resolvable."""
+    if m.score_home is None or m.score_away is None:
+        return None
+    h, a = m.score_home, m.score_away
+    rh = m.reg_home if m.sport == "basketball" and m.reg_home is not None else h
+    ra = m.reg_away if m.sport == "basketball" and m.reg_away is not None else a
+    res = "1" if rh > ra else ("2" if ra > rh else "X")
+    W = lambda c: "won" if c else "lost"  # noqa
+    tot = h + a
+    if key in ("1", "X", "2"):
+        return W(key == res)
+    if key in ("1X", "12", "X2"):
+        return W(res in key)
+    if key in ("DNB1", "DNB2"):
+        if res == "X":
+            return "void"
+        return W(res == key[-1])
+    if key == "GG":
+        return W(h > 0 and a > 0)
+    if key == "NG":
+        return W(h == 0 or a == 0)
+    if key.startswith("G") and key[1:2].isdigit():
+        body = key[1:]
+        if body.endswith("+"):
+            return W(tot >= int(body[:-1]))
+        lo, _, hi = body.partition("-")
+        return W(int(lo) <= tot <= int(hi))
+    if key.startswith("CS:"):
+        _, sh, sa = key.split(":")
+        return W(h == int(sh) and a == int(sa))
+    if key.startswith(("EH1:", "EHX:", "EH2:")):
+        k, v = key.split(":")
+        adj = h - _f(v)
+        r2 = "1" if adj > a else ("2" if a > adj else "X")
+        return W(r2 == k[-1])
+    if key.startswith(("AH1:", "AH2:")):
+        k, v = key.split(":")
+        adj = h - _f(v)
+        if adj == a:
+            return "void"
+        return W((adj > a) if k == "AH1" else (adj < a))
+    if key.startswith(("O:", "U:")):
+        k, v = key.split(":")
+        line = _f(v)
+        if tot == line:
+            return "void"
+        return W(tot > line if k == "O" else tot < line)
+    return None
 
 
 def settle(db: Session) -> str:
@@ -210,10 +265,11 @@ def settle(db: Session) -> str:
             continue
         for p in db.scalars(select(Prediction).where(Prediction.match_id == m.id, Prediction.status == "open")).all():
             u = p.user
-            if void:
+            st = "void" if void else (settle_key(m, p.pick) or "void")
+            if st == "void":
                 p.status, p.profit = "void", 0.0
                 u.bank += p.stake
-            elif p.pick == res:
+            elif st == "won":
                 p.status, p.profit = "won", round(p.stake * (p.odds - 1), 2)
                 u.bank += p.stake * p.odds
             else:
@@ -222,7 +278,7 @@ def settle(db: Session) -> str:
             events.append(("pred", p.id, u.id, p.status))
             cnt += 1
         for it in db.scalars(select(TicketItem).where(TicketItem.match_id == m.id, TicketItem.status == "open")).all():
-            it.status = "void" if void else ("won" if it.pick == res else "lost")
+            it.status = "void" if void else (settle_key(m, it.pick) or "void")
         for sp in db.scalars(select(ScorePick).where(ScorePick.match_id == m.id)).all():
             if void:
                 sp.points = 0
@@ -362,7 +418,7 @@ def _form_txt(f: list[str], lang: str) -> str:
 
 
 def community_split(db: Session, match_id: int) -> dict:
-    rows = db.execute(select(Prediction.pick, func.count()).where(Prediction.match_id == match_id)
+    rows = db.execute(select(Prediction.pick, func.count()).where(Prediction.match_id == match_id, Prediction.pick.in_(["1", "X", "2"]))
                       .group_by(Prediction.pick)).all()
     total = sum(c for _, c in rows)
     return {"total": total, **{p: round(100 * c / total) for p, c in rows}} if total else {"total": 0}

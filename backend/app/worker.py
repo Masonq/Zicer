@@ -22,7 +22,8 @@ SCHEDULE = [  # (name, fn, every_seconds)
 
 
 def main():
-    Base.metadata.create_all(engine)
+    from .main import migrate
+    migrate()
     last = {}
     with SessionLocal() as db:
         ingest.job(db, "football", ingest.sync_football)

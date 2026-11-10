@@ -49,6 +49,8 @@ sudo -u postgres psql -qc "ALTER ROLE zicer PASSWORD '$DBPASS'" >/dev/null
 sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='zicer'" | grep -q 1 || sudo -u postgres createdb -O zicer zicer
 ok "база zicer готова"
 
+mkdir -p $APP/backend/media/avatars
+
 step "Python"
 [ -d $APP/venv ] || python3 -m venv $APP/venv
 $APP/venv/bin/pip install -q --upgrade pip >/dev/null
@@ -124,10 +126,11 @@ server {
     server_name $DOMAIN;
     root $APP/frontend/dist;
     index index.html;
-    client_max_body_size 2m;
+    client_max_body_size 10m;
     gzip on;
     gzip_types text/css application/javascript application/json image/svg+xml;
     location /api/ { proxy_pass http://127.0.0.1:$PORT; proxy_set_header Host \$host; proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for; proxy_set_header X-Forwarded-Proto \$scheme; proxy_read_timeout 60s; }
+    location /media/ { alias $APP/backend/media/; expires 30d; add_header Cache-Control "public, max-age=2592000"; }
     location /t/ { proxy_pass http://127.0.0.1:$PORT; proxy_set_header Host \$host; }
     location /assets/ { expires 1y; add_header Cache-Control "public, max-age=31536000, immutable"; try_files \$uri =404; }
     location = /index.html { add_header Cache-Control "no-cache, no-store, must-revalidate"; expires -1; }

@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
-import { ChevronLeft, Languages, Sparkles } from 'lucide-react'
+import { ChevronLeft, Languages, Sparkles, X } from 'lucide-react'
+import { buildMarkets, tt } from '../markets'
 import { api } from '../api'
 import { useT } from '../i18n'
-import { useAuth, usePoll } from '../store'
-import { Crest, OddsButtons, FormPills, SplitBar, Avatar, fmtTime, fmtDay, fmtOdds, fmtNum, Skeleton, Empty, pickLabel, MatchRow, leagueLabel, Toast } from '../components/ui'
+import { useAuth, usePoll, useSlip } from '../store'
+import { Crest, OddsButtons, FormPills, SplitBar, Avatar, UserName, fmtTime, fmtDay, fmtOdds, fmtNum, Skeleton, Empty, pickLabel, MatchRow, leagueLabel, Toast } from '../components/ui'
 
 function Tablo({ m }) {
   const t = useT()
@@ -40,7 +41,7 @@ export function FeaturedMatch({ m, label, linkable = true }) {
         <Tablo m={m} />
         <Link to={`/klub/${m.away.id}`} className="board-team"><Crest team={m.away} size={58} /><span className="name">{t.team(m.away)}</span></Link>
       </div>
-      {m.status !== 'finished' && <OddsButtons m={m} wide />}
+      {linkable && m.status !== 'finished' && <OddsButtons m={m} wide />}
       {linkable && m.split && m.split.total > 0 && <div style={{ marginTop: 14 }}><SplitBar split={m.split} m={m} /></div>}
       {linkable && <Link to={`/mec/${m.id}`} className="btn btn-ghost btn-block" style={{ marginTop: 14 }}>{t('placePrediction')}{m.predictions?.length ? ` (${m.predictions.length})` : ''}</Link>}
     </>
@@ -48,54 +49,97 @@ export function FeaturedMatch({ m, label, linkable = true }) {
   return <div className="pitch">{inner}</div>
 }
 
-function PredictForm({ m, onDone }) {
+function MarketBoard({ m, sel, onSelect }) {
+  const t = useT()
+  const slip = useSlip()
+  const [openCs, setOpenCs] = useState(false)
+  const markets = buildMarkets(m, t)
+  if (!markets.length) return null
+  const Btn = ({ it }) => (
+    <button type="button" className={`sel${sel === it.key ? ' on' : ''}${slip.has(m.id, it.key) && sel !== it.key ? ' slip' : ''}`} onClick={() => onSelect(it.key === sel ? null : it.key)} aria-pressed={sel === it.key}>
+      <span className="l">{it.label}</span><span className="v">{fmtOdds(it.odds)}</span>
+    </button>
+  )
+  return (
+    <div>
+      {markets.map((mk) => (
+        <div className="market" key={mk.id}>
+          <div className="market-title"><span>{mk.title}</span>
+            {mk.id === 'cs' && <button onClick={() => setOpenCs((v) => !v)}>{openCs ? '−' : tt(t, 'more')}</button>}
+          </div>
+          {mk.id === 'cs' ? (
+            <div className="cs-cols">
+              {mk.columns.map((col, i) => (
+                <div key={i}>
+                  <div className="cs-head">{i === 0 ? '1' : i === 1 ? 'X' : '2'}</div>
+                  {(openCs ? col : col.slice(0, 3)).map((it) => <Btn key={it.key} it={it} />)}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="sel-grid" style={{ gridTemplateColumns: `repeat(${Math.min(mk.cols, mk.items.length)}, minmax(0, 1fr))` }}>
+              {mk.items.map((it) => <Btn key={it.key} it={it} />)}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function SelectionSheet({ m, sel, onClose, onPredicted }) {
   const t = useT()
   const { user, refresh } = useAuth()
+  const slip = useSlip()
   const nav = useNavigate()
-  const [pick, setPick] = useState(null)
+  const [mode, setMode] = useState('pick')
   const [stake, setStake] = useState(100)
   const [comment, setComment] = useState('')
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
-  if (!user) {
-    return <div className="card pad" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-      <span>{t('needLogin')}</span><button className="btn btn-gold btn-sm" onClick={() => nav(`/prijava?next=/mec/${m.id}`)}>{t('signIn')}</button>
-    </div>
-  }
-  const picks = m.sport === 'football' || m.best?.X ? ['1', 'X', '2'] : ['1', '2']
+  if (!sel) return null
+  const odds = m.best?.[sel]?.odds
+  const onSlip = slip.has(m.id, sel)
   const submit = async () => {
-    setErr('')
-    setBusy(true)
+    setErr(''); setBusy(true)
     try {
-      await api(`/matches/${m.id}/predict`, { method: 'POST', body: { pick, stake: Number(stake), comment } })
-      refresh(); onDone()
+      await api(`/matches/${m.id}/predict`, { method: 'POST', body: { pick: sel, stake: Number(stake), comment } })
+      refresh(); onPredicted()
     } catch (e) {
-      const map = { bank: 'bankLow', stake_range: 'stakeRange', closed: 'closed', exists: 'exists' }
+      const map = { bank: 'bankLow', stake_range: 'stakeRange', closed: 'closed', exists: 'exists', no_odds: 'closed' }
       setErr(t(map[e.code] || 'error'))
     } finally { setBusy(false) }
   }
   return (
-    <div className="card pad stack">
-      <h2 className="h2">{t('placePrediction')}</h2>
-      <div className="odds wide" style={{ gridTemplateColumns: `repeat(${picks.length}, 1fr)` }}>
-        {picks.map((k) => (
-          <button key={k} type="button" className={`odd${pick === k ? ' on' : ''}`} onClick={() => setPick(k)} disabled={!m.best?.[k]}>
-            <span className="k">{pickLabel(t, m, k)}</span><span className="v">{fmtOdds(m.best?.[k]?.odds)}</span>
-          </button>
-        ))}
+    <div className="sheet" role="dialog" aria-label={t('placePrediction')}>
+      <div className="sheet-head">
+        <div className="grow" style={{ minWidth: 0 }}>
+          <div className="small ellip">{t.team(m.home)} – {t.team(m.away)}</div>
+          <div className="ellip" style={{ fontWeight: 800, fontSize: 16 }}>{pickLabel(t, m, sel)}</div>
+        </div>
+        <span className="num" style={{ fontSize: 24, color: 'var(--gold)' }}>{fmtOdds(odds)}</span>
+        <button className="iconbtn" onClick={onClose} aria-label="Zatvori"><X size={20} /></button>
       </div>
-      <div className="field">
-        <label htmlFor="pstake">{t('stake')}</label>
-        <input id="pstake" className="input" type="number" inputMode="numeric" min={10} max={1000} step={10} value={stake} onChange={(e) => setStake(e.target.value)} />
-      </div>
-      <div className="field">
-        <label htmlFor="pcom">{t('comment')}</label>
-        <textarea id="pcom" className="textarea" maxLength={1200} placeholder={t('commentPh')} value={comment} onChange={(e) => setComment(e.target.value)} />
-      </div>
-      {pick && <div className="slip-sum"><span>{t('potentialWin')}</span><b style={{ color: 'var(--gold)' }}>{fmtNum((m.best?.[pick]?.odds || 0) * (Number(stake) || 0))}</b></div>}
-      {err && <div className="form-error">{err}</div>}
-      <button className="btn btn-gold btn-block" disabled={!pick || busy} onClick={submit}>{t('placePrediction')}</button>
-      <p className="note" style={{ margin: 0 }}>{t('virtual')}</p>
+      {mode === 'pick' ? (
+        <div className="sheet-actions" style={m.mine ? { gridTemplateColumns: '1fr' } : undefined}>
+          <button className="btn btn-ghost btn-sm" style={{ height: 44 }} onClick={() => { slip.toggle(m, sel, odds); onClose() }}>{onSlip ? t('removeFromTicket') : t('addToTicket')}</button>
+          {!m.mine && <button className="btn btn-gold btn-sm" style={{ height: 44 }} onClick={() => (user ? setMode('predict') : nav(`/prijava?next=/mec/${m.id}`))}>{t('placePrediction')}</button>}
+        </div>
+      ) : (
+        <div className="stack" style={{ marginTop: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'end' }}>
+            <div className="field"><label htmlFor="pstake">{t('stake')}</label>
+              <input id="pstake" className="input" type="number" inputMode="numeric" min={10} max={1000} step={10} value={stake} onChange={(e) => setStake(e.target.value)} /></div>
+            <div className="right" style={{ paddingBottom: 6 }}><div className="small">{t('potentialWin')}</div><b className="num" style={{ fontSize: 20, color: 'var(--gold)' }}>{fmtNum((odds || 0) * (Number(stake) || 0))}</b></div>
+          </div>
+          <div className="chips">{[50, 100, 250, 500, 1000].map((v) => <button key={v} className={`chip${Number(stake) === v ? ' on' : ''}`} onClick={() => setStake(v)}>{v}</button>)}</div>
+          <div className="field"><label htmlFor="pcom">{t('comment')}</label>
+            <textarea id="pcom" className="textarea" style={{ minHeight: 70 }} maxLength={1200} placeholder={t('commentPh')} value={comment} onChange={(e) => setComment(e.target.value)} /></div>
+          {err && <div className="form-error">{err}</div>}
+          <button className="btn btn-gold btn-block" disabled={busy} onClick={submit}>{t('placePrediction')}</button>
+          <p className="note" style={{ margin: 0 }}>{t('virtual')}</p>
+        </div>
+      )}
     </div>
   )
 }
@@ -159,6 +203,7 @@ export default function MatchPage() {
   const nav = useNavigate()
   const [ver, setVer] = useState(0)
   const [toast, setToast] = useState('')
+  const [sel, setSel] = useState(null)
   const { data: m, loading } = usePoll(() => api(`/matches/${id}`), [id, ver], 30000)
   if (loading && !m) return <Skeleton h={220} n={2} />
   if (!m) return <Empty title={t('error')} />
@@ -173,9 +218,14 @@ export default function MatchPage() {
           <div className="grow"><div className="small">{t('yourPrediction')}</div><b>{pickLabel(t, m, m.mine.pick)} {fmtOdds(m.mine.odds)}</b><span className="small">, {t('stake')} {fmtNum(m.mine.stake)}</span></div>
           <span className={`badge ${m.mine.status}`}>{t(`pred_${m.mine.status}`)}</span>
         </div>
-      ) : m.open ? (
-        <div style={{ marginTop: 16 }}><PredictForm m={m} onDone={() => { setVer((v) => v + 1); setToast(t('yourPrediction')) }} /></div>
       ) : null}
+
+      {m.open && (
+        <section className="section" style={{ marginTop: 16 }}>
+          <MarketBoard m={m} sel={sel} onSelect={setSel} />
+        </section>
+      )}
+      <SelectionSheet key={sel || 'none'} m={m} sel={m.open ? sel : null} onClose={() => setSel(null)} onPredicted={() => { setSel(null); setVer((v) => v + 1); setToast(t('yourPrediction')) }} />
 
       {m.derby && m.score_picks && <div style={{ marginTop: 16 }}><ScorePicker m={m} sp={m.score_picks} onSaved={() => setVer((v) => v + 1)} /></div>}
 
@@ -225,8 +275,8 @@ export default function MatchPage() {
             <div className="pred" key={p.id}>
               <div className="pred-head">
                 <Link to={`/u/${p.user.username}`} style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                  <Avatar user={p.user} size={32} />
-                  <div style={{ minWidth: 0 }}><div className="ellip" style={{ fontWeight: 700 }}>{p.user.username}</div>{p.user.club && <div className="small ellip">{t.team(p.user.club)}</div>}</div>
+                  <Avatar user={p.user} size={34} />
+                  <UserName user={p.user} sub={p.user.club ? t.team(p.user.club) : null} />
                 </Link>
                 <div className="pred-pick">
                   <span className="badge gold">{pickLabel(t, m, p.pick)} {fmtOdds(p.odds)}</span>
@@ -238,6 +288,7 @@ export default function MatchPage() {
           ))}
         </div>
       </section>
+      {sel && <div style={{ height: 180 }} />}
       <Toast text={toast} onDone={() => setToast('')} />
     </div>
   )

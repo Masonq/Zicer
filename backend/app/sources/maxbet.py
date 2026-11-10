@@ -1,15 +1,103 @@
-"""Odds from MaxBet (Serbian bookmaker) public offer API."""
+"""Odds from MaxBet (Serbian bookmaker) public offer API, normalized to Zicer market keys."""
+import time
 from datetime import datetime
 import httpx
 from ..config import UA
 
 URL = "https://www.maxbet.rs/restapi/offer/sr/sport/{s}/mob?annex=3&desktopVersion=2.36.3.9&locale=sr"
+TTG = "https://www.maxbet.rs/restapi/offer/sr/ttg_lang?annex=3&desktopVersion=2.36.3.9&locale=sr"
 SPORTS = {"football": "S", "basketball": "B"}
+
+FOOT_FIXED = {
+    "1": "1", "2": "X", "3": "2",
+    "7": "1X", "8": "12", "9": "X2",
+    "264": "DNB1", "265": "DNB2",
+    "272": "GG", "273": "NG",
+    "21": "G0-1", "22": "G0-2", "23": "G2-3", "242": "G2+", "24": "G3+", "25": "G4+", "27": "G5+",
+}
+BASKET_FIXED = {"1": "1", "2": "X", "3": "2"}
+# basketball handicap / totals incl. overtime: (home_code, away_code, param)
+BASKET_AH = [("50430", "50431", "handicapOvertime"), ("50432", "50433", "handicapOvertime2"),
+             ("50434", "50435", "handicapOvertime3"), ("50436", "50437", "handicapOvertime4"),
+             ("50438", "50439", "handicapOvertime5")]
+BASKET_TOT = [("50444", "50445", "overUnderOvertime"), ("50446", "50447", "overUnderOvertime2"),
+              ("50448", "50449", "overUnderOvertime3")]
+
+_cs_cache = {"t": 0, "map": {}}
+
+
+def exact_score_codes(client: httpx.Client) -> dict:
+    if time.time() - _cs_cache["t"] < 6 * 3600 and _cs_cache["map"]:
+        return _cs_cache["map"]
+    r = client.get(TTG, headers={"User-Agent": UA}, timeout=30)
+    r.raise_for_status()
+    out = {}
+    for k, v in r.json().get("betPickMap", {}).items():
+        code, _, sport = k.partition("_")
+        cap = (v.get("caption") or "").strip()
+        if sport == "S" and v.get("betCode") == 7 and ":" in cap:
+            h, _, a = cap.partition(":")
+            if h.isdigit() and a.isdigit():
+                out[code] = f"CS:{int(h)}:{int(a)}"
+    _cs_cache.update(t=time.time(), map=out)
+    return out
+
+
+def _num(v):
+    try:
+        return float(str(v).replace(",", "."))
+    except (TypeError, ValueError):
+        return None
+
+
+def _fmt(v: float) -> str:
+    return f"{v:g}"
+
+
+def markets(sport: str, odds: dict, params: dict, cs: dict) -> dict:
+    out = {}
+    fixed = FOOT_FIXED if sport == "football" else BASKET_FIXED
+    for code, key in fixed.items():
+        if odds.get(code):
+            out[key] = odds[code]
+    if sport == "football":
+        for code, key in cs.items():
+            if odds.get(code):
+                out[key] = odds[code]
+        hv = _num(params.get("hd2"))
+        if hv is not None and hv != 0:
+            for code, k in (("201", "EH1"), ("202", "EHX"), ("203", "EH2")):
+                if odds.get(code):
+                    out[f"{k}:{_fmt(hv)}"] = odds[code]
+    else:
+        for hc, ac, p in BASKET_AH:
+            v = _num(params.get(p))
+            if v is None:
+                continue
+            if odds.get(hc):
+                out[f"AH1:{_fmt(v)}"] = odds[hc]
+            if odds.get(ac):
+                out[f"AH2:{_fmt(v)}"] = odds[ac]
+        for uc, oc, p in BASKET_TOT:
+            v = _num(params.get(p))
+            if v is None:
+                continue
+            if odds.get(uc):
+                out[f"U:{_fmt(v)}"] = odds[uc]
+            if odds.get(oc):
+                out[f"O:{_fmt(v)}"] = odds[oc]
+    return out
 
 
 def fetch(sport: str, client: httpx.Client) -> list[dict]:
     r = client.get(URL.format(s=SPORTS[sport]), headers={"User-Agent": UA, "Accept": "application/json"}, timeout=25)
     r.raise_for_status()
+    cs = {}
+    if sport == "football":
+        try:
+            cs = exact_score_codes(client)
+        except Exception:  # noqa
+            cs = {}
     out = []
     for m in r.json().get("esMatches", []):
         o = m.get("odds") or {}
@@ -19,7 +107,7 @@ def fetch(sport: str, client: httpx.Client) -> list[dict]:
             "home": m.get("home", ""), "away": m.get("away", ""),
             "start": datetime.utcfromtimestamp(m["kickOffTime"] / 1000),
             "league": m.get("leagueName", ""),
-            "odds": {"1": o.get("1"), "X": o.get("2"), "2": o.get("3")},
+            "odds": markets(sport, o, m.get("params") or {}, cs),
             "live": bool(m.get("live")),
         })
     return out

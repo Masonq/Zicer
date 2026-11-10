@@ -25,6 +25,7 @@ import Trends from './pages/Trends'
 import Bookmakers from './pages/Bookmakers'
 import Profile from './pages/Profile'
 import Me from './pages/Me'
+import EditProfile from './pages/EditProfile'
 import { Login, Register } from './pages/Auth'
 import Onboarding from './pages/Onboarding'
 import TeamPage from './pages/Team'
@@ -65,6 +66,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                 <Route path="/klub/:id" element={<TeamPage />} />
                 <Route path="/u/:username" element={<Profile />} />
                 <Route path="/profil" element={<Me />} />
+                <Route path="/profil/uredi" element={<EditProfile />} />
                 <Route path="/prijava" element={<Login />} />
                 <Route path="/registracija" element={<Register />} />
                 <Route path="/izbor-kluba" element={<Onboarding />} />
