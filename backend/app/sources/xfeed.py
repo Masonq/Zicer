@@ -28,7 +28,7 @@ EVENT_KEYS = {  # stat that grew -> event type
     "Dangerous attacks": "danger", "Attacks": "attack", "Shots on target": "shot_on", "Shots off target": "shot_off",
     "Corner": "corner", "Yellow cards": "yellow", "Red card": "red", "Penalty": "penalty", "Substitutions": "sub",
     "2-min penalties": "pen2", "2-pointers": "p2", "3-pointers": "p3", "Free throws": "ft", "Fouls": "foul",
-    "Aces": "ace", "Double faults": "df", "Breaks": "break",
+    "Aces": "ace", "Double faults": "df", "Breaks": "break", "Timeouts": "timeout",
 }
 
 

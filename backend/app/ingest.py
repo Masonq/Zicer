@@ -1,3 +1,4 @@
+import re
 """Data jobs: fixtures, odds, settlement, trends, analysis, translation, telegram."""
 import hashlib
 import json
@@ -326,7 +327,7 @@ def sync_live(db: Session) -> str:
     n = 0
     for m in ms:
         d = data[m.mb_id]
-        keep = {k: v for k, v in (m.live or {}).items() if k in ("x", "xev", "x_seen", "fin_by", "fin_at")}
+        keep = {k: v for k, v in (m.live or {}).items() if k in ("x", "xev", "x_seen", "fin_by", "fin_at", "brk")}
         if m.sport == "volleyball" and not (keep.get("x_seen") and int(datetime.utcnow().timestamp()) - keep["x_seen"] < 60):
             old_per = (m.live or {}).get("per") or []
             new_per = d.get("per") or []
@@ -351,9 +352,26 @@ def sync_live(db: Session) -> str:
         if not own_feed:
             m.minute = (f"{d['cm']}'" if d.get("cm") and m.sport == "football" else d["p"])[:16]
         close_if_decided(m)
+        _mark_break(m, d.get("p") or "")
         n += 1
     db.commit()
     return f"live updated {n}"
+
+
+BREAK_RE = re.compile(r"PAUSE|BREAK|HALF_TIME|INTERVAL|^HT$")
+
+
+def _mark_break(m: Match, code: str) -> None:
+    lv = dict(m.live or {})
+    code = code or (m.minute or "")
+    if m.status == "live" and BREAK_RE.search(code) or (m.minute or "") == "HT":
+        key = code if BREAK_RE.search(code) else "HALF_TIME"
+        if (lv.get("brk") or {}).get("k") != key:
+            lv["brk"] = {"k": key, "at": int(datetime.utcnow().timestamp())}
+            m.live = lv
+    elif lv.get("brk"):
+        lv.pop("brk", None)
+        m.live = lv
 
 
 def sync_maxbet_results(db: Session) -> str:
@@ -1076,11 +1094,14 @@ def sync_xfeed(db: Session) -> str:
         evs = list(live.get("xev") or [])
         new = []
         for name, val in g["stats"].items():
-            et = xfeed.EVENT_KEYS.get(name)
+            et = xfeed.EVENT_KEYS.get(name) or ("timeout" if name == "Timeouts remaining" else None)
             if not et or name not in prev:
                 continue
             for side in (0, 1):
                 d = xfeed._num(val[side]) - xfeed._num(prev[name][side])
+                if name == "Timeouts remaining" and -2 <= d < 0:  # basketball: a team used a timeout
+                    new.append({"t": "timeout", "side": side, "at": now_ts, "ts": g.get("ts"), "n": 1})
+                    continue
                 if 0 < d <= 3:
                     new.append({"t": et, "side": side, "at": now_ts, "ts": g.get("ts"), "n": int(d)})
         if prev_score and g["score"] != prev_score:
