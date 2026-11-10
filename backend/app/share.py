@@ -40,7 +40,7 @@ def render_ticket(t: Ticket) -> bytes:
     # pitch lines
     d.rectangle([40, 40, W - 40, H - 40], outline=LINE, width=3)
     d.line([W - 330, 40, W - 330, H - 40], fill=LINE, width=3)
-    d.text((80, 66), "ZICER", font=font("Oswald.ttf", 54, "Bold"), fill=GOLD)
+    d.text((80, 66), "WINLY", font=font("Oswald.ttf", 54, "Bold"), fill=GOLD)
     d.text((80, 132), f"tiket @{t.user.username}", font=font("Manrope.ttf", 26, "SemiBold"), fill=MUTED)
     status = {"won": ("PROŠAO", WIN), "lost": ("PAO", LOSS), "void": ("VRAĆEN", MUTED)}.get(t.status, ("U IGRI", CHALK))
     sf = font("Oswald.ttf", 92, "Bold")
@@ -77,7 +77,7 @@ def render_ticket(t: Ticket) -> bytes:
     if len(t.items) > 6:
         d.text((108, y), f"+ još {len(t.items) - 6}", font=lab, fill=MUTED)
     foot = font("Manrope.ttf", 24, "SemiBold")
-    d.text((80, H - 92), "Napravi svoj tiket na Zicer", font=foot, fill=MUTED)
+    d.text((80, H - 92), "Napravi svoj tiket na Winly", font=foot, fill=MUTED)
     buf = io.BytesIO()
     im.save(buf, "PNG", optimize=True)
     return buf.getvalue()
@@ -101,7 +101,7 @@ def ticket_share_page(tid: int, db: Session = Depends(get_db)):
     img = f"{config.PUBLIC_URL}/api/share/ticket/{tid}.png?s={t.status}"
     url = f"{config.PUBLIC_URL}/tiket/{tid}"
     return f"""<!doctype html><html lang="sr"><head><meta charset="utf-8"><title>{title}</title>
-<meta property="og:title" content="{title}"><meta property="og:description" content="Zicer — liga prognoza. Napravi svoj tiket.">
+<meta property="og:title" content="{title}"><meta property="og:description" content="Winly — liga prognoza. Napravi svoj tiket.">
 <meta property="og:image" content="{img}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
 <meta property="og:url" content="{url}"><meta name="twitter:card" content="summary_large_image">
 <meta http-equiv="refresh" content="0;url={url}"></head><body><a href="{url}">{title}</a></body></html>"""

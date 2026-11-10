@@ -9,7 +9,7 @@ from .models import Bookmaker
 from . import api, admin, share, center
 
 logging.basicConfig(level=logging.INFO)
-app = FastAPI(title="Zicer", docs_url=None, redoc_url=None)
+app = FastAPI(title="Winly", docs_url=None, redoc_url=None)
 
 SEED_BMS = [
     ("Mozzart", "https://www.mozzartbet.com/sr", "#F2C230"),

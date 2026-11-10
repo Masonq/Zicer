@@ -17,7 +17,7 @@ export default function TicketView() {
   const shareUrl = `${window.location.origin}/t/${tk.id}`
   const img = `/api/share/ticket/${tk.id}.png?s=${tk.status}`
   const share = async () => {
-    if (navigator.share) { try { await navigator.share({ title: 'Zicer tiket', url: shareUrl }); return } catch { return } }
+    if (navigator.share) { try { await navigator.share({ title: 'Winly tiket', url: shareUrl }); return } catch { return } }
     copy()
   }
   const copy = async () => { try { await navigator.clipboard.writeText(shareUrl); setToast(t('linkCopied')) } catch {} }

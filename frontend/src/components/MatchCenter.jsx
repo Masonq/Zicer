@@ -385,8 +385,43 @@ function TennisCourt({ m, data, t }) {
   const sy = (side) => (side === 0 ? (deuce ? 68 : 32) : (deuce ? 32 : 68))
   const srvY = sy(server)
   const rcvY = server === 0 ? (deuce ? 32 : 68) : (deuce ? 68 : 32)
-  // ball waits with the server (behind the baseline); no fake rallies
-  const ball = { x: server === 0 ? 4 : 96, y: srvY }
+  // serve + rally loop: serve goes diagonally into the receiver's service box, then every shot crosses the net
+  const [ball, setBall] = useState({ x: server === 0 ? 4 : 96, y: srvY, k: 0, fly: false })
+  const loop = useRef(null)
+  useEffect(() => {
+    clearTimeout(loop.current)
+    if (!live || phase.kind !== 'idle') { setBall({ x: server === 0 ? 4 : 96, y: srvY, k: Date.now(), fly: false }); return }
+    let side = server // side where the ball is now
+    let shots = 0
+    let total = 3 + Math.floor(Math.random() * 6)
+    const step = () => {
+      if (shots === 0) {
+        setBall({ x: server === 0 ? 4 : 96, y: srvY, k: Date.now(), fly: false }) // toss
+        shots = 1
+        loop.current = setTimeout(step, 1300)
+        return
+      }
+      if (shots > total) { // rally over: short pause, next serve
+        shots = 0; side = server; total = 3 + Math.floor(Math.random() * 6)
+        loop.current = setTimeout(step, 1500)
+        return
+      }
+      side = 1 - side
+      let xx, yy
+      if (shots === 1) { // serve into the diagonal service box
+        xx = side === 1 ? 58 + Math.random() * 10 : 32 + Math.random() * 10
+        yy = rcvY > 50 ? 55 + Math.random() * 12 : 33 + Math.random() * 12
+      } else {
+        xx = side === 1 ? 66 + Math.random() * 20 : 14 + Math.random() * 20
+        yy = 20 + Math.random() * 60
+      }
+      setBall({ x: xx, y: yy, k: Date.now(), fly: true })
+      shots += 1
+      loop.current = setTimeout(step, 1150)
+    }
+    loop.current = setTimeout(step, 400)
+    return () => clearTimeout(loop.current)
+  }, [live, server, totalPts, phase.kind]) // eslint-disable-line react-hooks/exhaustive-deps
   const setsTxt = per.map((p) => `${p[0]}-${p[1]}`).join(', ')
   const ev = phase.ev
   const winner = ev ? ev.side : null
@@ -413,8 +448,8 @@ function TennisCourt({ m, data, t }) {
         <CourtLines sport="tennis" />
         {live && phase.kind !== 'big' && (
           <>
-            <span className="bp-shadow" style={{ left: `${ball.x}%`, top: `${ball.y}%` }} />
-            <span className="bp-wrap" style={{ left: `${ball.x}%`, top: `${ball.y}%` }}><span className="bp-ball ball-tennis live" /></span>
+            <span className="bp-shadow tn" style={{ left: `${ball.x}%`, top: `${ball.y}%` }} />
+            <span className="bp-wrap tn" style={{ left: `${ball.x}%`, top: `${ball.y}%` }}><span key={ball.k} className={`bp-ball ball-tennis${ball.fly ? ' arc' : ' toss'}`} /></span>
           </>
         )}
         {tag(0)}{tag(1)}

@@ -698,8 +698,8 @@ def template_analysis(db: Session, m: Match) -> tuple[str, str]:
         top = max((k for k in ("1", "X", "2") if k in cs), key=lambda k: cs[k])
         lab = {"1": H, "X": "nerešeno", "2": A}[top]
         lab_ru = {"1": f"«{H}»", "X": "ничью", "2": f"«{A}»"}[top]
-        sr.append(f"Zicer zajednica: {cs[top]}% prognoza je na {lab}.")
-        ru.append(f"Сообщество Zicer: {cs[top]}% прогнозов — на {lab_ru}.")
+        sr.append(f"Winly zajednica: {cs[top]}% prognoza je na {lab}.")
+        ru.append(f"Сообщество Winly: {cs[top]}% прогнозов — на {lab_ru}.")
     if not sr:
         sr.append("Još nema dovoljno podataka za analizu ovog meča.")
         ru.append("Пока недостаточно данных для разбора этого матча.")
@@ -716,7 +716,7 @@ def llm_analysis(db: Session, m: Match) -> tuple[str, str] | None:
             "h2h": [{"home": x.home.short_name, "away": x.away.short_name, "score": f"{x.score_home}:{x.score_away}"}
                     for x in h2h(db, m.home_id, m.away_id, m.start)],
             "community": community_split(db, m.id)}
-    prompt = ("Ti si sportski analitičar sajta Zicer. Na osnovu podataka napiši kratku analizu meča (3-4 rečenice), "
+    prompt = ("Ti si sportski analitičar sajta Winly. Na osnovu podataka napiši kratku analizu meča (3-4 rečenice), "
               "bez izmišljanja povreda i vesti, samo iz podataka. Završi jednom rečenicom 'Naš izbor: ...'. "
               "Vrati ISKLJUČIVO JSON {\"sr\": \"tekst na srpskoj latinici\", \"ru\": \"isti tekst na ruskom\"}.\n"
               + json.dumps(data, ensure_ascii=False))
@@ -822,7 +822,7 @@ def tg_poll(db: Session) -> str:
                     else "Povezano! Javljaćemo ti pred meč tvog kluba i kad tiket prođe.")
                 n += 1
             else:
-                _tg("sendMessage", chat_id=chat, text=f"Zicer — lige prognoza. Poveži nalog na {config.PUBLIC_URL}/profil")
+                _tg("sendMessage", chat_id=chat, text=f"Winly — liga prognoza. Poveži nalog na {config.PUBLIC_URL}/profil")
     db.commit()
     return f"tg linked {n}"
 

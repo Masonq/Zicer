@@ -520,3 +520,9 @@ img { display: block; max-width: 100%; }
 .bonus b { font-family: var(--body); font-size: 9px; font-weight: 800; letter-spacing: 0.04em; border: 1px solid rgba(255,255,255,0.6); border-radius: 3px; padding: 0 4px; line-height: 14px; }
 .bonus i { width: 7px; height: 7px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.75); }
 .bonus i.on { background: #fff; }
+
+.bp-wrap.tn, .bp-shadow.tn { transition: left 1.1s linear, top 1.1s linear; }
+.bp-ball.arc { animation: arc 1.1s ease-in-out; }
+@keyframes arc { 0% { transform: translateY(0) scale(1); } 50% { transform: translateY(-26px) scale(1.35); } 100% { transform: translateY(0) scale(1); } }
+.bp-ball.toss { animation: toss 1.2s ease-in-out; }
+@keyframes toss { 0%, 100% { transform: translateY(0); } 45% { transform: translateY(-20px) scale(1.15); } }
