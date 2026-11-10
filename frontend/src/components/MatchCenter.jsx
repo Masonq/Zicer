@@ -67,172 +67,244 @@ function Crest({ team, size }) {
   return <span className="crest" style={{ width: size, height: size }}><img src={team.logo} alt="" onError={() => setBad(true)} /></span>
 }
 
-// Stylised ball: position follows the current pressure (momentum) of the match
-function BallPitch({ m, data, t }) {
-  const live = m.status === 'live'
-  const mom = data.momentum || []
-  const last = mom.length ? mom[mom.length - 1][1] : 0
-  const evs = (data.events || []).filter((e) => e.type === 'Goal')
-  const lastGoal = evs[evs.length - 1]
-  void lastGoal
-  const curMin = parseInt(m.minute, 10) || (mom.length ? mom[mom.length - 1][0] : 0)
-  const goalNow = live && lastGoal && curMin - lastGoal.min >= 0 && curMin - lastGoal.min <= 1
-  const [pos, setPos] = useState({ x: 50, y: 50 })
-  const [trail, setTrail] = useState([])
-  const ref = useRef(pos)
-  useEffect(() => {
-    if (!live) { setPos({ x: 50, y: 50 }); setTrail([]); return }
-    const tick = () => {
-      const p = ref.current
-      const base = 50 + Math.max(-1, Math.min(1, last / 100)) * 36
-      const x = Math.max(6, Math.min(94, base + (Math.random() - 0.5) * 18))
-      const y = Math.max(14, Math.min(86, p.y + (Math.random() - 0.5) * 34))
-      const np = { x, y }
-      setTrail((tr) => [...tr.slice(-7), p])
-      ref.current = np
-      setPos(np)
-    }
-    tick()
-    const i = setInterval(tick, 2200)
-    return () => clearInterval(i)
-  }, [live, last])
-  const H = t.team(m.home), A = t.team(m.away)
-  const att = last >= 0 ? H : A
-  const a = Math.abs(last)
-  let title, sub
-  if (!live) { title = t('finished'); sub = `${H} ${m.score ? m.score.join(':') : ''} ${A}` }
-  else if (goalNow) { title = `${t('goal')}!`; sub = `${lastGoal.player}, ${lastGoal.home ? H : A}` }
-  else if (m.minute === 'HT') { title = t('halfTime'); sub = `${H} – ${A}` }
-  else if (a >= 60) { title = t('dangerAttack'); sub = att }
-  else if (a >= 25) { title = t('attack'); sub = att }
-  else { title = t('possession'); sub = att }
-  const textLeft = pos.x > 55
+const L = { stroke: 'rgba(255,255,255,0.24)', strokeWidth: 2, fill: 'none' }
+function CourtLines({ sport }) {
+  if (sport === 'basketball') return (
+    <svg viewBox="0 0 600 300" preserveAspectRatio="none" className="court-svg">
+      <rect x="6" y="6" width="588" height="288" rx="6" {...L} /><line x1="300" y1="6" x2="300" y2="294" {...L} /><circle cx="300" cy="150" r="36" {...L} />
+      <rect x="6" y="104" width="114" height="92" {...L} /><rect x="480" y="104" width="114" height="92" {...L} />
+      <circle cx="120" cy="150" r="36" {...L} /><circle cx="480" cy="150" r="36" {...L} />
+      <path d="M6 30 H70 A132 132 0 0 1 70 270 H6" {...L} /><path d="M594 30 H530 A132 132 0 0 0 530 270 H594" {...L} />
+      <circle cx="34" cy="150" r="6" {...L} /><circle cx="566" cy="150" r="6" {...L} />
+    </svg>)
+  if (sport === 'hockey') return (
+    <svg viewBox="0 0 600 300" preserveAspectRatio="none" className="court-svg">
+      <rect x="6" y="6" width="588" height="288" rx="70" {...L} />
+      <line x1="300" y1="6" x2="300" y2="294" stroke="rgba(229,84,75,0.7)" strokeWidth="4" />
+      <line x1="210" y1="6" x2="210" y2="294" stroke="rgba(90,150,230,0.7)" strokeWidth="4" /><line x1="390" y1="6" x2="390" y2="294" stroke="rgba(90,150,230,0.7)" strokeWidth="4" />
+      <line x1="44" y1="20" x2="44" y2="280" stroke="rgba(229,84,75,0.5)" strokeWidth="2" /><line x1="556" y1="20" x2="556" y2="280" stroke="rgba(229,84,75,0.5)" strokeWidth="2" />
+      <circle cx="300" cy="150" r="40" stroke="rgba(90,150,230,0.6)" strokeWidth="2" fill="none" />
+      {[[110, 80], [110, 220], [490, 80], [490, 220]].map(([x, y]) => <circle key={x + '-' + y} cx={x} cy={y} r="30" stroke="rgba(229,84,75,0.45)" strokeWidth="2" fill="none" />)}
+      <path d="M44 132 A18 18 0 0 1 44 168" stroke="rgba(90,150,230,0.7)" strokeWidth="2" fill="rgba(90,150,230,0.15)" /><path d="M556 132 A18 18 0 0 0 556 168" stroke="rgba(90,150,230,0.7)" strokeWidth="2" fill="rgba(90,150,230,0.15)" />
+    </svg>)
+  if (sport === 'tennis') return (
+    <svg viewBox="0 0 600 300" preserveAspectRatio="none" className="court-svg">
+      <rect x="30" y="20" width="540" height="260" {...L} stroke="rgba(255,255,255,0.6)" /><line x1="30" y1="52" x2="570" y2="52" stroke="rgba(255,255,255,0.6)" strokeWidth="2" /><line x1="30" y1="248" x2="570" y2="248" stroke="rgba(255,255,255,0.6)" strokeWidth="2" />
+      <line x1="160" y1="52" x2="160" y2="248" stroke="rgba(255,255,255,0.6)" strokeWidth="2" /><line x1="440" y1="52" x2="440" y2="248" stroke="rgba(255,255,255,0.6)" strokeWidth="2" />
+      <line x1="160" y1="150" x2="440" y2="150" stroke="rgba(255,255,255,0.6)" strokeWidth="2" />
+      <line x1="300" y1="10" x2="300" y2="290" stroke="rgba(255,255,255,0.85)" strokeWidth="4" strokeDasharray="2 3" />
+    </svg>)
+  if (sport === 'volleyball') return (
+    <svg viewBox="0 0 600 300" preserveAspectRatio="none" className="court-svg">
+      <rect x="40" y="30" width="520" height="240" stroke="rgba(255,255,255,0.6)" strokeWidth="2" fill="none" />
+      <line x1="300" y1="14" x2="300" y2="286" stroke="rgba(255,255,255,0.85)" strokeWidth="4" />
+      <line x1="213" y1="30" x2="213" y2="270" stroke="rgba(255,255,255,0.45)" strokeWidth="2" /><line x1="387" y1="30" x2="387" y2="270" stroke="rgba(255,255,255,0.45)" strokeWidth="2" />
+    </svg>)
+  if (sport === 'waterpolo') return (
+    <svg viewBox="0 0 600 300" preserveAspectRatio="none" className="court-svg">
+      <rect x="6" y="6" width="588" height="288" {...L} />
+      <line x1="40" y1="6" x2="40" y2="294" stroke="rgba(229,84,75,0.7)" strokeWidth="2" /><line x1="560" y1="6" x2="560" y2="294" stroke="rgba(229,84,75,0.7)" strokeWidth="2" />
+      <line x1="105" y1="6" x2="105" y2="294" stroke="rgba(242,194,48,0.7)" strokeWidth="2" /><line x1="495" y1="6" x2="495" y2="294" stroke="rgba(242,194,48,0.7)" strokeWidth="2" />
+      <line x1="300" y1="6" x2="300" y2="294" stroke="rgba(255,255,255,0.55)" strokeWidth="2" />
+      <rect x="0" y="125" width="8" height="50" fill="rgba(255,255,255,0.6)" /><rect x="592" y="125" width="8" height="50" fill="rgba(255,255,255,0.6)" />
+    </svg>)
   return (
-    <div className="ball-pitch">
-      <div className="bp-lines"><i className="bp-mid" /><i className="bp-circle" /><i className="bp-box l" /><i className="bp-box r" /></div>
+    <svg viewBox="0 0 600 300" preserveAspectRatio="none" className="court-svg">
+      <rect x="6" y="6" width="588" height="288" rx="6" {...L} /><line x1="300" y1="6" x2="300" y2="294" {...L} /><circle cx="300" cy="150" r="40" {...L} /><circle cx="300" cy="150" r="2.5" fill="rgba(255,255,255,0.4)" />
+      <rect x="6" y="78" width="74" height="144" {...L} /><rect x="520" y="78" width="74" height="144" {...L} />
+      <rect x="6" y="118" width="26" height="64" {...L} /><rect x="568" y="118" width="26" height="64" {...L} />
+      <path d="M80 122 A36 36 0 0 1 80 178" {...L} /><path d="M520 122 A36 36 0 0 0 520 178" {...L} />
+    </svg>)
+}
+
+// Where the ball should be and what to say, from real match data
+function useScene(m, data, t) {
+  const live = m.status === 'live'
+  const H = t.team(m.home), A = t.team(m.away)
+  const prev = useRef(null)
+  const lastSide = useRef(null)
+  const sc = m.score || data.score
+  if (sc && prev.current && (sc[0] !== prev.current[0] || sc[1] !== prev.current[1])) {
+    lastSide.current = sc[0] - prev.current[0] > sc[1] - prev.current[1] ? 'home' : 'away'
+  }
+  if (sc) prev.current = sc
+  if (!live) return { x: 50, title: t('finished'), sub: sc ? `${H} ${sc[0]}${m.sport === 'football' ? ':' : '–'}${sc[1]} ${A}` : '', flash: false }
+  if (m.minute === 'HT' || /PAUSE|BREAK|HALF_TIME/.test(m.minute || '')) return { x: 50, title: t('pause'), sub: `${H} – ${A}`, flash: false }
+  if (m.sport === 'football') {
+    const mom = data.momentum || []
+    const recent = mom.slice(-3)
+    const v = recent.length ? recent.reduce((a, x) => a + x[1], 0) / recent.length : 0
+    const goals = (data.events || []).filter((e) => e.type === 'Goal')
+    const g = goals[goals.length - 1]
+    const cur = parseInt(m.minute, 10) || 0
+    if (g && cur - g.min >= 0 && cur - g.min <= 1) return { x: g.home ? 92 : 8, title: `${t('goal')}!`, sub: `${g.player}, ${g.home ? H : A}`, flash: true }
+    const a = Math.abs(v), team = v >= 0 ? H : A
+    const x = 50 + Math.max(-1, Math.min(1, v / 100)) * 36
+    if (!mom.length) return { x: 50, title: t('live'), sub: m.minute ? `${m.minute}` : '', flash: false }
+    return { x, title: a >= 60 ? t('dangerAttack') : a >= 25 ? t('attack') : t('possession'), sub: team, flash: false }
+  }
+  if (m.sport === 'basketball' && data.plays && data.plays.length) {
+    const p = data.plays[data.plays.length - 1]
+    const team = p.home ? H : A
+    const x = p.home ? 80 : 20
+    const label = t.lang === 'ru' ? p.ru : t.serb(p.sr)
+    if (p.pts > 0) return { x: p.home ? 90 : 10, title: `+${p.pts} ${team}`, sub: [p.player, label].filter(Boolean).join(', '), flash: true }
+    return { x, title: label.length > 28 ? team : label, sub: label.length > 28 ? label : [p.player, team].filter(Boolean).join(', '), flash: false }
+  }
+  const per = periodLabel((data.live || {}).p, m.sport, t)
+  const g = (data.live || {}).game
+  if (m.sport === 'tennis' && g) return { x: lastSide.current === 'home' ? 30 : lastSide.current === 'away' ? 70 : 50, title: per || t('live'), sub: `${t.lang === 'ru' ? 'Гейм' : t.serb('Gem')} ${g[0]}:${g[1]}`, flash: false }
+  const side = lastSide.current
+  return { x: side === 'home' ? 75 : side === 'away' ? 25 : 50, title: per || t('live'), sub: side ? `${t.lang === 'ru' ? 'Последний результат' : t.serb('Poslednji poen')}: ${side === 'home' ? H : A}` : `${H} – ${A}`, flash: false }
+}
+
+function Court({ m, data, t }) {
+  const live = m.status === 'live'
+  const scene = useScene(m, data, t)
+  const [pos, setPos] = useState({ x: scene.x, y: 50 })
+  const [trail, setTrail] = useState([])
+  const target = useRef(scene.x)
+  useEffect(() => {
+    if (Math.abs(target.current - scene.x) > 6) {
+      setTrail((tr) => [...tr.slice(-4), { ...pos, id: Date.now() }])
+    }
+    target.current = scene.x
+    setPos((p) => ({ x: scene.x, y: p.y }))
+  }, [scene.x]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!live) return
+    const i = setInterval(() => {
+      setPos({ x: Math.max(6, Math.min(94, target.current + (Math.random() - 0.5) * 6)), y: 35 + Math.random() * 30 })
+    }, 3600)
+    return () => clearInterval(i)
+  }, [live])
+  const mom = m.sport === 'football' ? data.momentum || [] : []
+  return (
+    <div className={`court court-${m.sport}`}>
+      <CourtLines sport={m.sport} />
       {mom.length > 0 && <div className="bp-mom"><Momentum data={mom} /></div>}
-      {trail.map((p, i) => <span key={i} className="bp-trail" style={{ left: `${p.x}%`, top: `${p.y}%`, opacity: 0.15 + i * 0.1 }} />)}
-      <span className={`bp-ball${goalNow ? ' goal' : ''}`} style={{ left: `${pos.x}%`, top: `${pos.y}%` }} />
-      <div className={`bp-text${textLeft ? ' left' : ''}`}>
-        <div className="bp-title">{title}</div>
-        <div className="bp-sub ellip">{sub}</div>
+      {trail.map((p, i) => <span key={p.id} className="bp-trail" style={{ left: `${p.x}%`, top: `${p.y}%`, opacity: 0.12 + i * 0.08 }} />)}
+      <span className={`bp-ball ball-${m.sport}${scene.flash ? ' flash' : ''}`} style={{ left: `${pos.x}%`, top: `${pos.y}%` }} />
+      <div className="bp-text">
+        <div className="bp-title">{scene.title}</div>
+        {scene.sub && <div className="bp-sub ellip">{scene.sub}</div>}
       </div>
     </div>
   )
 }
 
-function Hero({ m, data, t, children }) {
+function Stats({ stats, t }) {
+  if (!stats || !stats.length) return <div className="empty" style={{ padding: 20 }}>{t('noStats')}</div>
+  return (
+    <div className="stat-list">
+      {stats.map((s) => {
+        const raw = s.w || s.v
+        const a = parseFloat(raw[0]) || 0, b = parseFloat(raw[1]) || 0
+        const tot = a + b || 1
+        return (
+          <div key={s.key} className="stat">
+            <div className="stat-top"><b className="num">{s.v[0]}{s.pct ? '%' : ''}</b><span>{t.lang === 'ru' ? s.ru : t.serb(s.sr)}</span><b className="num">{s.v[1]}{s.pct ? '%' : ''}</b></div>
+            <div className="stat-bars"><div><i style={{ width: `${(a / tot) * 100}%` }} className={a >= b ? 'lead' : ''} /></div><div><i style={{ width: `${(b / tot) * 100}%` }} className={b > a ? 'lead' : ''} /></div></div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function Periods({ m, lv, t }) {
+  const per = lv.per || []
+  const cur = periodIndex(lv.p)
+  const lastNZ = per.reduce((acc, x, i) => (x[0] || x[1] ? i + 1 : acc), 0)
+  const shown = per.slice(0, Math.max(cur, lastNZ))
+  if (!shown.length) return <div className="empty" style={{ padding: 20 }}>{t('noStats')}</div>
   const live = m.status === 'live'
+  return (
+    <div className="scroll-x" style={{ padding: 14 }}>
+      <table className="per-table">
+        <thead><tr><th />{shown.map((_, i) => <th key={i} className={i + 1 === cur && live ? 'cur' : ''}>{i + 1}</th>)}{lv.game && <th>{t.lang === 'ru' ? 'Гейм' : t.serb('Gem')}</th>}<th>{t('total')}</th></tr></thead>
+        <tbody>{[0, 1].map((side) => (
+          <tr key={side}>
+            <td className="ellip" style={{ maxWidth: 140, fontWeight: 700 }}>{t.team(side ? m.away : m.home)}</td>
+            {shown.map((p, i) => <td key={i} className={`num${i + 1 === cur && live ? ' cur' : ''}`}>{p[side]}</td>)}
+            {lv.game && <td className="num">{lv.game[side]}</td>}
+            <td className="num tot">{m.score ? m.score[side] : '–'}</td>
+          </tr>))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function Events({ m, data, t }) {
+  const H = t.team(m.home), A = t.team(m.away)
+  if (m.sport === 'football') {
+    const evs = (data.events || []).filter((e) => e.type !== 'Half')
+    if (!evs.length) return <div className="empty" style={{ padding: 20 }}>{t('noEvents')}</div>
+    return (
+      <div className="ev-list">{[...evs].reverse().map((e, i) => (
+        <div key={i} className="ev">
+          <span className="ev-min num">{e.min}{e.add ? `+${e.add}` : ''}'</span>
+          <EvIcon e={e} />
+          <div className="ev-body">
+            <div className="ev-player ellip">{e.player}{e.type === 'Goal' && e.score ? <b className="num"> {e.score[0]}:{e.score[1]}</b> : null}</div>
+            <div className="small ellip">{e.type === 'Substitution' && e.out ? `↓ ${e.out}` : e.assist ? `${t('assistBy')}: ${e.assist}` : evTitle(e, t)}, {e.home ? H : A}</div>
+          </div>
+        </div>))}
+      </div>
+    )
+  }
+  const plays = data.plays || []
+  if (!plays.length) return <div className="empty" style={{ padding: 20 }}>{t('noEvents')}</div>
+  return (
+    <div className="ev-list">{[...plays].reverse().slice(0, 40).map((p, i) => (
+      <div key={i} className="ev ev-wide">
+        <span className="ev-min num" style={{ fontSize: 13, whiteSpace: 'nowrap' }}>Q{p.q} {p.clock}</span>
+        <span className={`ev-ico${p.pts ? ' goal' : ''}`}>{p.pts ? `+${p.pts}` : '•'}</span>
+        <div className="ev-body">
+          <div className="ev-player ellip">{p.player || (t.lang === 'ru' ? p.ru : t.serb(p.sr))}{p.score && p.pts ? <b className="num"> {p.score[0]}–{p.score[1]}</b> : null}</div>
+          <div className="small ellip">{p.player ? `${t.lang === 'ru' ? p.ru : t.serb(p.sr)}, ` : ''}{p.home ? H : A}</div>
+        </div>
+      </div>))}
+    </div>
+  )
+}
+
+export default function MatchCenter({ m, fallback = null }) {
+  const t = useT()
+  const live = m.status === 'live'
+  const { data } = usePoll(() => api(`/matches/${m.id}/center`), [m.id, m.status], live ? 15000 : 0, true)
+  const [tab, setTab] = useState(null)
+  if (!data) return fallback
+  const lv = data.live || {}
+  const tabs = []
+  if (m.sport === 'football' ? (data.events || []).length : (data.plays || []).length) tabs.push(['events', t('events')])
+  if (m.sport !== 'football' && (lv.per || []).length) tabs.push(['periods', t('periods')])
+  if ((data.stats || []).length) tabs.push(['stats', t('statistics')])
+  if (m.sport === 'football' && !tabs.find((x) => x[0] === 'events')) tabs.unshift(['events', t('events')])
+  const active = tab && tabs.find((x) => x[0] === tab) ? tab : tabs[0] && tabs[0][0]
+  const sep = m.sport === 'football' ? ':' : '–'
   return (
     <div className="center-card hero-center">
       <div className="hc-top">
         <span className="ellip">{t.league(m.league)}</span>
-        {live ? <span className="badge live"><span className="live-dot" style={{ marginRight: 6 }} />{m.minute === 'HT' ? t('ht') : m.minute || t('live')}</span> : <span className="badge">{t('finished')}</span>}
+        {live ? <span className="badge live"><span className="live-dot" style={{ marginRight: 6 }} />{m.minute === 'HT' ? t('ht') : /^[A-Z_]+$/.test(m.minute || '') ? periodLabel(m.minute, m.sport, t) : m.minute || t('live')}</span> : <span className="badge">{t('finished')}</span>}
       </div>
       <div className="hc-board">
         <Link to={`/klub/${m.home.id}`} className="hc-team"><Crest team={m.home} size={44} /><span className="hc-name">{t.team(m.home)}</span></Link>
-        <div className="tablo"><div className="big">{m.score ? `${m.score[0]}:${m.score[1]}` : '–'}</div></div>
+        <div className="tablo"><div className="big">{m.score ? `${m.score[0]}${sep}${m.score[1]}` : '–'}</div></div>
         <Link to={`/klub/${m.away.id}`} className="hc-team r"><Crest team={m.away} size={44} /><span className="hc-name">{t.team(m.away)}</span></Link>
       </div>
-      <BallPitch m={m} data={data} t={t} />
-      {children}
+      <Court m={m} data={data} t={t} />
+      {tabs.length > 0 && (
+        <>
+          <div className="seg" style={{ margin: '12px 12px 0' }}>{tabs.map(([k, l]) => <button key={k} className={active === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}</div>
+          {active === 'events' && <Events m={m} data={data} t={t} />}
+          {active === 'periods' && <Periods m={m} lv={lv} t={t} />}
+          {active === 'stats' && <Stats stats={data.stats} t={t} />}
+        </>
+      )}
+      {tabs.length === 0 && <div style={{ height: 12 }} />}
     </div>
-  )
-}
-
-export default function MatchCenter({ m, hero = false, fallback = null }) {
-  const t = useT()
-  const [tab, setTab] = useState('events')
-  const live = m.status === 'live'
-  const { data } = usePoll(() => api(`/matches/${m.id}/center`), [m.id, m.status], live ? 20000 : 0, true)
-  if (!data) return hero ? fallback : null
-  const hasFoot = hero || data.events || data.stats
-  const lv = data.live || {}
-  const H = t.team(m.home), A = t.team(m.away)
-
-  if (m.sport === 'football' && hasFoot) {
-    const evs = (data.events || []).filter((e) => e.type !== 'Half')
-    const key = [...evs].reverse().find((e) => e.type === 'Goal' || e.type === 'Card')
-    void key
-    return (
-      <Hero m={m} data={data} t={t}>
-          <div className="seg" style={{ margin: '12px 12px 0' }}>
-            <button className={tab === 'events' ? 'on' : ''} onClick={() => setTab('events')}>{t('events')}</button>
-            <button className={tab === 'stats' ? 'on' : ''} onClick={() => setTab('stats')}>{t('statistics')}</button>
-          </div>
-          {tab === 'events' ? (
-            <div className="ev-list">
-              {evs.length === 0 ? <div className="empty" style={{ padding: 20 }}>{t('noEvents')}</div> : [...evs].reverse().map((e, i) => (
-                <div key={i} className={`ev ${e.home ? 'h' : 'a'}`}>
-                  <span className="ev-min num">{e.min}{e.add ? `+${e.add}` : ''}'</span>
-                  <EvIcon e={e} />
-                  <div className="ev-body">
-                    <div className="ev-player ellip">{e.player}{e.type === 'Goal' && e.score ? <b className="num"> {e.score[0]}:{e.score[1]}</b> : null}</div>
-                    <div className="small ellip">{e.type === 'Substitution' && e.out ? `↓ ${e.out}` : e.assist ? `${t('assistBy')}: ${e.assist}` : evTitle(e, t)}{', '}{e.home ? H : A}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="stat-list">
-              {(data.stats || []).map((s) => {
-                const a = parseFloat(s.v[0]) || 0, b = parseFloat(s.v[1]) || 0
-                const tot = a + b || 1
-                return (
-                  <div key={s.key} className="stat">
-                    <div className="stat-top"><b className="num">{s.v[0]}{s.pct ? '%' : ''}</b><span>{t.lang === 'ru' ? s.ru : t.serb(s.sr)}</span><b className="num">{s.v[1]}{s.pct ? '%' : ''}</b></div>
-                    <div className="stat-bars"><div><i style={{ width: `${(a / tot) * 100}%` }} className={a >= b ? 'lead' : ''} /></div><div><i style={{ width: `${(b / tot) * 100}%` }} className={b > a ? 'lead' : ''} /></div></div>
-                  </div>
-                )
-              })}
-              {(!data.stats || data.stats.length === 0) && <div className="empty" style={{ padding: 20 }}>{t('noEvents')}</div>}
-            </div>
-          )}
-      </Hero>
-    )
-  }
-
-  const per = lv.per || []
-  const cur = periodIndex(lv.p)
-  const shown = per.slice(0, Math.max(cur, per.findLastIndex ? per.findLastIndex((x) => x[0] || x[1]) + 1 : per.length))
-  if (!shown.length && !(lv.stats && Object.keys(lv.stats).length)) {
-    if (!live) return null
-    return (
-      <section className="section">
-        <div className="section-head"><h2 className="h2">{t('matchCenter')}</h2><span className="badge live"><span className="live-dot" style={{ marginRight: 6 }} />{t('live')}</span></div>
-        <div className="center-card"><div className="empty" style={{ padding: 22 }}>{t('waitingData')}</div></div>
-      </section>
-    )
-  }
-  const corners = lv.stats?.corners, yc = lv.stats?.yc
-  return (
-    <section className="section">
-      <div className="section-head"><h2 className="h2">{t('matchCenter')}</h2>{live && lv.p && <span className="badge live"><span className="live-dot" style={{ marginRight: 6 }} />{periodLabel(lv.p, m.sport, t)}</span>}</div>
-      <div className="center-card" style={{ padding: 14 }}>
-        {shown.length > 0 && (
-          <div className="scroll-x">
-            <table className="per-table">
-              <thead><tr><th />{shown.map((_, i) => <th key={i} className={i + 1 === cur && live ? 'cur' : ''}>{i + 1}</th>)}{lv.game && <th>{t.lang === 'ru' ? 'Гейм' : t.serb('Gem')}</th>}<th>{t('total')}</th></tr></thead>
-              <tbody>
-                {[0, 1].map((side) => (
-                  <tr key={side}>
-                    <td className="ellip" style={{ maxWidth: 140, fontWeight: 700 }}>{side ? A : H}</td>
-                    {shown.map((p, i) => <td key={i} className={`num${i + 1 === cur && live ? ' cur' : ''}`}>{p[side]}</td>)}
-                    {lv.game && <td className="num">{lv.game[side]}</td>}
-                    <td className="num tot">{m.score ? m.score[side] : '–'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-        {(corners || yc) && (
-          <div className="stat-list" style={{ padding: '12px 0 0' }}>
-            {corners && <div className="stat"><div className="stat-top"><b className="num">{corners[0]}</b><span>{t.lang === 'ru' ? 'Угловые' : t.serb('Korneri')}</span><b className="num">{corners[1]}</b></div></div>}
-            {yc && <div className="stat"><div className="stat-top"><b className="num">{yc[0]}</b><span>{t('yellow')}</span><b className="num">{yc[1]}</b></div></div>}
-          </div>
-        )}
-      </div>
-    </section>
   )
 }

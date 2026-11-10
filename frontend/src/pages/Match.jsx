@@ -212,7 +212,7 @@ export default function MatchPage() {
   return (
     <div>
       <button className="linkbtn" style={{ marginBottom: 12, fontSize: 14 }} onClick={() => (window.history.length > 1 ? nav(-1) : nav('/mecevi'))}><ChevronLeft size={18} />{t('matches')}</button>
-      {m.sport === 'football' && m.ext_fm && (m.status === 'live' || m.status === 'finished') ? <MatchCenter m={m} hero fallback={<FeaturedMatch m={m} linkable={false} />} /> : <FeaturedMatch m={m} linkable={false} />}
+      {m.status === 'live' || m.status === 'finished' ? <MatchCenter m={m} fallback={<FeaturedMatch m={m} linkable={false} />} /> : <FeaturedMatch m={m} linkable={false} />}
 
       {m.mine ? (
         <div className="card pad" style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -221,7 +221,6 @@ export default function MatchPage() {
         </div>
       ) : null}
 
-      {(m.status === 'live' || m.status === 'finished') && !(m.sport === 'football' && m.ext_fm) && <MatchCenter m={m} />}
 
       {m.open && (
         <section className="section" style={{ marginTop: 16 }}>

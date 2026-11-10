@@ -395,3 +395,26 @@ img { display: block; max-width: 100%; }
 .bp-sub { font-size: 13px; color: #D3E3DA; margin-top: 2px; }
 @media (min-width: 600px) { .ball-pitch { height: 240px; } .bp-title { font-size: 28px; } }
 @media (prefers-reduced-motion: reduce) { .bp-ball, .bp-trail { transition: none; } }
+
+/* courts for every sport */
+.court { position: relative; height: 200px; margin: 0 14px; border-radius: 14px; overflow: hidden; }
+@media (min-width: 600px) { .court { height: 240px; } }
+.court-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.court-football { background: repeating-linear-gradient(90deg, rgba(255,255,255,0.03) 0 9.09%, rgba(0,0,0,0.05) 9.09% 18.18%), linear-gradient(180deg, #1F5541, #163F30); }
+.court-basketball { background: repeating-linear-gradient(90deg, rgba(255,255,255,0.025) 0 22px, rgba(0,0,0,0.04) 22px 44px), linear-gradient(180deg, #6A4426, #4E311B); }
+.court-hockey { background: radial-gradient(ellipse at 50% 40%, #2B4A63 0%, #1A3247 70%); }
+.court-tennis { background: linear-gradient(180deg, #1E5D8C, #174A70); }
+.court-volleyball { background: linear-gradient(180deg, #8A5226, #6E3F1C); }
+.court-waterpolo { background: repeating-linear-gradient(170deg, rgba(255,255,255,0.03) 0 14px, rgba(0,0,0,0.03) 14px 28px), linear-gradient(180deg, #1478A8, #0E5B82); }
+.court .bp-mom { position: absolute; left: 8px; right: 8px; bottom: 8px; height: 46px; opacity: 0.35; }
+.court .bp-text { left: 20px; right: auto; top: 18px; transform: none; text-align: left; max-width: 70%; }
+.bp-ball { transition: left 2.6s cubic-bezier(.45,.05,.35,1), top 2.6s cubic-bezier(.45,.05,.35,1); }
+.bp-trail { transition: none; }
+.bp-ball.ball-basketball { background: #E8833A; box-shadow: 0 0 0 4px rgba(232,131,58,0.22), 0 0 14px rgba(232,131,58,0.7); }
+.bp-ball.ball-hockey { width: 14px; height: 9px; margin: -4.5px 0 0 -7px; border-radius: 50%; background: #0B0F12; box-shadow: 0 0 0 3px rgba(255,255,255,0.55), 0 0 12px rgba(255,255,255,0.5); }
+.bp-ball.ball-tennis { background: #D7F25A; box-shadow: 0 0 0 4px rgba(215,242,90,0.22), 0 0 14px rgba(215,242,90,0.7); width: 12px; height: 12px; margin: -6px 0 0 -6px; }
+.bp-ball.ball-volleyball, .bp-ball.ball-waterpolo { background: #F5D547; box-shadow: 0 0 0 4px rgba(245,213,71,0.22), 0 0 14px rgba(245,213,71,0.7); }
+.bp-ball.flash { animation: flashball 1.2s ease-in-out 3; }
+@keyframes flashball { 50% { transform: scale(1.7); } }
+.ev.ev-wide { grid-template-columns: 72px 28px minmax(0, 1fr); }
+.ev-wide .ev-ico { width: 28px; height: 28px; font-size: 11px; font-weight: 800; }

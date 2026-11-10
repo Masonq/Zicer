@@ -70,6 +70,7 @@ export function OddsButtons({ m, wide = false }) {
       {['1', 'X', '2'].map((k) => {
         const b = m.best?.[k]
         const on = slip.has(m.id, k)
+        if (k === 'X' && (m.sport === 'tennis' || m.sport === 'volleyball')) return <span key={k} aria-hidden="true" />
         return (
           <button key={k} type="button" className={`odd${on ? ' on' : ''}`} disabled={!b || !open}
             aria-pressed={on} aria-label={`${k} ${b ? fmtOdds(b.odds) : ''}`}
