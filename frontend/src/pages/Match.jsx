@@ -218,7 +218,9 @@ export default function MatchPage() {
   const m = full || placeholder
   if (loading && !m) return <div><div className="skeleton" style={{ height: 22, width: 90, borderRadius: 8, marginBottom: 12 }} /><div className="skeleton" style={{ height: 300, borderRadius: 22 }} /><Skeleton h={120} n={2} /></div>
   if (!m) return <Empty title={t('error')} />
-  const analysis = !full ? '' : t.lang === 'ru' ? m.analysis.ru : t.serb(m.analysis.sr)
+  let analysis = !full ? '' : t.lang === 'ru' ? m.analysis.ru : t.serb(m.analysis.sr)
+  // the stored text uses the original club names: show them the way the rest of the page does
+  if (analysis) for (const tm of [m.home, m.away]) { for (const raw of [tm.short, tm.name]) { if (raw && raw !== t.team(tm)) analysis = analysis.split(raw).join(t.team(tm)) } }
   return (
     <div>
       <button className="linkbtn" style={{ marginBottom: 12, fontSize: 14 }} onClick={() => (window.history.length > 1 ? nav(-1) : nav('/mecevi'))}><ChevronLeft size={18} />{t('matches')}</button>

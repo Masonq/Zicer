@@ -886,6 +886,40 @@ function strikeSpot(ev, sport) {
   return { x: s === 0 ? 100.6 : -0.6, y: rnd(46, 54) }
 }
 
+// Momentum strip attached under the court (like broadcast trackers): bars per minute in team colours,
+// up = home pressure, down = away pressure. Football uses the real momentum curve, other sports weigh live events.
+const MW = { danger: 3, attack: 1, shot_on: 4, shot_off: 2, corner: 2, score: 5, point: 1, p2: 2, p3: 3, ft: 1, ace: 2, break: 4, pen2: 2 }
+function MomentumStrip({ m, data, t }) {
+  let bars = []
+  if (m.sport === 'football' && (data.momentum || []).length) bars = data.momentum.map(([, v]) => v / 100)
+  else {
+    const now = data.now || Date.now() / 1000
+    const bins = 24, span = 60
+    const acc = Array.from({ length: bins }, () => 0)
+    for (const e of data.xev || []) {
+      const i = bins - 1 - Math.floor((now - e.at) / span)
+      if (i < 0 || i >= bins) continue
+      acc[i] += (MW[e.t] || 0) * (e.side === 0 ? 1 : -1)
+    }
+    const mx = Math.max(1, ...acc.map(Math.abs))
+    if (acc.some((v) => v)) bars = acc.map((v) => v / mx)
+  }
+  if (!bars.length || m.status !== 'live') return null
+  const n = bars.length, w = 100 / n
+  return (
+    <div className="mstrip" aria-label={t('pressure')}>
+      <svg viewBox="0 0 100 40" preserveAspectRatio="none">
+        <line x1="0" y1="20" x2="100" y2="20" stroke="rgba(255,255,255,0.18)" strokeWidth="0.4" vectorEffect="non-scaling-stroke" />
+        {bars.map((v, i) => {
+          const h = Math.max(0.6, Math.abs(v) * 18)
+          return <rect key={i} x={i * w + w * 0.15} width={w * 0.7} y={v >= 0 ? 20 - h : 20} height={h} rx="0.4" fill={v >= 0 ? 'var(--c0)' : 'var(--c1)'} opacity={0.35 + 0.65 * ((i + 1) / n)} />
+        })}
+      </svg>
+      <span className="mstrip-l">{t('pressure')}</span>
+    </div>
+  )
+}
+
 function Arena({ m, data, t }) {
   const live = m.status === 'live'
   const sport = m.sport
@@ -938,7 +972,7 @@ function Arena({ m, data, t }) {
   const totalPts = (PVs[shown.ss[0]] ?? 0) + (PVs[shown.ss[1]] ?? 0)
   const deuce = totalPts % 2 === 0
   const tServer = x.server ? x.server - 1 : (lv.spl === 'AWAY' ? 1 : 0)
-  const server = sport === 'tennis' ? tServer : sport === 'volleyball' ? (x.server ? x.server - 1 : lastPt ? lastPt.side : 0) : null
+  const server = sport === 'tennis' ? tServer : sport === 'volleyball' ? (x.server ? x.server - 1 : lv.spl ? (lv.spl === 'AWAY' ? 1 : 0) : lastPt ? lastPt.side : 0) : null
   const srvY = server === 0 ? (deuce ? 68 : 32) : (deuce ? 32 : 68)
   const rcvY = 100 - srvY
   let att = null
@@ -1060,8 +1094,7 @@ function Arena({ m, data, t }) {
       <div className={`court court-${sport} tt-court`} style={{ aspectRatio: courtAspect(sport) }}>
         <CourtLines sport={sport} />
         <div className="field" style={fieldStyle(sport)}>
-          {live && att !== null && !net && <div className={`terr t${att}`} aria-hidden="true" />}
-          {mom.length > 0 && phase.kind !== 'banner' && <div className="bp-mom"><Momentum data={mom} /></div>}
+          {live && att !== null && !net && !isBreak && <div className={`terr t${att}`} style={{ opacity: 0.45 + 0.55 * intensity }} aria-hidden="true" />}
           <svg className="arena-fx" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
             <polyline ref={eng.trailEl} points="" fill="none" stroke={sport === 'tennis' ? 'rgba(215,242,90,0.55)' : 'rgba(255,255,255,0.4)'} strokeWidth="1.4" strokeDasharray="3 4" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
             <g ref={eng.marksEl} fill="none" stroke="rgba(255,255,255,0.75)" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
@@ -1094,7 +1127,7 @@ function Arena({ m, data, t }) {
         )}</AnimatePresence>
         {!live && <div className="tt-toast">{t('finished')}</div>}
       </div>
-      <Extras m={m} data={data} t={t} items={feed} />
+      <MomentumStrip m={m} data={data} t={t} />
     </div>
   )
 }

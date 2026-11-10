@@ -132,7 +132,11 @@ export function useT() {
     const n = league.names || {}
     if (lang === 'ru') return n.ru || league.name
     const s = n.sr || league.name
-    return lang === 'sr-cyr' ? toCyr(s) : s
+    if (lang !== 'sr-cyr') return s
+    // only names that are Serbian (translated or Serbian competitions) go to Cyrillic; "WTA Sopot", "Challenge Cup" stay as written
+    const serbianName = !!n.sr && n.sr !== league.name
+    const looksSerbian = /[čćžšđ]|liga|kup|superliga|prvenstvo|evroliga|evrokup|reprezentacij/i.test(s) && !/\b(cup|league|open|masters|challenger|wta|atp|itf|nba|nhl|uefa|fifa)\b/i.test(s)
+    return serbianName || looksSerbian ? toCyr(s) : s
   }
   t.locale = lang === 'ru' ? 'ru-RU' : 'sr-Latn-RS'
   t.n = (n, key) => {
