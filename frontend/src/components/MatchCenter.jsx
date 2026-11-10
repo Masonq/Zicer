@@ -671,6 +671,9 @@ function TennisCourt({ m, data, t }) {
         if (i === 0) pts.push({ x: side === 1 ? 54 + Math.random() * 18 : 28 + Math.random() * 18, y: rcvY > 50 ? 54 + Math.random() * 30 : 16 + Math.random() * 30 })
         else pts.push({ x: side === 1 ? 72 + Math.random() * 24 : 4 + Math.random() * 24, y: 16 + Math.random() * 68 })
       }
+      // the last ball runs past the player (winner) and leaves the court, so play never "freezes"
+      const lp = pts[pts.length - 1]
+      pts.push({ x: lp.x > 50 ? 112 : -12, y: Math.max(4, Math.min(96, lp.y + (Math.random() - 0.5) * 30)) })
       shot = 0; marks = []; t0 = performance.now() + 900
       if (marksEl.current) marksEl.current.innerHTML = ''
     }
@@ -696,7 +699,7 @@ function TennisCourt({ m, data, t }) {
         marks.push(p1)
         if (marksEl.current) marksEl.current.innerHTML = marks.slice(-3).map((m) => `<circle cx="${m.x}" cy="${m.y}" r="0.9" />`).join('')
         shot += 1; t0 = now
-        if (shot >= pts.length - 1) restartT = now + 2400 // keep playing rallies until the real point arrives
+        if (shot >= pts.length - 1) restartT = now + 700 // next rally right away: play continues until the real point arrives
       }
       raf.current = requestAnimationFrame(draw)
     }
