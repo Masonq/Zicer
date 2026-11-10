@@ -327,6 +327,17 @@ def sync_live(db: Session) -> str:
     for m in ms:
         d = data[m.mb_id]
         keep = {k: v for k, v in (m.live or {}).items() if k in ("x", "xev", "x_seen", "fin_by", "fin_at")}
+        if m.sport == "volleyball" and not (keep.get("x_seen") and int(datetime.utcnow().timestamp()) - keep["x_seen"] < 60):
+            old_per = (m.live or {}).get("per") or []
+            new_per = d.get("per") or []
+            if old_per and new_per and len(old_per) == len(new_per):
+                a, b = old_per[-1], new_per[-1]
+                evs = list(keep.get("xev") or [])
+                for side in (0, 1):
+                    dd = int(b[side] or 0) - int(a[side] or 0)
+                    if 0 < dd <= 3:
+                        evs.append({"t": "point", "side": side, "at": int(datetime.utcnow().timestamp()), "ts": None, "n": dd, "ps": [int(b[0] or 0), int(b[1] or 0)]})
+                keep["xev"] = evs[-40:]
         m.live = {**keep, **{k: d.get(k) for k in ("p", "cm", "per", "game", "stats", "spl")}, "mb_seen": int(datetime.utcnow().timestamp())}
         if m.status == "finished" or m.settled:
             continue
@@ -994,6 +1005,13 @@ def translate_names(db: Session, limit: int = 120) -> str:
 
 
 
+def _shared_token(a: str, b: str) -> bool:
+    from .textutil import strip_accents
+    ta = {x for x in strip_accents(a).lower().replace(".", " ").replace("-", " ").split() if len(x) >= 4}
+    tb = {x for x in strip_accents(b).lower().replace(".", " ").replace("-", " ").split() if len(x) >= 4}
+    return bool(ta & tb)
+
+
 def _tennis_same(a: str, b: str) -> bool:
     """MaxBet 'Rune H.' vs 22Bet 'Holger Vitus Nodskov Rune'."""
     from .textutil import strip_accents
@@ -1030,6 +1048,11 @@ def sync_xfeed(db: Session) -> str:
             else:
                 sh, sa = similarity(g["home"], m.home.name), similarity(g["away"], m.away.name)
                 sc = sh + sa if sh >= 0.8 and sa >= 0.8 else 0
+                if not sc and max(sh, sa) >= 0.9:
+                    # one team matches exactly, the other is written differently ("Viapol Sao Jose" / "Sao Jose dos C.")
+                    weak = (g["home"], m.home.name) if sh < sa else (g["away"], m.away.name)
+                    if _shared_token(*weak):
+                        sc = 1.7
             if sc > bs:
                 best, bs = g, sc
         if best:
