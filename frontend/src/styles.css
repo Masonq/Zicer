@@ -651,7 +651,7 @@ img { display: block; max-width: 100%; }
 .tn-sets b { color: var(--gold); font-weight: 600; padding-right: 10px; border-right: 1px solid rgba(255,255,255,0.18); }
 .tn-sets span { color: #cfd8d3; } .tn-sets span.cur { color: #fff; font-weight: 600; }
 .arena-break { position: absolute; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; background: rgba(6, 16, 12, 0.45); }
-.arena-break span { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; background: rgba(8,20,15,0.85); color: #fff; font-weight: 700; font-size: 14px; border: 1px solid rgba(255,255,255,0.12); }
+.arena-break > span { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; background: rgba(8,20,15,0.85); color: #fff; font-weight: 700; font-size: 14px; border: 1px solid rgba(255,255,255,0.12); }
 
 /* momentum strip under the court */
 .mstrip { position: relative; height: 54px; padding: 16px 12px 6px; background: rgba(0,0,0,0.22); }
@@ -669,3 +669,20 @@ img { display: block; max-width: 100%; }
   .tennis-tracker .tt-court { max-width: 640px; margin-left: auto; margin-right: auto; border-radius: 10px; overflow: hidden; }
   .tennis-tracker { padding-bottom: 6px; }
 }
+
+/* stats board on the court (changeovers, breaks, final) */
+.arena-break { padding: 8px; }
+.sboard { width: min(94%, 420px); max-height: 96%; overflow: hidden; padding: 8px 12px; border-radius: 14px; background: rgba(8, 20, 15, 0.9); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 12px 30px rgba(0,0,0,0.45); display: grid; gap: 8px; }
+.sboard-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.sboard-head b { font-family: var(--display); font-size: 15px; font-weight: 600; color: #fff; text-transform: uppercase; letter-spacing: 0.02em; }
+.sb-win { font-size: 13px; font-weight: 800; color: var(--gold); display: inline-flex; align-items: center; gap: 6px; }
+.sb-win::before { content: ''; width: 8px; height: 8px; border-radius: 50%; }
+.sb-win.s0::before { background: var(--c0); } .sb-win.s1::before { background: var(--c1); }
+.sb-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; gap: 8px; }
+.sb-row > b { font-size: 14px; font-weight: 500; color: #fff; } .sb-row > b:last-child { text-align: right; }
+.sb-mid { display: grid; gap: 4px; text-align: center; } .sb-mid span { font-size: 11px; color: #b9c6bf; }
+.sb-bar { display: flex; gap: 2px; height: 4px; border-radius: 999px; overflow: hidden; background: rgba(255,255,255,0.08); }
+.sb-bar i { display: block; height: 100%; }
+.sboard { gap: 5px; }
+.tt-court .arena-break { inset: 0; }

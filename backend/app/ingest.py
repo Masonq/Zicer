@@ -347,6 +347,7 @@ def sync_live(db: Session) -> str:
             m.status = "live"
         if not own_feed:
             m.minute = (f"{d['cm']}'" if d.get("cm") and m.sport == "football" else d["p"])[:16]
+        close_if_decided(m)
         n += 1
     db.commit()
     return f"live updated {n}"
@@ -507,7 +508,9 @@ def settle(db: Session) -> str:
     now_ts = int(datetime.utcnow().timestamp())
     for m in ms:
         lv = m.live or {}
-        if lv.get("fin_by") == "absence" and now_ts - (lv.get("fin_at") or 0) < 1800:
+        # closed from live data (score decided / gone from feeds): bets wait for the official result;
+        # only if no official result ever comes, settle on the last score after 6 hours
+        if lv.get("fin_by") and now_ts - (lv.get("fin_at") or 0) < 6 * 3600:
             continue
         res = outcome(m) if m.status == "finished" else None
         void = m.status == "cancelled"
@@ -1127,6 +1130,7 @@ def sync_xfeed(db: Session) -> str:
             m.score_home, m.score_away = int(g["score"][0] or 0), int(g["score"][1] or 0)
         if m.status == "live" and m.sport == "football" and g.get("ts"):
             m.minute = f"{g['ts'] // 60 + 1}'"
+        close_if_decided(m)
         upd += 1
     db.commit()
     return f"xfeed games {len(games)}, linked {linked}, updated {upd}"
@@ -1153,3 +1157,31 @@ def finish_stale(db: Session) -> str:
             n += 1
     db.commit()
     return f"finished {n}"
+
+
+
+GRAND_SLAMS = ("australian open", "roland garros", "french open", "wimbledon", "us open")
+
+
+def sets_to_win(m: Match) -> int:
+    if m.sport == "volleyball":
+        return 3
+    lg = ((m.league.name if m.league else "") or "").lower()
+    if m.sport == "tennis" and any(g in lg for g in GRAND_SLAMS) and "wta" not in lg and "women" not in lg and "žene" not in lg:
+        return 3
+    return 2
+
+
+def close_if_decided(m: Match) -> bool:
+    """Tennis / volleyball: the match is over the moment a side has won the needed sets.
+    The match is closed for the live view right away; bets are settled only after the official result."""
+    if m.status != "live" or m.sport not in ("tennis", "volleyball") or m.score_home is None:
+        return False
+    if max(m.score_home or 0, m.score_away or 0) < sets_to_win(m):
+        return False
+    lv = dict(m.live or {})
+    m.status = "finished"
+    m.minute = ""
+    lv["fin_by"], lv["fin_at"] = "score", int(datetime.utcnow().timestamp())
+    m.live = lv
+    return True

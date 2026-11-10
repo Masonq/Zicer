@@ -920,9 +920,50 @@ function MomentumStrip({ m, data, t }) {
   )
 }
 
+export function isDecided(m, score) {
+  if (m.sport !== 'tennis' && m.sport !== 'volleyball') return false
+  const lg = ((m.league && m.league.name) || '').toLowerCase()
+  const need = m.sport === 'volleyball' ? 3 : /australian open|roland garros|wimbledon|us open/.test(lg) && !/wta|women/.test(lg) ? 3 : 2
+  return Math.max((score || [0, 0])[0] || 0, (score || [0, 0])[1] || 0) >= need
+}
+const BOARD_KEYS = {
+  tennis: ['x:Aces', 'x:Double faults', 'x:1st Serve %', 'x:Win % 1st Serve', 'x:Break point %', 'x:Breaks'],
+  volleyball: ['x:Points on own serve', "x:Points on opponent's serve", 'x:Max pts in a row'],
+  football: ['x:Shots on target', 'ShotsOnTarget', 'x:Corner', 'corners', 'x:Possession %', 'BallPossesion', 'x:Dangerous attacks', 'x:Yellow cards'],
+  basketball: ['x:2-pointers', 'x:3-pointers', 'x:Free throws', 'FG2', 'FG3', 'TotalRebounds', 'x:Fouls'],
+  hockey: ['x:Attacks', 'x:Possession %', 'x:2-min penalties', 'x:Goals during powerplay'],
+  waterpolo: ['x:Attacks', 'x:Possession %'],
+}
+// Stats board shown on the court in pauses (changeover after a game, breaks) and at the end of the match
+function StatsBoard({ sport, data, t, title, names, winner }) {
+  const stats = data.stats || []
+  const picked = []
+  for (const k of BOARD_KEYS[sport] || []) { const st = stats.find((x) => x.key === k); if (st && !picked.find((p) => p.ru === st.ru)) picked.push(st); if (picked.length === (['football', 'waterpolo'].includes(sport) ? 4 : 3)) break }
+  return (
+    <motion.div className="sboard" initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
+      <div className="sboard-head"><b>{title}</b>{winner != null && <span className={`sb-win s${winner}`}>{names[winner]}</span>}</div>
+      {picked.map((st) => {
+        const a = parseFloat(st.v[0]) || 0, b = parseFloat(st.v[1]) || 0, sum = a + b || 1
+        return (
+          <div key={st.key} className="sb-row">
+            <b className="num">{st.v[0]}{st.pct ? '%' : ''}</b>
+            <div className="sb-mid"><span className="ellip">{t.lang === 'ru' ? st.ru : t.serb(st.sr)}</span><div className="sb-bar"><i className="c0b" style={{ width: `${(a / sum) * 100}%` }} /><i className="c1b" style={{ width: `${(b / sum) * 100}%` }} /></div></div>
+            <b className="num">{st.v[1]}{st.pct ? '%' : ''}</b>
+          </div>
+        )
+      })}
+    </motion.div>
+  )
+}
+
 function Arena({ m, data, t }) {
-  const live = m.status === 'live'
   const sport = m.sport
+  const statusNow = data.status || m.status
+  const scoreNow = data.score || m.score || [0, 0]
+  // tennis / volleyball are over the moment a side has the sets it needs; don't keep "playing" until the feed says so
+  const decided = isDecided(m, scoreNow)
+  const live = statusNow === 'live' && !decided
+  const finished = statusNow === 'finished' || decided
   const net = sport === 'tennis' || sport === 'volleyball'
   const scene = useScene(m, data, t)
   const lv = data.live || {}
@@ -991,11 +1032,13 @@ function Arena({ m, data, t }) {
   const isBreak = live && (/PAUSE|BREAK|HALF_TIME|INTERVAL/.test(`${lv.p || ''} ${m.minute || ''}`) || /break|pause|half-time|interval/i.test(x.period || '')
     || (sport === 'tennis' && dataPer.length > 1 && !curSet[0] && !curSet[1] && dataSS[0] === '0' && dataSS[1] === '0' && lastGame && nowS - lastGame.at < 240))
   const eng = useArenaEngine({ live, sport, att, intensity, server, srvY, rcvY })
+  useEffect(() => { if (phase.kind === 'stats' && eng.api.current) eng.api.current.pause() }, [phase.kind])
   useEffect(() => {
-    if (!eng.api.current || !live) return
+    if (!eng.api.current) return
+    if (!live) { eng.api.current.pause(); return }
     if (isBreak) eng.api.current.pause()
     else if (phase.kind === 'idle') { if (net) eng.api.current.serve(server); else eng.api.current.resume({ reset: { x: 50, y: 50 } }) }
-  }, [isBreak]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isBreak, live]) // eslint-disable-line react-hooks/exhaustive-deps
   // ---------- the director ----------
   useEffect(() => {
     if (phase.kind !== 'idle' || !queue.current.length || !live || !eng.api.current) return
@@ -1011,6 +1054,14 @@ function Arena({ m, data, t }) {
         setPhase({ kind: 'banner', ev })
         setTimeout(() => {
           queue.current.shift()
+          if (sport === 'tennis' && ev.t === 'game' && !queue.current.length) { // changeover: show the match stats, then play on
+            setPhase({ kind: 'stats', ev })
+            setTimeout(() => {
+              setPhase({ kind: 'idle', ev: null })
+              eng.api.current && eng.api.current.resume({ serveSide: 1 - tServer })
+            }, 7000)
+            return
+          }
           setPhase({ kind: 'idle', ev: null })
           const nextServer = sport === 'volleyball' ? ev.side : sport === 'tennis' ? (ev.t === 'game' ? 1 - tServer : tServer) : null
           if (net) eng.api.current.resume({ serveSide: nextServer })
@@ -1043,10 +1094,12 @@ function Arena({ m, data, t }) {
   const perTxt = shown.per.map((p) => `${p[0] ?? 0}-${p[1] ?? 0}`).join(', ')
   const fouls = data.fouls, clock = data.clock
   const bonusDots = (n) => <span className="bonus"><b>BONUS</b>{[0, 1, 2, 3, 4].map((i) => <i key={i} className={i < Math.min(5, n) ? 'on' : ''} />)}</span>
-  const boardL = sport === 'tennis' ? (live ? shown.ss[0] : dataScore[0]) : shown.score[0]
-  const boardR = sport === 'tennis' ? (live ? shown.ss[1] : dataScore[1]) : shown.score[1]
+  const boardL = sport === 'tennis' ? (live ? shown.ss[0] : scoreNow[0]) : finished ? scoreNow[0] : shown.score[0]
+  const boardR = sport === 'tennis' ? (live ? shown.ss[1] : scoreNow[1]) : finished ? scoreNow[1] : shown.score[1]
   let status = null
-  if (isBreak && phase.kind === 'idle') status = { side: null, title: sport === 'tennis' ? t('setBreak') : t('pause'), icon: 'timeout' }
+  if (finished) status = null
+  else if (phase.kind === 'stats') status = { side: null, title: t('changeover'), icon: 'timeout' }
+  else if (isBreak && phase.kind === 'idle') status = { side: null, title: sport === 'tennis' ? t('setBreak') : t('pause'), icon: 'timeout' }
   else if (phase.kind !== 'idle' && phase.ev) status = { side: phase.ev.side, title: phase.kind === 'finish' ? (net ? t('rally') : sport === 'basketball' ? t('shot') : t('ev_shot_on')) : bannerTitle(phase.ev, sport, t), icon: phase.kind === 'finish' ? null : (sport === 'tennis' ? 'ace' : 'score') }
   else if (infoShown) status = { side: infoShown.side, title: infoShown.t === 'bp' ? t('ev_bp') : xevLabel(infoShown, sport, t), icon: infoShown.t === 'bp' ? 'break' : infoShown.t }
   else if (live && att !== null) status = { side: att, title: net ? t('serve') : sport === 'basketball' ? t('withBall') : sport === 'hockey' ? t('withPuck') : (ttl && ![t('live'), t('finished'), t('pause'), t('ev_goal'), t('ev_set'), t('ev_vpoint'), `${t('goal')}!`].includes(ttl) && !ttl.startsWith('+') ? ttl : (sport === 'hockey' ? t('withPuck') : t('withBall'))), arrow: !net }
@@ -1124,12 +1177,15 @@ function Arena({ m, data, t }) {
             </motion.div>
           )}
         </AnimatePresence>
-        <AnimatePresence>{isBreak && phase.kind === 'idle' && (
-          <motion.div key="brk" className="arena-break" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
-            <span><IconPlayerPause size={18} />{sport === 'tennis' ? t('setBreak') : t('pause')}</span>
-          </motion.div>
-        )}</AnimatePresence>
-        {!live && <div className="tt-toast">{t('finished')}</div>}
+        <AnimatePresence>
+          {(finished || (isBreak && phase.kind === 'idle') || phase.kind === 'stats') && (
+            <motion.div key={finished ? 'fin' : 'brk'} className="arena-break" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
+              <StatsBoard sport={sport} data={data} t={t} names={names}
+                title={finished ? t('matchOver') : phase.kind === 'stats' ? t('changeover') : sport === 'tennis' ? t('setBreak') : t('pause')}
+                winner={finished && scoreNow[0] !== scoreNow[1] ? (scoreNow[0] > scoreNow[1] ? 0 : 1) : null} />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
       <MomentumStrip m={m} data={data} t={t} />
     </div>
@@ -1240,7 +1296,7 @@ export default function MatchCenter({ m, fallback = null }) {
     <div className="center-card hero-center">
       <div className="hc-top">
         <span className="ellip">{t.league(m.league)}</span>
-        {live ? <span className="badge live"><span className="live-dot" style={{ marginRight: 6 }} />{m.minute === 'HT' ? t('ht') : /^[A-Z0-9_]+$/.test(m.minute || '') ? periodLabel(m.minute, m.sport, t) : m.minute || t('live')}</span> : <span className="badge">{t('finished')}</span>}
+        {(data.status || m.status) === 'live' && !isDecided(m, data.score || m.score) ? <span className="badge live"><span className="live-dot" style={{ marginRight: 6 }} />{m.minute === 'HT' ? t('ht') : /^[A-Z0-9_]+$/.test(m.minute || '') ? periodLabel(m.minute, m.sport, t) : m.minute || t('live')}</span> : <span className="badge">{t('finished')}</span>}
       </div>
       <Arena m={m} data={data} t={t} />
       <div className="seg" style={{ margin: '12px 12px 0' }}>{tabs.map(([k, l]) => <button key={k} className={active === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}</div>
