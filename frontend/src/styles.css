@@ -601,8 +601,8 @@ img { display: block; max-width: 100%; }
 /* regulation courts */
 .tt-court { background: #12241C !important; animation: none !important; }
 .tt-court .court-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-.field { position: absolute; z-index: 2; }
-.field .terr { top: 0; bottom: 0; }
+.arena-field { position: absolute; z-index: 2; }
+.arena-field .terr { top: 0; bottom: 0; }
 .terr.t0 { background: linear-gradient(90deg, rgba(61,142,240,0) 0%, rgba(61,142,240,0.13) 100%); }
 .terr.t1 { background: linear-gradient(270deg, rgba(139,209,47,0) 0%, rgba(139,209,47,0.13) 100%); }
 .tt-court .tt-tag.l { left: 4%; } .tt-court .tt-tag.r { right: 4%; }

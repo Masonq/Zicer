@@ -588,7 +588,7 @@ function Court({ m, data, t }) {
       </div>
       <div ref={courtRef} className={`court court-${m.sport} tt-court`} style={{ aspectRatio: courtAspect(m.sport) }}>
         <CourtLines sport={m.sport} />
-        <div className="field" style={fieldStyle(m.sport)}>
+        <div className="arena-field" style={fieldStyle(m.sport)}>
         {live && att !== null && server === null && (
           <div className={`terr t${att}`} aria-hidden="true" />
         )}
@@ -721,7 +721,7 @@ function TennisCourt({ m, data, t }) {
       <div className="tt-sets num">{setsTxt || '\u00a0'}</div>
       <div ref={tcRef} className="court court-tennis tt-court" style={{ aspectRatio: courtAspect('tennis') }}>
         <CourtLines sport="tennis" />
-        <div className="field" style={fieldStyle('tennis')}>
+        <div className="arena-field" style={fieldStyle('tennis')}>
         {live && phase.kind !== 'big' && (
           <>
             <svg className="tn-trail" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
@@ -1093,7 +1093,7 @@ function Arena({ m, data, t }) {
       </div>
       <div className={`court court-${sport} tt-court`} style={{ aspectRatio: courtAspect(sport) }}>
         <CourtLines sport={sport} />
-        <div className="field" style={fieldStyle(sport)}>
+        <div className="arena-field" style={fieldStyle(sport)}>
           {live && att !== null && !net && !isBreak && <div className={`terr t${att}`} style={{ opacity: 0.45 + 0.55 * intensity }} aria-hidden="true" />}
           <svg className="arena-fx" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
             <polyline ref={eng.trailEl} points="" fill="none" stroke={sport === 'tennis' ? 'rgba(215,242,90,0.55)' : 'rgba(255,255,255,0.4)'} strokeWidth="1.4" strokeDasharray="3 4" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
