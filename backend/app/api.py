@@ -266,6 +266,7 @@ def match_detail(mid: int, u: User | None = Depends(current_user_opt), db: Sessi
     mine = db.scalar(select(Prediction).where(Prediction.match_id == mid, Prediction.user_id == u.id)) if u else None
     out = match_out(m, {
         "split": ingest.community_split(db, mid),
+        "ext_fm": m.ext.startswith("fm:"),
         "analysis": {"sr": m.analysis_sr, "ru": m.analysis_ru},
         "form": {"home": ingest.team_form(db, m.home_id, m.start), "away": ingest.team_form(db, m.away_id, m.start)},
         "h2h": [match_out(x) for x in hh],

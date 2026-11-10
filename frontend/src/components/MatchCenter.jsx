@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { api } from '../api'
 import { useT } from '../i18n'
 import { usePoll } from '../store'
@@ -60,35 +61,101 @@ function evTitle(e, t) {
   return ''
 }
 
-export default function MatchCenter({ m }) {
+function Crest({ team, size }) {
+  const [bad, setBad] = useState(false)
+  if (!team.logo || bad) return <span className="crest fallback" style={{ width: size, height: size, fontSize: size * 0.45 }}>{(team.short || '?')[0]}</span>
+  return <span className="crest" style={{ width: size, height: size }}><img src={team.logo} alt="" onError={() => setBad(true)} /></span>
+}
+
+// Stylised ball: position follows the current pressure (momentum) of the match
+function BallPitch({ m, data, t }) {
+  const live = m.status === 'live'
+  const mom = data.momentum || []
+  const last = mom.length ? mom[mom.length - 1][1] : 0
+  const evs = (data.events || []).filter((e) => e.type === 'Goal')
+  const lastGoal = evs[evs.length - 1]
+  void lastGoal
+  const curMin = parseInt(m.minute, 10) || (mom.length ? mom[mom.length - 1][0] : 0)
+  const goalNow = live && lastGoal && curMin - lastGoal.min >= 0 && curMin - lastGoal.min <= 1
+  const [pos, setPos] = useState({ x: 50, y: 50 })
+  const [trail, setTrail] = useState([])
+  const ref = useRef(pos)
+  useEffect(() => {
+    if (!live) { setPos({ x: 50, y: 50 }); setTrail([]); return }
+    const tick = () => {
+      const p = ref.current
+      const base = 50 + Math.max(-1, Math.min(1, last / 100)) * 36
+      const x = Math.max(6, Math.min(94, base + (Math.random() - 0.5) * 18))
+      const y = Math.max(14, Math.min(86, p.y + (Math.random() - 0.5) * 34))
+      const np = { x, y }
+      setTrail((tr) => [...tr.slice(-7), p])
+      ref.current = np
+      setPos(np)
+    }
+    tick()
+    const i = setInterval(tick, 2200)
+    return () => clearInterval(i)
+  }, [live, last])
+  const H = t.team(m.home), A = t.team(m.away)
+  const att = last >= 0 ? H : A
+  const a = Math.abs(last)
+  let title, sub
+  if (!live) { title = t('finished'); sub = `${H} ${m.score ? m.score.join(':') : ''} ${A}` }
+  else if (goalNow) { title = `${t('goal')}!`; sub = `${lastGoal.player}, ${lastGoal.home ? H : A}` }
+  else if (m.minute === 'HT') { title = t('halfTime'); sub = `${H} – ${A}` }
+  else if (a >= 60) { title = t('dangerAttack'); sub = att }
+  else if (a >= 25) { title = t('attack'); sub = att }
+  else { title = t('possession'); sub = att }
+  const textLeft = pos.x > 55
+  return (
+    <div className="ball-pitch">
+      <div className="bp-lines"><i className="bp-mid" /><i className="bp-circle" /><i className="bp-box l" /><i className="bp-box r" /></div>
+      {mom.length > 0 && <div className="bp-mom"><Momentum data={mom} /></div>}
+      {trail.map((p, i) => <span key={i} className="bp-trail" style={{ left: `${p.x}%`, top: `${p.y}%`, opacity: 0.15 + i * 0.1 }} />)}
+      <span className={`bp-ball${goalNow ? ' goal' : ''}`} style={{ left: `${pos.x}%`, top: `${pos.y}%` }} />
+      <div className={`bp-text${textLeft ? ' left' : ''}`}>
+        <div className="bp-title">{title}</div>
+        <div className="bp-sub ellip">{sub}</div>
+      </div>
+    </div>
+  )
+}
+
+function Hero({ m, data, t, children }) {
+  const live = m.status === 'live'
+  return (
+    <div className="center-card hero-center">
+      <div className="hc-top">
+        <span className="ellip">{t.league(m.league)}</span>
+        {live ? <span className="badge live"><span className="live-dot" style={{ marginRight: 6 }} />{m.minute === 'HT' ? t('ht') : m.minute || t('live')}</span> : <span className="badge">{t('finished')}</span>}
+      </div>
+      <div className="hc-board">
+        <Link to={`/klub/${m.home.id}`} className="hc-team"><Crest team={m.home} size={44} /><span className="hc-name">{t.team(m.home)}</span></Link>
+        <div className="tablo"><div className="big">{m.score ? `${m.score[0]}:${m.score[1]}` : '–'}</div></div>
+        <Link to={`/klub/${m.away.id}`} className="hc-team r"><Crest team={m.away} size={44} /><span className="hc-name">{t.team(m.away)}</span></Link>
+      </div>
+      <BallPitch m={m} data={data} t={t} />
+      {children}
+    </div>
+  )
+}
+
+export default function MatchCenter({ m, hero = false, fallback = null }) {
   const t = useT()
   const [tab, setTab] = useState('events')
   const live = m.status === 'live'
   const { data } = usePoll(() => api(`/matches/${m.id}/center`), [m.id, m.status], live ? 20000 : 0, true)
-  if (!data) return null
-  const hasFoot = data.events || data.stats
+  if (!data) return hero ? fallback : null
+  const hasFoot = hero || data.events || data.stats
   const lv = data.live || {}
   const H = t.team(m.home), A = t.team(m.away)
 
   if (m.sport === 'football' && hasFoot) {
     const evs = (data.events || []).filter((e) => e.type !== 'Half')
     const key = [...evs].reverse().find((e) => e.type === 'Goal' || e.type === 'Card')
+    void key
     return (
-      <section className="section">
-        <div className="section-head"><h2 className="h2">{t('matchCenter')}</h2>{live && <span className="badge live"><span className="live-dot" style={{ marginRight: 6 }} />{m.minute || t('live')}</span>}</div>
-        <div className="center-card">
-          <div className="center-pitch">
-            {data.momentum?.length > 0 && <Momentum data={data.momentum} colors={data.colors} />}
-            {key ? (
-              <div className="center-key">
-                <div className="center-key-min num">{key.min}{key.add ? `+${key.add}` : ''}'</div>
-                <div className="center-key-title">{evTitle(key, t)}</div>
-                <div className="center-key-sub">{key.player}{key.score ? ` (${key.score[0]}:${key.score[1]})` : ''}, {key.home ? H : A}</div>
-              </div>
-            ) : (
-              <div className="center-key"><div className="center-key-title">{t('pressure')}</div><div className="center-key-sub">{H} / {A}</div></div>
-            )}
-          </div>
+      <Hero m={m} data={data} t={t}>
           <div className="seg" style={{ margin: '12px 12px 0' }}>
             <button className={tab === 'events' ? 'on' : ''} onClick={() => setTab('events')}>{t('events')}</button>
             <button className={tab === 'stats' ? 'on' : ''} onClick={() => setTab('stats')}>{t('statistics')}</button>
@@ -121,8 +188,7 @@ export default function MatchCenter({ m }) {
               {(!data.stats || data.stats.length === 0) && <div className="empty" style={{ padding: 20 }}>{t('noEvents')}</div>}
             </div>
           )}
-        </div>
-      </section>
+      </Hero>
     )
   }
 

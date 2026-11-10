@@ -362,3 +362,36 @@ img { display: block; max-width: 100%; }
 .per-table td:first-child { text-align: left; }
 .per-table .cur { color: var(--gold); }
 .per-table .tot { font-size: 18px; color: var(--gold); }
+
+/* live hero with ball */
+.hero-center .hc-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 14px 0; font-size: 13px; font-weight: 700; color: var(--muted); min-height: 26px; }
+.hc-board { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 10px; padding: 12px 14px 14px; }
+.hc-team { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; font-weight: 700; font-size: 14px; text-align: center; }
+.hc-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.2; }
+@media (min-width: 700px) {
+  .hc-team { flex-direction: row; gap: 10px; text-align: left; font-size: 15px; }
+  .hc-team.r { flex-direction: row-reverse; text-align: right; }
+}
+.hero-center .tablo { min-width: 96px; padding: 6px 12px; }
+.hero-center .tablo .big { font-size: 36px; }
+.ball-pitch { position: relative; height: 200px; margin: 0 14px; border-radius: 14px; overflow: hidden;
+  background: repeating-linear-gradient(90deg, rgba(255,255,255,0.03) 0 9.09%, rgba(0,0,0,0.05) 9.09% 18.18%), linear-gradient(180deg, #1F5541, #163F30); }
+.bp-lines { position: absolute; inset: 8px; border: 2px solid rgba(238,243,238,0.18); border-radius: 8px; pointer-events: none; }
+.bp-lines i { position: absolute; display: block; border: 2px solid rgba(238,243,238,0.18); }
+.bp-mid { left: 50%; top: -2px; bottom: -2px; width: 0; border-width: 0 0 0 2px !important; }
+.bp-circle { left: 50%; top: 50%; width: 64px; height: 64px; margin: -32px 0 0 -33px; border-radius: 50%; }
+.bp-box { top: 28%; bottom: 28%; width: 11%; }
+.bp-box.l { left: -2px; border-left-width: 0 !important; border-radius: 0 6px 6px 0; }
+.bp-box.r { right: -2px; border-right-width: 0 !important; border-radius: 6px 0 0 6px; }
+.bp-mom { position: absolute; left: 8px; right: 8px; bottom: 8px; height: 46px; opacity: 0.35; }
+.bp-mom .momentum { position: static; width: 100%; height: 100%; }
+.bp-ball { position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: #fff;
+  box-shadow: 0 0 0 4px rgba(255,255,255,0.18), 0 0 16px rgba(255,255,255,0.6); transition: left 2s cubic-bezier(.4,.1,.3,1), top 2s cubic-bezier(.4,.1,.3,1); z-index: 2; }
+.bp-ball.goal { background: var(--gold); box-shadow: 0 0 0 6px rgba(242,194,48,0.25), 0 0 22px rgba(242,194,48,0.8); }
+.bp-trail { position: absolute; width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; border-radius: 50%; background: #fff; transition: left 2s, top 2s; z-index: 1; }
+.bp-text { position: absolute; right: 22px; top: 50%; transform: translateY(-50%); max-width: 40%; text-align: right; z-index: 3; text-shadow: 0 2px 8px rgba(0,0,0,0.45); }
+.bp-text.left { right: auto; left: 22px; text-align: left; }
+.bp-title { font-family: var(--display); font-size: 24px; font-weight: 600; line-height: 1.1; }
+.bp-sub { font-size: 13px; color: #D3E3DA; margin-top: 2px; }
+@media (min-width: 600px) { .ball-pitch { height: 240px; } .bp-title { font-size: 28px; } }
+@media (prefers-reduced-motion: reduce) { .bp-ball, .bp-trail { transition: none; } }
