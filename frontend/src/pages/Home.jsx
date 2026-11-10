@@ -43,14 +43,13 @@ export default function Home() {
   const sport = sp.get('sport') || 'all'
   const setSport = (v) => { const n = new URLSearchParams(sp); if (v === 'all') n.delete('sport'); else n.set('sport', v); setSp(n, { replace: true }) }
   const { data, loading } = usePoll(() => api(`/home?tz=${tz()}&sport=${sport}`), [user?.id, sport], 45000)
-  const switcher = <div style={{ marginBottom: 16 }}><SportSwitcher value={sport} onChange={setSport} /></div>
+  const switcher = <div style={{ margin: '20px 0 4px' }}><SportSwitcher value={sport} onChange={setSport} /></div>
   if (loading && !data) return <div>{switcher}<Skeleton h={180} n={3} /></div>
   if (!data) return <div>{switcher}<Empty title={t('error')} /></div>
   const d = data
   const allSports = sport === 'all'
   return (
     <div>
-      {switcher}
       {!user && (
         <div className="hero" style={{ marginBottom: 16 }}>
           <h1 className="hero-title">{t('heroTitle')}</h1>
@@ -75,6 +74,7 @@ export default function Home() {
       )}
 
       {d.featured && <FeaturedMatch m={d.featured} label={t('matchOfDay')} />}
+      {switcher}
 
       {user && d.my_club.length > 0 && (
         <section className="section">

@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from sqlalchemy import select
 from .db import engine, Base, SessionLocal
 from .models import Bookmaker
-from . import api, admin, share
+from . import api, admin, share, center
 
 logging.basicConfig(level=logging.INFO)
 app = FastAPI(title="Zicer", docs_url=None, redoc_url=None)
@@ -33,6 +33,9 @@ MIGRATIONS = [
     "ALTER TABLE teams ADD COLUMN IF NOT EXISTS name_ru VARCHAR(128) DEFAULT ''",
     "ALTER TABLE leagues ADD COLUMN IF NOT EXISTS name_sr VARCHAR(128) DEFAULT ''",
     "ALTER TABLE leagues ADD COLUMN IF NOT EXISTS name_ru VARCHAR(128) DEFAULT ''",
+    "ALTER TABLE matches ADD COLUMN IF NOT EXISTS mb_id INTEGER",
+    "ALTER TABLE matches ADD COLUMN IF NOT EXISTS live JSON",
+    "CREATE INDEX IF NOT EXISTS ix_matches_mb_id ON matches (mb_id)",
 ]
 
 
@@ -68,3 +71,4 @@ app.mount("/media", StaticFiles(directory=MEDIA_DIR), name="media")
 app.include_router(api.router)
 app.include_router(admin.router)
 app.include_router(share.router)
+app.include_router(center.router)

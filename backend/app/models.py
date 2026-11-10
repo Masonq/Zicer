@@ -52,6 +52,8 @@ class Match(Base):
     reg_home: Mapped[int | None] = mapped_column(Integer, nullable=True)
     reg_away: Mapped[int | None] = mapped_column(Integer, nullable=True)
     odds: Mapped[dict] = mapped_column(JSON, default=dict)
+    mb_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    live: Mapped[dict] = mapped_column(JSON, default=dict)
     odds_updated: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     featured: Mapped[bool] = mapped_column(Boolean, default=False)
     is_derby: Mapped[bool] = mapped_column(Boolean, default=False, index=True)

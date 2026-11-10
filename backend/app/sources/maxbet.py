@@ -215,3 +215,45 @@ def fetch_results_sport(d, client: httpx.Client, sport: str) -> dict:
             continue
         out[m["id"]] = {"h": h, "a": a, "rh": rh, "ra": ra, "end": mr.get("p") == "END"}
     return out
+
+
+LIVE = "https://www.maxbet.rs/live/init/sr"
+
+
+def _v(d, k):
+    x = d.get(k)
+    return x if isinstance(x, int) and x >= 0 else None
+
+
+PERIOD_KEYS = ["FIRST_PERIOD", "SECOND_PERIOD", "THIRD_PERIOD", "FOURTH_PERIOD", "FIFTH_PERIOD"]
+
+
+def fetch_live(client: httpx.Client) -> dict:
+    """{maxbet_match_id: {"score": [h,a], "p": period_code, "cm": minute, "per": [[h,a]...], "game": [h,a], "stats": {...}}}"""
+    r = client.get(LIVE, headers={"User-Agent": UA}, timeout=25)
+    r.raise_for_status()
+    j = r.json()
+    heads = {h["id"]: h for h in j.get("liveHeaders", [])}
+    out = {}
+    for res in j.get("liveResults", []):
+        h = heads.get(res.get("mi"))
+        if not h:
+            continue
+        hs, as_ = res.get("hs") or {}, res.get("as") or {}
+        sh, sa = _v(hs, "CURRENT_SCORE"), _v(as_, "CURRENT_SCORE")
+        per = []
+        for k in PERIOD_KEYS:
+            a, b = _v(hs, k), _v(as_, k)
+            if a is None or b is None:
+                break
+            per.append([a, b])
+        stats = {}
+        for key, name in (("CURRENT_CORNERS", "corners"), ("FULLTIME_YC", "yc"), ("FULLTIME_RC", "rc")):
+            a, b = _v(hs, key), _v(as_, key)
+            if a is not None and b is not None:
+                stats[name] = [a, b]
+        game = [_v(hs, "GAME_SCORE"), _v(as_, "GAME_SCORE")] if h.get("s") == "T" else None
+        out[res["mi"]] = {"h": h.get("h", ""), "a": h.get("a", ""), "s": h.get("s"), "kot": h.get("kot"), "score": [sh, sa] if sh is not None and sa is not None else None, "p": res.get("p") or "",
+                          "cm": res.get("cm"), "per": per, "game": game if game and None not in game else None,
+                          "stats": stats, "state": h.get("ls", "")}
+    return out

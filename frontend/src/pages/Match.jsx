@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import { ChevronLeft, Languages, Sparkles, X } from 'lucide-react'
 import { buildMarkets, tt } from '../markets'
+import MatchCenter, { periodLabel } from '../components/MatchCenter'
 import { api } from '../api'
 import { useT } from '../i18n'
 import { useAuth, usePoll, useSlip } from '../store'
@@ -20,9 +21,9 @@ function Tablo({ m }) {
   }
   return (
     <div className="tablo">
-      <div className="big">{m.score[0]}:{m.score[1]}</div>
+      <div className="big">{m.score[0]}{m.sport === 'football' ? ':' : '–'}{m.score[1]}</div>
       <div className={`lbl${m.status === 'live' ? ' live' : ''}`}>
-        {m.status === 'live' ? <><span className="live-dot" />{m.minute === 'HT' ? t('ht') : m.minute || t('live')}</> : t('finished')}
+        {m.status === 'live' ? <><span className="live-dot" />{m.minute === 'HT' ? t('ht') : /^[A-Z_]+$/.test(m.minute || '') ? periodLabel(m.minute, m.sport, t) : m.minute || t('live')}</> : t('finished')}
       </div>
     </div>
   )
@@ -219,6 +220,8 @@ export default function MatchPage() {
           <span className={`badge ${m.mine.status}`}>{t(`pred_${m.mine.status}`)}</span>
         </div>
       ) : null}
+
+      {(m.status === 'live' || m.status === 'finished') && <MatchCenter m={m} />}
 
       {m.open && (
         <section className="section" style={{ marginTop: 16 }}>

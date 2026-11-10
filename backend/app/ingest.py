@@ -86,8 +86,10 @@ def upsert_matches(db: Session, items: list[dict]) -> int:
         m.league_id, m.home_id, m.away_id = lg.id, h.id, a.id
         m.start = it["start"]
         m.status = it["status"]
-        m.minute = it.get("minute", "")
-        m.score_home, m.score_away = it.get("score_home"), it.get("score_away")
+        if it.get("minute") or not m.live:
+            m.minute = it.get("minute", "")
+        if it.get("score_home") is not None or it["status"] != "live":
+            m.score_home, m.score_away = it.get("score_home"), it.get("score_away")
         if it.get("reg_home") is not None:
             m.reg_home, m.reg_away = it["reg_home"], it["reg_away"]
         m.is_derby = _is_derby(h, a)
@@ -203,7 +205,7 @@ def create_maxbet_basket(db: Session, offers: list[dict]) -> int:
             h = _resolve_bteam(db, o.get("home_id"), o["home"], cache, cc == "SRB")
             a = _resolve_bteam(db, o.get("away_id"), o["away"], cache, cc == "SRB")
             db.flush()
-            m = Match(ext=ext, sport="basketball", league_id=league.id, home_id=h.id, away_id=a.id, odds={}, start=o["start"])
+            m = Match(ext=ext, sport="basketball", league_id=league.id, home_id=h.id, away_id=a.id, odds={}, start=o["start"], mb_id=o["id"])
             db.add(m)
             n += 1
         m.start = o["start"]
@@ -241,7 +243,7 @@ def create_maxbet_other(db: Session, sport: str, offers: list[dict]) -> int:
                     db.add(t)
                     db.flush()
                 teams.append(t)
-            m = Match(ext=ext, sport=sport, league_id=league.id, home_id=teams[0].id, away_id=teams[1].id, odds={}, start=o["start"])
+            m = Match(ext=ext, sport=sport, league_id=league.id, home_id=teams[0].id, away_id=teams[1].id, odds={}, start=o["start"], mb_id=o["id"])
             db.add(m)
             n += 1
         m.start = o["start"]
@@ -294,6 +296,48 @@ def sync_other_results(db: Session) -> str:
     return f"other results {n}"
 
 
+def sync_live(db: Session) -> str:
+    with httpx.Client() as c:
+        data = maxbet.fetch_live(c)
+    if not data:
+        return "no live"
+    # link our live matches that have no MaxBet id yet (live games are absent from the prematch offer)
+    code2sport = {v: k for k, v in maxbet.SPORTS.items()}
+    lo = datetime.utcnow() - timedelta(hours=4)
+    unlinked = db.scalars(select(Match).where(Match.mb_id.is_(None), Match.start > lo, Match.start < datetime.utcnow() + timedelta(minutes=20))).all()
+    taken = set(db.scalars(select(Match.mb_id).where(Match.mb_id.in_(list(data.keys())))).all())
+    for m in unlinked:
+        best, bs = None, 0
+        for mid, d in data.items():
+            if mid in taken or code2sport.get(d.get("s")) != m.sport or not d.get("kot"):
+                continue
+            if abs(datetime.utcfromtimestamp(d["kot"] / 1000) - m.start).total_seconds() > 3 * 3600:
+                continue
+            sh, sa = similarity(d["h"], m.home.name), similarity(d["a"], m.away.name)
+            if sh >= MATCH_THRESHOLD and sa >= MATCH_THRESHOLD and sh + sa > bs:
+                best, bs = mid, sh + sa
+        if best:
+            m.mb_id = best
+            taken.add(best)
+    db.flush()
+    ms = db.scalars(select(Match).where(Match.mb_id.in_(list(data.keys())))).all()
+    n = 0
+    for m in ms:
+        d = data[m.mb_id]
+        m.live = {k: d[k] for k in ("p", "cm", "per", "game", "stats")}
+        if m.status == "finished" or m.settled:
+            continue
+        own_feed = m.ext.startswith("fm:") or m.ext.startswith("nba:")
+        if not own_feed and d["score"] is not None:
+            m.score_home, m.score_away = d["score"]
+            m.status = "live"
+        if not own_feed:
+            m.minute = (f"{d['cm']}'" if d.get("cm") and m.sport == "football" else d["p"])[:16]
+        n += 1
+    db.commit()
+    return f"live updated {n}"
+
+
 def sync_maxbet_results(db: Session) -> str:
     pending = db.scalars(select(Match).where(Match.ext.like("mbb:%"), Match.status.in_(["scheduled", "live"]),
                                              Match.start < datetime.utcnow())).all()
@@ -344,6 +388,8 @@ def sync_odds(db: Session) -> str:
                     if sh + sa > best_s:
                         best, best_s = o, sh + sa
                 if best:
+                    if best.get("id"):
+                        m.mb_id = best["id"]
                     odds = dict(m.odds or {})
                     odds["maxbet"] = {k: v for k, v in best["odds"].items() if v and v > 1.0}
                     m.odds = odds
@@ -704,11 +750,8 @@ def translate(db: Session, text: str, target: str) -> str:
     t = db.scalar(select(Translation).where(Translation.key == key))
     if t:
         return t.text
-    r = httpx.get("https://translate.googleapis.com/translate_a/single",
-                  params={"client": "gtx", "sl": "auto", "tl": target, "dt": "t", "q": text},
-                  headers={"User-Agent": config.UA}, timeout=15)
-    r.raise_for_status()
-    out = "".join(part[0] for part in r.json()[0] if part and part[0])
+    from .translator import translate as _tr
+    out = _tr(text, target)
     db.add(Translation(key=key, text=out))
     db.commit()
     return out
@@ -824,11 +867,8 @@ LEAGUE_EXT = {"el:E": ("Evroliga", "Евролига"), "el:U": ("Evrokup", "Е�
 
 
 def _gtx(text: str, tl: str) -> str:
-    r = httpx.get("https://translate.googleapis.com/translate_a/single",
-                  params={"client": "gtx", "sl": "auto", "tl": tl, "dt": "t", "q": text},
-                  headers={"User-Agent": config.UA}, timeout=15)
-    r.raise_for_status()
-    return "".join(p[0] for p in r.json()[0] if p and p[0]).strip()
+    from .translator import translate as _tr
+    return _tr(text, tl)
 
 
 def _strip_ctx(s: str) -> str:
@@ -925,4 +965,5 @@ def translate_names(db: Session, limit: int = 120) -> str:
         except Exception:  # noqa
             db.rollback()
         time.sleep(0.15)
-    return f"names {done}"
+    from .translator import last_error
+    return f"names {done}" + (f" | last error: {last_error['msg']}" if last_error["msg"] else "")

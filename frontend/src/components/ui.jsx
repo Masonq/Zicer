@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useT } from '../i18n'
 import { useSlip } from '../store'
 import { pickText } from '../markets'
+import { periodLabel } from './MatchCenter'
 
 export function Crest({ team, size = 22 }) {
   const [bad, setBad] = useState(false)
@@ -48,7 +49,8 @@ export const signed = (n) => (n > 0 ? '+' : '') + fmtNum(n)
 export function StatusTime({ m }) {
   const t = useT()
   if (m.status === 'live') {
-    return <div className="row-time live"><span>{m.minute === 'HT' ? t('ht') : (m.minute || <span className="live-dot" />)}</span><small style={{ color: 'var(--live)' }}>{t('live')}</small></div>
+    const lbl = m.minute === 'HT' ? t('ht') : /^[A-Z_]+$/.test(m.minute || '') ? periodLabel(m.minute, m.sport, t, true) : m.minute
+    return <div className="row-time live"><span style={{ fontSize: lbl && lbl.length > 4 ? 12 : 15 }}>{lbl || <span className="live-dot" />}</span><small style={{ color: 'var(--live)' }}>{t('live')}</small></div>
   }
   if (m.status === 'finished') return <div className="row-time"><span style={{ fontSize: 13 }}>{t('finished')}</span></div>
   const day = fmtDay(m.start, t.locale)

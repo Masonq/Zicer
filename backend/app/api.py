@@ -513,10 +513,13 @@ def home(tz: int = 60, sport: str = "all", u: User | None = Depends(current_user
     upcoming = db.scalars(sq(select(Match).join(League, Match.league_id == League.id)
                           .where(Match.status == "scheduled", Match.start > n, Match.start < n + timedelta(days=4)))
                           .order_by(League.priority, Match.start).limit(60)).unique().all()
-    pc = _pred_counts(db, [m.id for m in upcoming])
-    feat = next((m for m in upcoming if m.featured), None)
+    pool = db.scalars(select(Match).join(League, Match.league_id == League.id)
+                      .where(Match.status == "scheduled", Match.start > n, Match.start < n + timedelta(days=4))
+                      .order_by(League.priority, Match.start).limit(80)).unique().all()
+    pc = _pred_counts(db, [m.id for m in pool + upcoming])
+    feat = next((m for m in pool if m.featured), None)
     if not feat:
-        cands = [m for m in upcoming if m.odds] or upcoming
+        cands = [m for m in pool if m.odds] or pool
         if cands:
             feat = max(cands, key=lambda m: (m.is_derby, m.home.is_serbian or m.away.is_serbian, pc.get(m.id, 0), -m.league.priority))
     my = []
