@@ -69,14 +69,26 @@ function Crest({ team, size }) {
 
 const L = { stroke: 'rgba(255,255,255,0.24)', strokeWidth: 2, fill: 'none' }
 export function CourtLines({ sport }) {
-  if (sport === 'basketball') return (
-    <svg viewBox="0 0 600 300" preserveAspectRatio="none" className="court-svg">
-      <rect x="6" y="6" width="588" height="288" rx="6" {...L} /><line x1="300" y1="6" x2="300" y2="294" {...L} /><circle cx="300" cy="150" r="36" {...L} />
-      <rect x="6" y="104" width="114" height="92" {...L} /><rect x="480" y="104" width="114" height="92" {...L} />
-      <circle cx="120" cy="150" r="36" {...L} /><circle cx="480" cy="150" r="36" {...L} />
-      <path d="M6 30 H70 A132 132 0 0 1 70 270 H6" {...L} /><path d="M594 30 H530 A132 132 0 0 0 530 270 H594" {...L} />
-      <circle cx="34" cy="150" r="6" {...L} /><circle cx="566" cy="150" r="6" {...L} />
-    </svg>)
+  if (sport === 'basketball') {
+    const W = { stroke: 'rgba(255,255,255,0.85)', strokeWidth: 2.2, fill: 'none' }
+    const paint = 'rgba(15,42,34,0.82)'
+    return (
+      <svg viewBox="0 0 600 300" preserveAspectRatio="none" className="court-svg">
+        <path d="M6 22 H72 A128 128 0 0 1 72 278 H6 Z" fill="rgba(15,42,34,0.22)" />
+        <path d="M594 22 H528 A128 128 0 0 0 528 278 H594 Z" fill="rgba(15,42,34,0.22)" />
+        <rect x="6" y="100" width="118" height="100" fill={paint} /><rect x="476" y="100" width="118" height="100" fill={paint} />
+        <circle cx="300" cy="150" r="40" fill={paint} />
+        <rect x="6" y="6" width="588" height="288" rx="4" {...W} />
+        <line x1="300" y1="6" x2="300" y2="294" {...W} />
+        <circle cx="300" cy="150" r="40" {...W} /><circle cx="300" cy="150" r="13" {...W} />
+        <rect x="6" y="100" width="118" height="100" {...W} /><rect x="476" y="100" width="118" height="100" {...W} />
+        <path d="M124 114 A36 36 0 0 1 124 186" {...W} /><path d="M476 114 A36 36 0 0 0 476 186" {...W} />
+        <path d="M6 22 H72 A128 128 0 0 1 72 278 H6" {...W} /><path d="M594 22 H528 A128 128 0 0 0 528 278 H594" {...W} />
+        <line x1="26" y1="132" x2="26" y2="168" stroke="rgba(255,255,255,0.9)" strokeWidth="3" /><line x1="574" y1="132" x2="574" y2="168" stroke="rgba(255,255,255,0.9)" strokeWidth="3" />
+        <circle cx="38" cy="150" r="7" stroke="#E8833A" strokeWidth="2.5" fill="none" /><circle cx="562" cy="150" r="7" stroke="#E8833A" strokeWidth="2.5" fill="none" />
+      </svg>
+    )
+  }
   if (sport === 'hockey') return (
     <svg viewBox="0 0 600 300" preserveAspectRatio="none" className="court-svg">
       <rect x="6" y="6" width="588" height="288" rx="70" {...L} />
