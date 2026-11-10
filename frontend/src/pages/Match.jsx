@@ -204,7 +204,7 @@ export default function MatchPage() {
   const [ver, setVer] = useState(0)
   const [toast, setToast] = useState('')
   const [sel, setSel] = useState(null)
-  const { data: m, loading } = usePoll(() => api(`/matches/${id}`), [id, ver], 30000)
+  const { data: m, loading } = usePoll(() => api(`/matches/${id}`), [id, ver], 30000, true)
   if (loading && !m) return <Skeleton h={220} n={2} />
   if (!m) return <Empty title={t('error')} />
   const analysis = t.lang === 'ru' ? m.analysis.ru : t.serb(m.analysis.sr)

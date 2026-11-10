@@ -1,4 +1,5 @@
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
+import { SportSwitcher } from '../components/Sports'
 import { ChevronRight, Star } from 'lucide-react'
 import { api, tz } from '../api'
 import { useT } from '../i18n'
@@ -38,12 +39,18 @@ export function TipsterRow({ r, i }) {
 export default function Home() {
   const t = useT()
   const { user } = useAuth()
-  const { data, loading } = usePoll(() => api(`/home?tz=${tz()}`), [user?.id], 45000)
-  if (loading && !data) return <Skeleton h={180} n={3} />
-  if (!data) return <Empty title={t('error')} />
+  const [sp, setSp] = useSearchParams()
+  const sport = sp.get('sport') || 'all'
+  const setSport = (v) => { const n = new URLSearchParams(sp); if (v === 'all') n.delete('sport'); else n.set('sport', v); setSp(n, { replace: true }) }
+  const { data, loading } = usePoll(() => api(`/home?tz=${tz()}&sport=${sport}`), [user?.id, sport], 45000)
+  const switcher = <div style={{ marginBottom: 16 }}><SportSwitcher value={sport} onChange={setSport} /></div>
+  if (loading && !data) return <div>{switcher}<Skeleton h={180} n={3} /></div>
+  if (!data) return <div>{switcher}<Empty title={t('error')} /></div>
   const d = data
+  const allSports = sport === 'all'
   return (
     <div>
+      {switcher}
       {!user && (
         <div className="hero" style={{ marginBottom: 16 }}>
           <h1 className="hero-title">{t('heroTitle')}</h1>
@@ -59,7 +66,7 @@ export default function Home() {
         </div>
       )}
 
-      {d.derby && new Date(d.derby.start) - new Date() < 21 * 86400000 && (
+      {allSports && d.derby && new Date(d.derby.start) - new Date() < 21 * 86400000 && (
         <Link to="/derbi" className="derby-banner" style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex' }}><Crest team={d.derby.home} size={34} /><span style={{ marginLeft: -8 }}><Crest team={d.derby.away} size={34} /></span></div>
           <div style={{ minWidth: 0 }}><div className="t">{t('derbyTitle')}</div><div className="s ellip">{t.team(d.derby.home)} – {t.team(d.derby.away)}</div></div>
@@ -83,13 +90,13 @@ export default function Home() {
 
       {d.live.length > 0 && (
         <section className="section">
-          <SectionHead title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><span className="live-dot" />{t('live')}</span>} to="/mecevi?dan=live" link={t('seeAll')} />
+          <SectionHead title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><span className="live-dot" />{t('live')}</span>} to={`/mecevi?dan=live${allSports ? '' : `&sport=${sport}`}`} link={t('seeAll')} />
           <MatchList matches={d.live.slice(0, 6)} />
         </section>
       )}
 
       <section className="section">
-        <SectionHead title={t('upcoming')} to="/mecevi" link={t('seeAll')} />
+        <SectionHead title={t('upcoming')} to={`/mecevi${allSports ? '' : `?sport=${sport}`}`} link={t('seeAll')} />
         {d.upcoming.length ? <MatchList matches={d.upcoming.slice(0, 12)} /> : <div className="card"><Empty title={t('noMatches')} text={t('tryOtherDay')} /></div>}
       </section>
 
@@ -100,7 +107,7 @@ export default function Home() {
         </section>
       )}
 
-      {d.battle.length > 0 && (
+      {(sport === 'all' || sport === 'football' || sport === 'basketball') && d.battle.length > 0 && (
         <section className="section">
           <SectionHead title={t('fanBattle')} to="/rang?tab=klubovi" link={t('seeAll')} />
           <div className="card">
@@ -116,14 +123,14 @@ export default function Home() {
         </section>
       )}
 
-      {d.top.length > 0 && (
+      {allSports && d.top.length > 0 && (
         <section className="section">
           <SectionHead title={t('topTipsters')} to="/rang" link={t('seeAll')} />
           <div className="card">{d.top.slice(0, 5).map((r, i) => <TipsterRow key={r.user.id} r={r} i={i} />)}</div>
         </section>
       )}
 
-      {d.tickets.length > 0 && (
+      {allSports && d.tickets.length > 0 && (
         <section className="section">
           <SectionHead title={t('passedTickets')} to="/rang?tab=tiketi" link={t('seeAll')} />
           <div className="grid-2">
@@ -138,7 +145,7 @@ export default function Home() {
         </section>
       )}
 
-      {d.bookmakers.length > 0 && (
+      {allSports && d.bookmakers.length > 0 && (
         <section className="section">
           <SectionHead title={t('bookmakers')} to="/kladionice" link={t('seeAll')} />
           <div className="card">

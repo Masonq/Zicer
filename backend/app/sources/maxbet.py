@@ -6,7 +6,7 @@ from ..config import UA
 
 URL = "https://www.maxbet.rs/restapi/offer/sr/sport/{s}/mob?annex=3&desktopVersion=2.36.3.9&locale=sr"
 TTG = "https://www.maxbet.rs/restapi/offer/sr/ttg_lang?annex=3&desktopVersion=2.36.3.9&locale=sr"
-SPORTS = {"football": "S", "basketball": "B"}
+SPORTS = {"football": "S", "basketball": "B", "hockey": "H", "tennis": "T", "volleyball": "V", "waterpolo": "W"}
 
 FOOT_FIXED = {
     "1": "1", "2": "X", "3": "2",
@@ -56,6 +56,11 @@ def _fmt(v: float) -> str:
 
 def markets(sport: str, odds: dict, params: dict, cs: dict) -> dict:
     out = {}
+    if sport not in ("football", "basketball"):
+        for code, key in (("1", "1"), ("2", "X"), ("3", "2")):
+            if odds.get(code):
+                out[key] = odds[code]
+        return out
     fixed = FOOT_FIXED if sport == "football" else BASKET_FIXED
     for code, key in fixed.items():
         if odds.get(code):
@@ -101,7 +106,7 @@ def fetch(sport: str, client: httpx.Client) -> list[dict]:
     out = []
     for m in r.json().get("esMatches", []):
         o = m.get("odds") or {}
-        if not all(k in o for k in ("1", "3")):
+        if not all(k in o for k in ("1", "3")) or "Doubles" in (m.get("leagueName") or ""):
             continue
         out.append({
             "id": m.get("id"), "home_id": m.get("homeId"), "away_id": m.get("awayId"),
@@ -144,4 +149,69 @@ def fetch_results(d, client: httpx.Client, sport: str = "B") -> dict:
         rh = (hs.get("FIRST_HALF", -1) + hs.get("SECOND_HALF", -1)) if hs.get("FIRST_HALF", -1) >= 0 and hs.get("SECOND_HALF", -1) >= 0 else None
         ra = (as_.get("FIRST_HALF", -1) + as_.get("SECOND_HALF", -1)) if as_.get("FIRST_HALF", -1) >= 0 and as_.get("SECOND_HALF", -1) >= 0 else None
         out[m["id"]] = {"h": ft_h, "a": ft_a, "rh": rh, "ra": ra, "end": mr.get("p") == "END"}
+    return out
+
+
+# Other sports: taken entirely from MaxBet (fixtures, odds, results)
+OTHER = {
+    "hockey": {"code": "H", "leagues": {"nhl": ("NHL", "USA", 3), "khl": ("KHL", "RUS", 6), "ch. league": ("Liga šampiona", "EU", 4),
+                                         "sweden": ("Švedska SHL", "SWE", 8), "finland": ("Finska Liiga", "FIN", 9), "switzerland": ("Švajcarska NL", "SUI", 9),
+                                         "germany": ("Nemačka DEL", "GER", 9), "czech rep.": ("Češka Ekstraliga", "CZE", 10), "slovakia": ("Slovačka Ekstraliga", "SVK", 11),
+                                         "austria": ("ICE liga", "AUT", 11), "serbia": ("Srbija", "SRB", 5)}},
+    "tennis": {"code": "T", "leagues": None},
+    "volleyball": {"code": "V", "leagues": None},
+    "waterpolo": {"code": "W", "leagues": None},
+}
+SPORT_WORDS = ("hokej", "odbojka", "vaterpolo", "tenis", "rukomet")
+
+
+def other_league(sport: str, name: str):
+    n = name.lower()
+    for w in SPORT_WORDS:
+        n = n.replace(w, "")
+    n = n.strip()
+    if sport == "tennis":
+        if n.startswith("itf") or "challenger" in n or "utr" in n:
+            return None
+        clean = name.strip()
+        prio = 3 if n.startswith(("atp", "wta")) else 12
+        return (clean, "INT", prio)
+    if sport in ("volleyball", "waterpolo"):
+        clean = name
+        for w in ("Odbojka", "Vaterpolo"):
+            clean = clean.replace(w, "")
+        clean = clean.strip().replace("Ch. League", "Liga šampiona")
+        if clean.isupper():
+            clean = clean.title()
+        return (clean, "SRB" if "serbia" in n or "srbija" in n else "INT", 5)
+    lg = OTHER[sport]["leagues"]
+    return lg.get(n) if lg else None
+
+
+def score_from_result(sport: str, hs: dict, as_: dict):
+    def v(d, k):
+        x = d.get(k)
+        return x if isinstance(x, int) and x >= 0 else None
+    if sport in ("tennis", "volleyball"):
+        h, a = v(hs, "FULLTIME_SETS"), v(as_, "FULLTIME_SETS")
+        if h is None:
+            h, a = v(hs, "FULLTIME"), v(as_, "FULLTIME")
+        return h, a, h, a
+    ft_h, ft_a = v(hs, "FULLTIME"), v(as_, "FULLTIME")
+    ot_h, ot_a = v(hs, "OVERTIME"), v(as_, "OVERTIME")
+    fh, fa = (ot_h, ot_a) if ot_h is not None and ot_a is not None else (ft_h, ft_a)
+    return fh, fa, ft_h, ft_a
+
+
+def fetch_results_sport(d, client: httpx.Client, sport: str) -> dict:
+    code = OTHER[sport]["code"]
+    r = client.get(RESULTS.format(d=d.strftime("%d.%m.%Y.")), headers={"User-Agent": UA}, timeout=25)
+    r.raise_for_status()
+    out = {}
+    for m in (r.json().get("resultsMap") or {}).get(code, []):
+        mr = m.get("matchResult") or {}
+        h, a, rh, ra = score_from_result(sport, mr.get("hs") or {}, mr.get("as") or {})
+        if h is None or a is None:
+            continue
+        out[m["id"]] = {"h": h, "a": a, "rh": rh, "ra": ra, "end": mr.get("p") == "END"}
     return out

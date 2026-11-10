@@ -38,17 +38,17 @@ export function SlipProvider({ children }) {
 }
 export const useSlip = () => useContext(SlipCtx)
 
-export function usePoll(fn, deps, every = 0) {
+export function usePoll(fn, deps, every = 0, keep = false) {
   const [state, setState] = useState({ data: null, error: null, loading: true })
   useEffect(() => {
     let alive = true
     let timer
+    if (!keep) setState({ data: null, error: null, loading: true })
     const run = async (first) => {
       try { const d = await fn(); if (alive) setState({ data: d, error: null, loading: false }) }
       catch (e) { if (alive) setState((s) => ({ data: first ? null : s.data, error: e, loading: false })) }
       if (alive && every) timer = setTimeout(() => run(false), every)
     }
-    setState((s) => ({ ...s, loading: true }))
     run(true)
     return () => { alive = false; clearTimeout(timer) }
     // eslint-disable-next-line react-hooks/exhaustive-deps

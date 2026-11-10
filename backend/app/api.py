@@ -242,7 +242,7 @@ def _day_bounds(day: str, tz_offset: int):
 @router.get("/matches")
 def matches(sport: str = "all", day: str = "today", serbian: bool = False, tz: int = 60, db: Session = Depends(get_db)):
     q = select(Match).join(League, Match.league_id == League.id)
-    if sport in ("football", "basketball"):
+    if sport != "all":
         q = q.where(Match.sport == sport)
     if day == "live":
         q = q.where(Match.status == "live")
@@ -490,13 +490,28 @@ def profile(username: str, db: Session = Depends(get_db)):
 
 
 # ---------------- home / derby / trends / bookmakers ----------------
+SPORTS = ["football", "basketball", "tennis", "hockey", "volleyball", "waterpolo"]
+
+
+@router.get("/sports")
+def sports(tz: int = 60, db: Session = Depends(get_db)):
+    lo, hi = _day_bounds("today", tz)
+    live = dict(db.execute(select(Match.sport, func.count()).where(Match.status == "live").group_by(Match.sport)).all())
+    today = dict(db.execute(select(Match.sport, func.count()).where(Match.start >= lo, Match.start < hi).group_by(Match.sport)).all())
+    soon = dict(db.execute(select(Match.sport, func.count()).where(Match.status == "scheduled", Match.start > utcnow(),
+                                                                   Match.start < utcnow() + timedelta(days=4)).group_by(Match.sport)).all())
+    return [{"sport": s, "live": live.get(s, 0), "today": today.get(s, 0), "soon": soon.get(s, 0)} for s in SPORTS
+            if s in ("football", "basketball") or soon.get(s) or live.get(s)]
+
+
 @router.get("/home")
-def home(tz: int = 60, u: User | None = Depends(current_user_opt), db: Session = Depends(get_db)):
+def home(tz: int = 60, sport: str = "all", u: User | None = Depends(current_user_opt), db: Session = Depends(get_db)):
     n = utcnow()
-    live = db.scalars(select(Match).join(League, Match.league_id == League.id).where(Match.status == "live")
+    sq = (lambda q: q.where(Match.sport == sport)) if sport != "all" else (lambda q: q)
+    live = db.scalars(sq(select(Match).join(League, Match.league_id == League.id).where(Match.status == "live"))
                       .order_by(League.priority, Match.start).limit(20)).unique().all()
-    upcoming = db.scalars(select(Match).join(League, Match.league_id == League.id)
-                          .where(Match.status == "scheduled", Match.start > n, Match.start < n + timedelta(days=4))
+    upcoming = db.scalars(sq(select(Match).join(League, Match.league_id == League.id)
+                          .where(Match.status == "scheduled", Match.start > n, Match.start < n + timedelta(days=4)))
                           .order_by(League.priority, Match.start).limit(60)).unique().all()
     pc = _pred_counts(db, [m.id for m in upcoming])
     feat = next((m for m in upcoming if m.featured), None)
@@ -510,7 +525,7 @@ def home(tz: int = 60, u: User | None = Depends(current_user_opt), db: Session =
         if fav:
             my = db.scalars(select(Match).where(or_(Match.home_id.in_(fav), Match.away_id.in_(fav)),
                                                 Match.start > n - timedelta(hours=3)).order_by(Match.start).limit(4)).all()
-    trends = db.scalars(select(Trend).join(Match, Trend.match_id == Match.id).where(Match.status == "scheduled", Match.start > n)
+    trends = db.scalars(sq(select(Trend).join(Match, Trend.match_id == Match.id).where(Match.status == "scheduled", Match.start > n))
                         .order_by(Trend.strength.desc()).limit(6)).all()
     derby = db.scalar(select(Match).where(Match.is_derby == True, Match.start > n - timedelta(hours=3)).order_by(Match.start))  # noqa
     bms = db.scalars(select(Bookmaker).where(Bookmaker.active == True).order_by(Bookmaker.sort)).all()  # noqa
@@ -521,7 +536,7 @@ def home(tz: int = 60, u: User | None = Depends(current_user_opt), db: Session =
         "my_club": _list(db, my),
         "trends": [{"match": match_out(t.match), "pick": t.pick, "odds": t.odds, "sr": t.text_sr, "ru": t.text_ru} for t in trends],
         "top": ranking_rows(db, "month", 8),
-        "battle": fan_battle(db, "football")[:6],
+        "battle": fan_battle(db, "basketball" if sport == "basketball" else "football")[:6],
         "derby": match_out(derby) if derby else None,
         "tickets": [ticket_out(t) for t in db.scalars(select(Ticket).where(Ticket.status == "won").order_by(Ticket.settled_at.desc()).limit(4)).all()],
         "bookmakers": [bm_out(b) for b in bms[:4]],

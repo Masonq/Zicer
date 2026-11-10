@@ -108,6 +108,10 @@ export function buildMarkets(m, t) {
       const col = (f) => cs.filter(f).sort((x, y) => x.h + x.a - (y.h + y.a) || y.h - x.h).map((x) => item(x.k))
       out.push({ id: 'cs', title: tt(t, 'cs'), cols: 3, columns: [col((x) => x.h > x.a), col((x) => x.h === x.a), col((x) => x.h < x.a)], items: cs.map((x) => item(x.k)) })
     }
+  } else if (m.sport !== 'basketball') {
+    const main = ['1', 'X', '2'].filter(has)
+    const title = main.includes('X') ? tt(t, 'main') : t('winner')
+    if (main.length) out.push({ id: 'main', title, cols: main.length, items: main.map(item) })
   } else {
     const main = ['1', 'X', '2'].filter(has)
     if (main.length) out.push({ id: 'main', title: tt(t, 'mainB'), cols: main.length, items: main.map(item) })

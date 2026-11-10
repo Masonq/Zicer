@@ -216,6 +216,84 @@ def create_maxbet_basket(db: Session, offers: list[dict]) -> int:
     return n
 
 
+def create_maxbet_other(db: Session, sport: str, offers: list[dict]) -> int:
+    n = 0
+    cache = None
+    for o in offers:
+        lg = maxbet.other_league(sport, o["league"])
+        if not lg or not o.get("id"):
+            continue
+        ext = f"mbo:{o['id']}"
+        m = db.scalar(select(Match).where(Match.ext == ext))
+        if m and m.status == "finished":
+            continue
+        if not m:
+            if cache is None:
+                cache = db.scalars(select(Team).where(Team.sport == sport)).all()
+            lname, cc, prio = lg
+            league = _league(db, sport, {"ext": f"mbo:{sport}:{lname}", "name": lname, "country": cc, "priority": prio})
+            teams = []
+            for tid, nm in ((o.get("home_id"), o["home"]), (o.get("away_id"), o["away"])):
+                ext_t = f"mbo:{sport}:{tid}"
+                t = db.scalar(select(Team).where(Team.ext == ext_t))
+                if not t:
+                    t = Team(ext=ext_t, sport=sport, name=nm, short_name=nm, is_serbian=(cc == "SRB"), country=cc if cc == "SRB" else "")
+                    db.add(t)
+                    db.flush()
+                teams.append(t)
+            m = Match(ext=ext, sport=sport, league_id=league.id, home_id=teams[0].id, away_id=teams[1].id, odds={}, start=o["start"])
+            db.add(m)
+            n += 1
+        m.start = o["start"]
+        if o["live"] and m.status == "scheduled":
+            m.status = "live"
+        m.odds = {"maxbet": {k: v for k, v in o["odds"].items() if v and v > 1.0}}
+        m.odds_updated = now()
+    db.commit()
+    return n
+
+
+def sync_other_sports(db: Session) -> str:
+    total = 0
+    with httpx.Client() as c:
+        for sport in maxbet.OTHER:
+            try:
+                total += create_maxbet_other(db, sport, maxbet.fetch(sport, c))
+            except Exception:  # noqa
+                db.rollback()
+                log.exception("other sport %s", sport)
+    return f"other sports new {total}"
+
+
+def sync_other_results(db: Session) -> str:
+    pending = db.scalars(select(Match).where(Match.ext.like("mbo:%"), Match.status.in_(["scheduled", "live"]),
+                                             Match.start < datetime.utcnow())).all()
+    if not pending:
+        return "no pending"
+    n = 0
+    with httpx.Client() as c:
+        for sport in {m.sport for m in pending}:
+            res = {}
+            for i in (0, -1):
+                try:
+                    res.update(maxbet.fetch_results_sport(date.today() + timedelta(days=i), c, sport))
+                except Exception:  # noqa
+                    log.exception("results %s", sport)
+            for m in [x for x in pending if x.sport == sport]:
+                r = res.get(int(m.ext.split(":")[1]))
+                if not r:
+                    if m.status == "scheduled":
+                        m.status = "live"
+                    if m.start < datetime.utcnow() - timedelta(hours=8):
+                        m.status = "cancelled"
+                    continue
+                m.score_home, m.score_away, m.reg_home, m.reg_away = r["h"], r["a"], r["rh"], r["ra"]
+                m.status = "finished" if r["end"] else "live"
+                n += 1
+    db.commit()
+    return f"other results {n}"
+
+
 def sync_maxbet_results(db: Session) -> str:
     pending = db.scalars(select(Match).where(Match.ext.like("mbb:%"), Match.status.in_(["scheduled", "live"]),
                                              Match.start < datetime.utcnow())).all()
@@ -276,8 +354,8 @@ def sync_odds(db: Session) -> str:
 
 
 def outcome(m: Match) -> str | None:
-    h = m.reg_home if m.sport == "basketball" and m.reg_home is not None else m.score_home
-    a = m.reg_away if m.sport == "basketball" and m.reg_away is not None else m.score_away
+    h = m.reg_home if m.sport != "football" and m.reg_home is not None else m.score_home
+    a = m.reg_away if m.sport != "football" and m.reg_away is not None else m.score_away
     if h is None or a is None:
         return None
     return "1" if h > a else ("2" if a > h else "X")
@@ -314,8 +392,8 @@ def settle_key(m: Match, key: str) -> str | None:
     if m.score_home is None or m.score_away is None:
         return None
     h, a = m.score_home, m.score_away
-    rh = m.reg_home if m.sport == "basketball" and m.reg_home is not None else h
-    ra = m.reg_away if m.sport == "basketball" and m.reg_away is not None else a
+    rh = m.reg_home if m.sport != "football" and m.reg_home is not None else h
+    ra = m.reg_away if m.sport != "football" and m.reg_away is not None else a
     res = "1" if rh > ra else ("2" if ra > rh else "X")
     W = lambda c: "won" if c else "lost"  # noqa
     tot = h + a
@@ -772,6 +850,10 @@ def _league_names(lg: League) -> tuple[str, str]:
                 sr, ru = f"{sr}, grupa {grp}", f"{ru}, группа {grp}"
             return sr, ru
     base = lg.name
+    if lg.ext.startswith("mbo:"):
+        if lg.sport == "tennis":
+            return base, base
+        return base, _strip_ctx(_gtx(f"{base} ({lg.sport} league)", "ru")) or base
     cyr = _strip_ctx(_gtx(f"{base} (football league)" if lg.sport == "football" else f"{base} (basketball league)", "sr"))
     ru = _strip_ctx(_gtx(f"{base} (football league)" if lg.sport == "football" else f"{base} (basketball league)", "ru"))
     return to_lat(cyr), ru
@@ -828,7 +910,8 @@ def translate_names(db: Session, limit: int = 120) -> str:
                 src = t.name if nation else short
                 t.name_ru = _strip_ctx(_gtx(f"{src} ({ctx})", "ru")) or short
             else:
-                ctx = "football club" if t.sport == "football" else "basketball club"
+                ctx = {"football": "football club", "basketball": "basketball club", "hockey": "hockey club",
+                       "tennis": "tennis player", "volleyball": "volleyball club", "waterpolo": "water polo club"}.get(t.sport, "sports club")
                 trusted = t.id in top or t.ext.startswith(("nba:", "el:"))
                 cyr = _strip_ctx(_gtx(f"{short} ({ctx})", "sr")) or short
                 ru = _strip_ctx(_gtx(f"{short} ({ctx})", "ru")) or short

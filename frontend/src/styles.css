@@ -307,3 +307,17 @@ img { display: block; max-width: 100%; }
 .table th { text-align: left; color: var(--muted); font-weight: 600; font-size: 12px; padding: 8px 10px; border-bottom: 1px solid var(--line); }
 .table td { padding: 10px; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
 .scroll-x { overflow-x: auto; }
+
+/* sport switcher */
+.sports { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 2px 16px 4px; scroll-snap-type: x proximity; }
+.sports::-webkit-scrollbar { display: none; }
+.sport { flex: none; width: 84px; height: 92px; border-radius: 18px; background: var(--surface); border: 1px solid var(--line-soft); color: var(--muted);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; scroll-snap-align: start; transition: background .15s, color .15s, transform .15s; }
+.sport:active { transform: scale(0.97); }
+.sport .sport-ico { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: var(--bg-deep); color: var(--chalk); }
+.sport .sport-name { font-size: 12px; font-weight: 700; color: var(--chalk); line-height: 1.1; max-width: 76px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sport .sport-count { font-family: var(--display); font-size: 12px; color: var(--muted); display: inline-flex; align-items: center; gap: 4px; height: 14px; line-height: 1; }
+.sport.on { background: var(--gold); border-color: var(--gold); }
+.sport.on .sport-ico { background: rgba(42, 33, 5, 0.12); color: var(--gold-ink); }
+.sport.on .sport-name, .sport.on .sport-count { color: var(--gold-ink); }
+@media (min-width: 1024px) { .sports { margin: 0; padding: 2px 0 4px; } .sport { width: 92px; } }

@@ -15,6 +15,8 @@ SCHEDULE = [  # (name, fn, every_seconds)
     ("basketball_week", ingest.sync_basketball_week, 1800),
     ("maxbet_results", ingest.sync_maxbet_results, 180),
     ("names", ingest.translate_names, 300),
+    ("other_sports", ingest.sync_other_sports, 300),
+    ("other_results", ingest.sync_other_results, 180),
     ("odds", ingest.sync_odds, 180),
     ("settle", ingest.settle, 60),
     ("trends", ingest.build_trends, 1800),

@@ -6,6 +6,7 @@ import { useContext } from 'react'
 import { useAuth, useSlip, usePoll } from '../store'
 import { api } from '../api'
 import Slip from './Slip'
+import { ErrorBoundary } from './Sports'
 import { Crest, fmtNum } from './ui'
 
 function LangSwitch() {
@@ -75,7 +76,7 @@ export default function Layout() {
           </div>
         </header>
         <main className="main">
-          <Outlet />
+          <ErrorBoundary resetKey={loc.pathname + loc.search}><Outlet /></ErrorBoundary>
           <div className="foot">{t('responsible')}</div>
         </main>
       </div>
