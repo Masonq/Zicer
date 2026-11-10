@@ -6,6 +6,7 @@ import { useContext } from 'react'
 import { useAuth, useSlip, usePoll, prefetch } from '../store'
 import { api, tz } from '../api'
 import Slip from './Slip'
+import { LOGO_SRC, LOGO_W, LOGO_H } from '../logoData'
 import { ErrorBoundary } from './Sports'
 import { Crest, fmtNum } from './ui'
 
@@ -62,7 +63,7 @@ export default function Layout() {
   return (
     <div className="shell">
       <aside className="sidebar">
-        <Link to="/" className="wordmark"><img src="/logo-wide.png" alt="" height="26" className="wm-logo" /><span>Winly</span></Link>
+        <Link to="/" className="wordmark"><img src={LOGO_SRC} alt="" width={Math.round(LOGO_W / 2)} height={Math.round(LOGO_H / 2)} className="wm-logo" decoding="sync" /><span>Winly</span></Link>
         {nav.map(([to, label, Icon]) => (
           <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => `side-link${isActive ? ' on' : ''}`}><Icon size={20} />{label}</NavLink>
         ))}
@@ -80,7 +81,7 @@ export default function Layout() {
 
       <div style={{ minWidth: 0 }}>
         <header className="topbar">
-          <Link to="/" className="wordmark"><img src="/logo-wide.png" alt="" height="26" className="wm-logo" /><span>Winly</span></Link>
+          <Link to="/" className="wordmark"><img src={LOGO_SRC} alt="" width={Math.round(LOGO_W / 2)} height={Math.round(LOGO_H / 2)} className="wm-logo" decoding="sync" /><span>Winly</span></Link>
           <div className="topbar-right">
             {user && <Link to="/profil" className="bank-chip" title={t('yourBank')}><Wallet size={16} />{fmtNum(user.bank)}</Link>}
             <LangSwitch />
