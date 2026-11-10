@@ -25,8 +25,8 @@ export function ProfileView({ data, editable = false }) {
       {u.bio && <p style={{ margin: '12px 0 0', lineHeight: 1.5 }}>{u.bio}</p>}
       {editable && (
         <div style={{ display: 'grid', gridTemplateColumns: me?.is_admin ? '1fr 1fr' : '1fr', gap: 10, marginTop: 14 }}>
-          <Link to="/profil/uredi" className="btn btn-ghost btn-block" style={{ height: 42 }}>{t('editProfile')}</Link>
-          {me?.is_admin && <Link to="/admin" className="btn btn-ghost btn-block" style={{ height: 42, gap: 8 }}><Shield size={17} />{t('admin')}</Link>}
+          <Link to="/profil/uredi" className="btn btn-ghost btn-block prof-btn" style={{ height: 42 }}>{t('editProfile')}</Link>
+          {me?.is_admin && <Link to="/admin" className="btn btn-ghost btn-block prof-btn" style={{ height: 42, gap: 8 }}><Shield size={17} />{t('admin')}</Link>}
         </div>
       )}
       <div className="kv" style={{ marginTop: 16 }}>
