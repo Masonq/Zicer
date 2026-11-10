@@ -1,0 +1,43 @@
+from .models import Match, Team, User
+from .sources.fotmob import NATIONS_SR
+
+
+def iso(dt):
+    return dt.isoformat() + "Z" if dt else None
+
+
+def team_out(t: Team | None):
+    if not t:
+        return None
+    return {"id": t.id, "name": t.name, "short": t.short_name or t.name, "logo": t.logo, "serbian": t.is_serbian, "sport": t.sport,
+            "national": t.name in NATIONS_SR}
+
+
+def best(m: Match) -> dict:
+    out = {}
+    for bk, o in (m.odds or {}).items():
+        for k, v in o.items():
+            if v and v > out.get(k, (0, ""))[0]:
+                out[k] = (v, bk)
+    return {k: {"odds": v[0], "bk": v[1]} for k, v in out.items()}
+
+
+def match_out(m: Match, extra: dict | None = None) -> dict:
+    d = {"id": m.id, "sport": m.sport, "league": {"name": m.league.name, "country": m.league.country, "priority": m.league.priority},
+         "home": team_out(m.home), "away": team_out(m.away), "start": iso(m.start), "status": m.status,
+         "minute": m.minute, "score": [m.score_home, m.score_away] if m.score_home is not None else None,
+         "odds": m.odds or {}, "best": best(m), "derby": m.is_derby, "featured": m.featured}
+    if extra:
+        d.update(extra)
+    return d
+
+
+def user_short(u: User) -> dict:
+    return {"id": u.id, "username": u.username, "color": u.color,
+            "club": team_out(u.fav_football) if u.fav_football else team_out(u.fav_basket)}
+
+
+def user_me(u: User) -> dict:
+    return {**user_short(u), "email": u.email, "lang": u.lang, "bank": round(u.bank, 2), "is_admin": u.is_admin,
+            "fav_football": team_out(u.fav_football), "fav_basket": team_out(u.fav_basket),
+            "tg_linked": bool(u.tg_chat_id)}
