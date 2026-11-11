@@ -147,23 +147,54 @@ export function CourtLines({ sport }) {
     )
   }
   if (sport === 'hockey') {
-    const cy = Y + H / 2
-    const r = 8.5
-    const red = { stroke: '#D64545', fill: 'none', vectorEffect: 'non-scaling-stroke', strokeWidth: 1.6 }
-    const blue = { stroke: '#2F6FD0', fill: 'none', vectorEffect: 'non-scaling-stroke', strokeWidth: 3 }
+    // IIHF / NHL rink 60 x 30 m: corner radius 8.5, goal lines 4 m from the boards, blue lines 22.86 m,
+    // end face-off spots 6 m from the goal line and 7 m off-centre, neutral spots 1.5 m from the blue lines
+    const cy = Y + H / 2, R = 8.5, cx = X + W / 2
+    const red = '#D2323C', blue = '#1F5FD0'
+    const clip = `rk${Math.random().toString(36).slice(2, 7)}`
+    const endSpot = [[X + 10, cy - 7], [X + 10, cy + 7], [X + W - 10, cy - 7], [X + W - 10, cy + 7]]
+    const midSpot = [[X + 24.36, cy - 7], [X + 24.36, cy + 7], [X + W - 24.36, cy - 7], [X + W - 24.36, cy + 7]]
+    const goal = (dir) => {
+      const gx = dir === 1 ? X + 4 : X + W - 4
+      const s = dir
+      return (
+        <g key={dir}>
+          <path d={`M ${gx} ${cy - 1.8} A 1.8 1.8 0 0 ${dir === 1 ? 1 : 0} ${gx} ${cy + 1.8} Z`} fill="#7FB2EE" fillOpacity="0.75" stroke={red} strokeWidth="0.12" />
+          <rect x={dir === 1 ? gx - 1.12 : gx} y={cy - 0.915} width={1.12} height={1.83} rx="0.25" fill="rgba(120,130,140,0.25)" stroke={red} strokeWidth="0.16" />
+          <path d={`M ${gx} ${cy - 3.35} L ${gx - s * 4} ${cy - 4.25} M ${gx} ${cy + 3.35} L ${gx - s * 4} ${cy + 4.25}`} stroke={red} strokeWidth="0.1" fill="none" />
+        </g>
+      )
+    }
     return (
       <svg viewBox={vb} className="court-svg" aria-hidden="true">
-        <rect width={c.w} height={c.h} fill="#1A2730" />
-        <rect x={X} y={Y} width={W} height={H} rx={r} fill="#F1F6F9" stroke="#9FB3C2" strokeWidth="2" vectorEffect="non-scaling-stroke" />
-        <line x1={X + 4} y1={Y + 0.6} x2={X + 4} y2={Y + H - 0.6} {...red} /><line x1={X + W - 4} y1={Y + 0.6} x2={X + W - 4} y2={Y + H - 0.6} {...red} />
-        <line x1={X + 21.5} y1={Y} x2={X + 21.5} y2={Y + H} {...blue} /><line x1={X + W - 21.5} y1={Y} x2={X + W - 21.5} y2={Y + H} {...blue} />
-        <line x1={X + W / 2} y1={Y} x2={X + W / 2} y2={Y + H} stroke="#D64545" strokeWidth="3" vectorEffect="non-scaling-stroke" />
-        <circle cx={X + W / 2} cy={cy} r={4.5} {...{ ...blue, strokeWidth: 1.6 }} />
-        {[[X + 10, cy - 7], [X + 10, cy + 7], [X + W - 10, cy - 7], [X + W - 10, cy + 7]].map(([x, y]) => <g key={x + '-' + y}><circle cx={x} cy={y} r={4.5} {...red} /><circle cx={x} cy={y} r={0.3} fill="#D64545" /></g>)}
-        <path d={`M ${X + 4} ${cy - 1.8} A 1.8 1.8 0 0 1 ${X + 4} ${cy + 1.8} Z`} fill="rgba(47,111,208,0.35)" stroke="#D64545" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
-        <path d={`M ${X + W - 4} ${cy - 1.8} A 1.8 1.8 0 0 0 ${X + W - 4} ${cy + 1.8} Z`} fill="rgba(47,111,208,0.35)" stroke="#D64545" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
-        <rect x={X + 2.9} y={cy - 0.92} width={1.1} height={1.83} fill="none" stroke="#D64545" strokeWidth="1.6" vectorEffect="non-scaling-stroke" />
-        <rect x={X + W - 4} y={cy - 0.92} width={1.1} height={1.83} fill="none" stroke="#D64545" strokeWidth="1.6" vectorEffect="non-scaling-stroke" />
+        <defs>
+          <clipPath id={clip}><rect x={X} y={Y} width={W} height={H} rx={R} /></clipPath>
+          <radialGradient id={clip + 'g'} cx="50%" cy="45%" r="70%"><stop offset="0" stopColor="#F7FAFC" /><stop offset="1" stopColor="#DCE7EF" /></radialGradient>
+        </defs>
+        <rect width={c.w} height={c.h} fill="#15222B" />
+        <rect x={X - 0.35} y={Y - 0.35} width={W + 0.7} height={H + 0.7} rx={R + 0.35} fill="#F2C230" />
+        <rect x={X} y={Y} width={W} height={H} rx={R} fill={`url(#${clip}g)`} />
+        <g clipPath={`url(#${clip})`}>
+          <rect x={X + 4 - 0.05} y={Y} width={0.1} height={H} fill={red} />
+          <rect x={X + W - 4 - 0.05} y={Y} width={0.1} height={H} fill={red} />
+          <rect x={X + 22.86 - 0.3} y={Y} width={0.6} height={H} fill={blue} />
+          <rect x={X + W - 22.86 - 0.3} y={Y} width={0.6} height={H} fill={blue} />
+          <rect x={cx - 0.3} y={Y} width={0.6} height={H} fill={red} />
+          <circle cx={cx} cy={cy} r={4.5} fill="none" stroke={blue} strokeWidth="0.1" />
+          <circle cx={cx} cy={cy} r={0.3} fill={blue} />
+          <path d={`M ${cx - 3} ${Y + H} A 3 3 0 0 1 ${cx + 3} ${Y + H}`} fill="none" stroke={red} strokeWidth="0.1" />
+          {endSpot.map(([x0, y0]) => (
+            <g key={`e${x0}-${y0}`}>
+              <circle cx={x0} cy={y0} r={4.5} fill="none" stroke={red} strokeWidth="0.1" />
+              <circle cx={x0} cy={y0} r={0.3} fill={red} />
+              {[-1, 1].map((sy) => [-0.9, 0.9].map((dx) => <line key={`${sy}${dx}`} x1={x0 + dx} y1={y0 + sy * 4.5} x2={x0 + dx} y2={y0 + sy * 5.1} stroke={red} strokeWidth="0.1" />))}
+              {[-1, 1].map((sx) => [-1, 1].map((sy) => <path key={`${sx}${sy}`} d={`M ${x0 + sx * 0.6} ${y0 + sy * 0.45} h ${sx * 1.2} M ${x0 + sx * 0.6} ${y0 + sy * 0.45} v ${sy * 0.9}`} stroke={red} strokeWidth="0.08" fill="none" />))}
+            </g>
+          ))}
+          {midSpot.map(([x0, y0]) => <circle key={`m${x0}-${y0}`} cx={x0} cy={y0} r={0.3} fill={red} />)}
+          {goal(1)}{goal(-1)}
+        </g>
+        <rect x={X} y={Y} width={W} height={H} rx={R} fill="none" stroke="#9FB3C2" strokeWidth="0.25" />
       </svg>
     )
   }
@@ -946,13 +977,13 @@ const BOARD_KEYS = {
   waterpolo: ['x:Attacks', 'x:Possession %'],
 }
 // Stats board shown on the court in pauses (changeover after a game, breaks) and at the end of the match
-function StatsBoard({ sport, data, t, title, names, winner }) {
+function StatsBoard({ sport, data, t, title, sub, names, winner }) {
   const stats = data.stats || []
   const picked = []
   for (const k of BOARD_KEYS[sport] || []) { const st = stats.find((x) => x.key === k); if (st && !picked.find((p) => p.ru === st.ru)) picked.push(st); if (picked.length === (['football', 'waterpolo'].includes(sport) ? 4 : 3)) break }
   return (
     <motion.div className="sboard" initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
-      <div className="sboard-head"><b>{title}</b>{winner != null && <span className={`sb-win s${winner}`}>{names[winner]}</span>}</div>
+      <div className="sboard-head"><b className="ellip">{title}</b>{sub && <span className="sb-time num">{sub}</span>}{winner != null && <span className={`sb-win s${winner}`}>{names[winner]}</span>}</div>
       {picked.map((st) => {
         const a = parseFloat(st.v[0]) || 0, b = parseFloat(st.v[1]) || 0, sum = a + b || 1
         return (
@@ -1268,7 +1299,8 @@ function Arena({ m, data, t }) {
           {(finished || (isBreak && phase.kind === 'idle') || phase.kind === 'stats') && (
             <motion.div key={finished ? 'fin' : 'brk'} className="arena-break" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
               <StatsBoard sport={sport} data={data} t={t} names={names}
-                title={finished ? t('matchOver') : phase.kind === 'stats' ? `${phase.title || (phase.setBreak ? t('setBreak') : t('changeover'))} ${fmtLeft(phase.until)}` : brkLabel}
+                title={finished ? t('matchOver') : phase.kind === 'stats' ? (phase.title || (phase.setBreak ? t('setBreak') : t('changeover'))) : brkTitle}
+                sub={finished ? null : phase.kind === 'stats' ? fmtLeft(phase.until) : brkUntil ? (brkUntil > Date.now() ? fmtLeft(brkUntil) : t('resumeSoon')) : null}
                 winner={finished && scoreNow[0] !== scoreNow[1] ? (scoreNow[0] > scoreNow[1] ? 0 : 1) : null} />
             </motion.div>
           )}

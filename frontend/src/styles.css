@@ -714,3 +714,6 @@ img { display: block; max-width: 100%; }
 .tn-srv { flex: none; width: 8px; height: 8px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #F1FF9A, #C8E23A); box-shadow: 0 0 6px rgba(215,242,90,0.8); }
 @media (max-width: 380px) { .tn-bar .tt-player { font-size: 12px; } .tn-bar { gap: 4px; padding: 10px 8px; } .tn-pt b { min-width: 28px; font-size: 15px; } .tn-bar .tt-score { min-width: 70px; } }
 .prof-btn { white-space: nowrap; justify-content: center; text-align: center; font-size: 14px; padding: 0 10px; overflow: hidden; text-overflow: ellipsis; }
+.sboard-head b { min-width: 0; }
+.sb-time { flex: none; font-size: 15px; color: var(--gold); font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(242,194,48,0.12); }
+.eng-ball.ball-hockey { width: 11px; height: 7px; }
