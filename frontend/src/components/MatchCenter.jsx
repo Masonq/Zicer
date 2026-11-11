@@ -50,7 +50,7 @@ function Momentum({ data, colors }) {
   )
 }
 
-const BALL_SPORTS = ['football', 'basketball', 'tennis', 'hockey', 'volleyball', 'waterpolo']
+const BALL_SPORTS = ['football', 'basketball', 'tennis', 'hockey', 'volleyball', 'waterpolo', 'handball', 'tabletennis', 'futsal', 'esports']
 export function GoalIcon({ sport = 'football', own = false }) {
   return <span className={`ev-ico ball${own ? ' own' : ''}`}><img src={`/balls/${BALL_SPORTS.includes(sport) ? sport : 'football'}.webp`} alt="" width="22" height="22" /></span>
 }
@@ -119,6 +119,9 @@ export const COURT = {
   tennis: { w: 29.5, h: 14.4, fx: 2.865, fy: 1.715, fw: 23.77, fh: 10.97 },
   volleyball: { w: 22, h: 12, fx: 2, fy: 1.5, fw: 18, fh: 9 },
   waterpolo: { w: 30, h: 24, fx: 2.5, fy: 2, fw: 25, fh: 20 },
+  handball: { w: 44, h: 24, fx: 2, fy: 2, fw: 40, fh: 20 },   // IHF court 40 x 20 m
+  futsal: { w: 44, h: 24, fx: 2, fy: 2, fw: 40, fh: 20 },     // FIFA futsal 40 x 20 m
+  tabletennis: { w: 3.54, h: 2.125, fx: 0.4, fy: 0.3, fw: 2.74, fh: 1.525 }, // ITTF table 2.74 x 1.525 m
 }
 export const fieldStyle = (sport) => { const c = COURT[sport] || COURT.football; return { left: `${(c.fx / c.w) * 100}%`, top: `${(c.fy / c.h) * 100}%`, width: `${(c.fw / c.w) * 100}%`, height: `${(c.fh / c.h) * 100}%` } }
 export const courtAspect = (sport) => { const c = COURT[sport] || COURT.football; return `${c.w} / ${c.h}` }
@@ -297,6 +300,72 @@ export function CourtLines({ sport }) {
       </svg>
     )
   }
+  if (sport === 'handball') {
+    // IHF: 6 m goal-area line (quarter circles + straight 3 m), 9 m free-throw line dashed, 7 m line, 4 m goalkeeper line
+    const cy = Y + H / 2
+    const area = (dir, r, dash) => {
+      const gx = dir === 1 ? X : X + W, s = dir
+      return <path d={`M ${gx} ${cy - 1.5 - r} A ${r} ${r} 0 0 ${dir === 1 ? 1 : 0} ${gx + s * r} ${cy - 1.5} L ${gx + s * r} ${cy + 1.5} A ${r} ${r} 0 0 ${dir === 1 ? 1 : 0} ${gx} ${cy + 1.5 + r}`} {...WL} strokeDasharray={dash} />
+    }
+    const side = (dir) => {
+      const gx = dir === 1 ? X : X + W, s = dir
+      return (
+        <g key={dir}>
+          <path d={`M ${gx} ${cy - 7.5} A 6 6 0 0 ${dir === 1 ? 1 : 0} ${gx + s * 6} ${cy - 1.5} L ${gx + s * 6} ${cy + 1.5} A 6 6 0 0 ${dir === 1 ? 1 : 0} ${gx} ${cy + 7.5} Z`} fill="#2F6FB5" fillOpacity="0.85" />
+          {area(dir, 6)}{area(dir, 9, '5 5')}
+          <line x1={gx + s * 7} y1={cy - 0.5} x2={gx + s * 7} y2={cy + 0.5} {...WL} /><line x1={gx + s * 4} y1={cy - 0.075} x2={gx + s * 4} y2={cy + 0.075} {...WL} />
+          <rect x={dir === 1 ? gx - 1 : gx} y={cy - 1.5} width={1} height={3} fill="rgba(255,255,255,.18)" stroke="#E5544B" strokeWidth="0.12" />
+        </g>
+      )
+    }
+    return (
+      <svg viewBox={vb} className="court-svg" aria-hidden="true">
+        <rect width={c.w} height={c.h} fill="#1F4A7A" />
+        <rect x={X} y={Y} width={W} height={H} fill="#C9884E" />
+        {Array.from({ length: 20 }, (_, i) => <rect key={i} x={X} y={Y + i} width={W} height={0.5} fill="#000" opacity="0.035" />)}
+        <rect x={X} y={Y} width={W} height={H} {...WL} />
+        <line x1={X + W / 2} y1={Y} x2={X + W / 2} y2={Y + H} {...WL} />
+        {side(1)}{side(-1)}
+      </svg>
+    )
+  }
+  if (sport === 'futsal') {
+    // FIFA futsal: penalty area = 6 m quarter circles joined by 3.16 m, penalty marks at 6 m and 10 m, centre circle r 3 m
+    const cy = Y + H / 2
+    const side = (dir) => {
+      const gx = dir === 1 ? X : X + W, s = dir
+      return (
+        <g key={dir}>
+          <path d={`M ${gx} ${cy - 7.58} A 6 6 0 0 ${dir === 1 ? 1 : 0} ${gx + s * 6} ${cy - 1.58} L ${gx + s * 6} ${cy + 1.58} A 6 6 0 0 ${dir === 1 ? 1 : 0} ${gx} ${cy + 7.58}`} {...WL} />
+          <circle cx={gx + s * 6} cy={cy} r={0.12} fill="#fff" /><circle cx={gx + s * 10} cy={cy} r={0.12} fill="#fff" />
+          <rect x={dir === 1 ? gx - 1 : gx} y={cy - 1.5} width={1} height={3} fill="rgba(255,255,255,.2)" stroke="#fff" strokeWidth="0.1" />
+        </g>
+      )
+    }
+    return (
+      <svg viewBox={vb} className="court-svg" aria-hidden="true">
+        <rect width={c.w} height={c.h} fill="#1C3F5E" />
+        <rect x={X} y={Y} width={W} height={H} fill="#2F7D58" />
+        {Array.from({ length: 8 }, (_, i) => <rect key={i} x={X + i * 5} y={Y} width={2.5} height={H} fill="#fff" opacity="0.03" />)}
+        <rect x={X} y={Y} width={W} height={H} {...WL} />
+        <line x1={X + W / 2} y1={Y} x2={X + W / 2} y2={Y + H} {...WL} /><circle cx={X + W / 2} cy={cy} r={3} {...WL} />
+        {side(1)}{side(-1)}
+      </svg>
+    )
+  }
+  if (sport === 'tabletennis') {
+    return (
+      <svg viewBox={vb} className="court-svg" aria-hidden="true">
+        <rect width={c.w} height={c.h} fill="#7A2E2E" />
+        <rect x={X + 0.03} y={Y + 0.04} width={W} height={H} fill="#000" opacity="0.25" />
+        <rect x={X} y={Y} width={W} height={H} fill="#1F5FA8" />
+        <rect x={X} y={Y} width={W} height={H} fill="none" stroke="#fff" strokeWidth="0.02" />
+        <line x1={X} y1={Y + H / 2} x2={X + W} y2={Y + H / 2} stroke="#fff" strokeWidth="0.006" />
+        <line x1={X + W / 2} y1={Y - 0.15} x2={X + W / 2} y2={Y + H + 0.15} stroke="#F4F4F2" strokeWidth="0.03" />
+        <rect x={X + W / 2 - 0.02} y={Y - 0.18} width={0.04} height={0.06} fill="#222" /><rect x={X + W / 2 - 0.02} y={Y + H + 0.12} width={0.04} height={0.06} fill="#222" />
+      </svg>
+    )
+  }
   if (sport === 'volleyball') {
     return (
       <svg viewBox={vb} className="court-svg" aria-hidden="true">
@@ -350,8 +419,8 @@ const XPOS = { danger: 84, attack: 66, shot_on: 93, shot_off: 90, corner: 97, pe
 export function xevLabel(e, sport, t) {
   if (e.t === 'point' && sport !== 'tennis') return t('ev_vpoint')
   if (e.t === 'score') {
-    if (sport === 'football' || sport === 'hockey' || sport === 'waterpolo') return t('ev_goal')
-    if (sport === 'tennis' || sport === 'volleyball') return t('ev_set')
+    if (['football', 'hockey', 'waterpolo', 'handball', 'futsal'].includes(sport)) return t('ev_goal')
+    if (sport === 'tennis' || sport === 'volleyball' || sport === 'tabletennis') return t('ev_set')
     return `+${e.n}`
   }
   return t(`ev_${e.t}`)
@@ -434,8 +503,8 @@ function nextPos(sport, st) {
     const x = st.side === 0 ? rnd(lo[0], lo[1]) : rnd(100 - lo[1], 100 - lo[0])
     return { x, y: rnd(20, 80), hop: true }
   }
-  const goal = { basketball: [93.5, 50], hockey: [92.5, 50], waterpolo: [95, 50], football: [96, 50] }[sport] || [92, 50]
-  const zone = { basketball: [58, 86], hockey: [56, 88], waterpolo: [60, 88], football: st.strong ? [70, 92] : [52, 76] }[sport] || [55, 85]
+  const goal = { basketball: [93.5, 50], hockey: [92.5, 50], waterpolo: [95, 50], football: [96, 50], handball: [97, 50], futsal: [97, 50] }[sport] || [92, 50]
+  const zone = { basketball: [58, 86], hockey: [56, 88], waterpolo: [60, 88], handball: [62, 84], futsal: st.strong ? [68, 90] : [55, 80], football: st.strong ? [70, 92] : [52, 76] }[sport] || [55, 85]
   if (st.shot) {
     // after a shot possession changes (basketball / hockey / water polo), football keeps pressure from data
     st.shot = false
@@ -574,7 +643,7 @@ function bballPossession(plays) {
 // ---------- play engine: the ball/puck is always moving along continuous paths ----------
 // It keeps circulating in the zone of the team in possession (deeper when the attack is dangerous),
 // and when a real event arrives it travels to the event spot (shot, corner, goal...), holds, then play resumes.
-const SEG = { football: [1300, 2000], hockey: [520, 820], basketball: [650, 1000], waterpolo: [1000, 1500], volleyball: [1050, 1250] }
+const SEG = { football: [1300, 2000], hockey: [520, 820], basketball: [650, 1000], waterpolo: [1000, 1500], volleyball: [1050, 1250], handball: [700, 1100], futsal: [800, 1300], tabletennis: [380, 520] }
 function usePlayEngine({ live, sport, att, intensity, eventSpot, eventKey, isScore, server }) {
   const ballEl = useRef(null), shadowEl = useRef(null), trailEl = useRef(null), rippleEl = useRef(null)
   const st = useRef({ pos: { x: 50, y: 50 }, from: { x: 50, y: 50 }, to: { x: 50, y: 50 }, t0: 0, dur: 1, hop: 0, hold: 0, trail: [], lastTrail: 0, side: 0, after: null })
@@ -905,7 +974,7 @@ const HOOP_X = (1.575 / 28) * 100
 
 // Travel time from real distance (metres) and a speed per sport that reads well on a small screen:
 // passes / rally shots / shots on goal. Long passes take longer, short ones shorter.
-const SPEED = { football: [9, 16], hockey: [8, 14], basketball: [5.5, 8], waterpolo: [4.5, 8], tennis: [17, 24], volleyball: [8, 12] }
+const SPEED = { football: [9, 16], hockey: [8, 14], basketball: [5.5, 8], waterpolo: [4.5, 8], tennis: [17, 24], volleyball: [8, 12], handball: [7, 12], futsal: [8, 14], tabletennis: [6, 11] }
 const MIN_MS = { football: 1100, hockey: 800, basketball: 800, waterpolo: 1200, tennis: 1000, volleyball: 1200 }
 function travelMs(sport, a, b, kind = 'pass') {
   const c = COURT[sport] || COURT.football
@@ -922,7 +991,7 @@ function useArenaEngine(cfgNow) {
   useEffect(() => {
     const s = e.current
     let raf = 0
-    const net = () => ['tennis', 'volleyball'].includes(cfg.current.sport)
+    const net = () => ['tennis', 'volleyball', 'tabletennis'].includes(cfg.current.sport)
     const place = (p, h = 0) => {
       const b = ballEl.current, sh = shadowEl.current
       if (b) { b.style.left = `${p.x}%`; b.style.top = `${p.y}%`; b.style.transform = `translate(-50%, calc(-50% - ${h * 24}px)) scale(${1 + h * 0.3})` }
@@ -1148,6 +1217,8 @@ const STOPS = {
   hockey: { pen2: 25, penalty: 40 },
   basketball: { foul: 8 },
   waterpolo: { foul: 6 },
+  handball: { foul: 8, yellow: 10, pen2: 20 },
+  futsal: { foul: 8, yellow: 15, red: 30, corner: 8 },
   volleyball: {},
   tennis: {},
 }
@@ -1167,7 +1238,7 @@ function Arena({ m, data, t }) {
   const decided = isDecided(m, scoreNow, ((data.live || {}).x || {}).periods || (data.live || {}).per)
   const live = statusNow === 'live' && !decided
   const finished = statusNow === 'finished' || decided
-  const net = sport === 'tennis' || sport === 'volleyball'
+  const net = sport === 'tennis' || sport === 'volleyball' || sport === 'tabletennis'
   const scene = useScene(m, data, t)
   const lv = data.live || {}
   const x = lv.x || {}
@@ -1593,7 +1664,7 @@ export default function MatchCenter({ m, fallback = null }) {
         <span className="ellip">{t.league(m.league)}</span>
         {(data.status || m.status) === 'live' && !isDecided(m, data.score || m.score, (lv.x || {}).periods || lv.per) ? <span className="badge live"><span className="live-dot" style={{ marginRight: 6 }} />{(m.minute === 'HT' ? t('ht') : /^[A-Z0-9_]+$/.test(m.minute || '') ? periodLabel(m.minute, m.sport, t) : m.minute) || periodLabel((lv || {}).p, m.sport, t) || t('live')}</span> : <span className="badge">{t('finished')}</span>}
       </div>
-      <Arena m={m} data={data} t={t} />
+      {m.sport !== 'esports' && <Arena m={m} data={data} t={t} />}
       <div className="seg" style={{ margin: '12px 12px 0' }}>{tabs.map(([k, l]) => <button key={k} className={active === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}</div>
       <div className={`center-body${active === 'periods' ? '' : ' fixed'}`}>
         {!loaded ? <div className="skeleton" style={{ height: active === 'periods' ? 150 : 272, margin: 14, borderRadius: 12 }} /> : (

@@ -6,7 +6,7 @@ from ..config import UA
 
 URL = "https://www.maxbet.rs/restapi/offer/sr/sport/{s}/mob?annex=3&desktopVersion=2.36.3.9&locale=sr"
 TTG = "https://www.maxbet.rs/restapi/offer/sr/ttg_lang?annex=3&desktopVersion=2.36.3.9&locale=sr"
-SPORTS = {"football": "S", "basketball": "B", "hockey": "H", "tennis": "T", "volleyball": "V", "waterpolo": "W"}
+SPORTS = {"football": "S", "basketball": "B", "hockey": "H", "tennis": "T", "volleyball": "V", "waterpolo": "W", "handball": "HB", "tabletennis": "TT"}
 
 FOOT_FIXED = {
     "1": "1", "2": "X", "3": "2",
@@ -161,8 +161,10 @@ OTHER = {
     "tennis": {"code": "T", "leagues": None},
     "volleyball": {"code": "V", "leagues": None},
     "waterpolo": {"code": "W", "leagues": None},
+    "handball": {"code": "HB", "leagues": None},
+    "tabletennis": {"code": "TT", "leagues": None},
 }
-SPORT_WORDS = ("hokej", "odbojka", "vaterpolo", "tenis", "rukomet")
+SPORT_WORDS = ("hokej", "odbojka", "vaterpolo", "stoni tenis", "tenis", "rukomet")
 
 
 def other_league(sport: str, name: str):
@@ -176,14 +178,19 @@ def other_league(sport: str, name: str):
         clean = name.strip()
         prio = 3 if n.startswith(("atp", "wta")) else 12
         return (clean, "INT", prio)
-    if sport in ("volleyball", "waterpolo"):
+    if sport in ("volleyball", "waterpolo", "handball", "tabletennis"):
         clean = name
-        for w in ("Odbojka", "Vaterpolo"):
+        for w in ("Odbojka", "Vaterpolo", "Rukomet", "Stoni Tenis", "Stoni tenis"):
             clean = clean.replace(w, "")
         clean = clean.strip().replace("Ch. League", "Liga šampiona")
         if clean.isupper():
             clean = clean.title()
-        return (clean, "SRB" if "serbia" in n or "srbija" in n else "INT", 5)
+        prio = 5
+        if sport == "handball":
+            prio = 3 if ("ch. league" in n or "serbia" in n or "srbija" in n or "ehf" in n) else 6
+        if sport == "tabletennis":
+            prio = 12  # round-the-clock leagues: always available, never above the main sports
+        return (clean, "SRB" if "serbia" in n or "srbija" in n else "INT", prio)
     lg = OTHER[sport]["leagues"]
     return lg.get(n) if lg else None
 
@@ -192,7 +199,7 @@ def score_from_result(sport: str, hs: dict, as_: dict):
     def v(d, k):
         x = d.get(k)
         return x if isinstance(x, int) and x >= 0 else None
-    if sport in ("tennis", "volleyball"):
+    if sport in ("tennis", "volleyball", "tabletennis"):
         h, a = v(hs, "FULLTIME_SETS"), v(as_, "FULLTIME_SETS")
         if h is None:
             h, a = v(hs, "FULLTIME"), v(as_, "FULLTIME")

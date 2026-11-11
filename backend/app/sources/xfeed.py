@@ -4,7 +4,7 @@ import httpx
 
 URL = "https://22bet.com/LiveFeed/Get1x2_VZip?sports={s}&count=300&lng=en&mode=4&country=1&getEmpty=true"
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36"
-SPORTS = {"football": 1, "hockey": 2, "basketball": 3, "tennis": 4, "volleyball": 6, "waterpolo": 17}
+SPORTS = {"football": 1, "hockey": 2, "basketball": 3, "tennis": 4, "volleyball": 6, "waterpolo": 17, "handball": 8, "tabletennis": 10, "futsal": 14, "esports": 40}
 
 STAT_NAMES = {  # en -> (sr, ru, is_pct)
     "Attacks": ("Napadi", "Атаки", False), "Dangerous attacks": ("Opasni napadi", "Опасные атаки", False),

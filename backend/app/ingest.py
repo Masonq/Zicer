@@ -268,6 +268,57 @@ def sync_other_sports(db: Session) -> str:
     return f"other sports new {total}"
 
 
+X22_LINE = {"futsal": 14, "esports": 40}
+X22_URL = "https://22bet.com/LineFeed/Get1x2_VZip?sports={s}&count=200&lng=en&tf=2200000&mode=4&country=1&getEmpty=true"
+
+
+def sync_x22_line(db: Session) -> str:
+    """Futsal and esports: fixtures and 1-X-2 prices from the 22Bet line (MaxBet doesn't offer them)."""
+    n = 0
+    with httpx.Client(headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"}, timeout=25) as c:
+        for sport, sid in X22_LINE.items():
+            try:
+                games = c.get(X22_URL.format(s=sid)).json().get("Value") or []
+            except Exception:  # noqa
+                log.exception("x22 line %s", sport)
+                continue
+            for g in games:
+                gid, h, a, lname, st = g.get("I"), g.get("O1"), g.get("O2"), (g.get("L") or "").strip(), g.get("S")
+                if not (gid and h and a and lname and st):
+                    continue
+                if sport == "esports" and not any(k in lname for k in ("Counter-Strike", "CS2", "Dota", "League of Legends", "Valorant")):
+                    continue
+                ext = f"x22:{gid}"
+                m = db.scalar(select(Match).where(Match.ext == ext))
+                if m and m.status == "finished":
+                    continue
+                if not m:
+                    prio = 6 if sport == "futsal" and ("Champions" in lname or "Serbia" in lname) else 9
+                    league = _league(db, sport, {"ext": f"x22:{sport}:{lname}", "name": lname, "country": "SRB" if "Serbia" in lname else "INT", "priority": prio})
+                    teams = []
+                    for nm in (h, a):
+                        ext_t = f"x22:{sport}:{nm.lower()}"
+                        t = db.scalar(select(Team).where(Team.ext == ext_t))
+                        if not t:
+                            t = Team(ext=ext_t, sport=sport, name=nm, short_name=nm, is_serbian=False, country="")
+                            db.add(t)
+                            db.flush()
+                        teams.append(t)
+                    m = Match(ext=ext, sport=sport, league_id=league.id, home_id=teams[0].id, away_id=teams[1].id, odds={}, start=datetime.utcfromtimestamp(st), x_id=gid)
+                    db.add(m)
+                    n += 1
+                m.start = datetime.utcfromtimestamp(st)
+                odds = {}
+                for e in g.get("E") or []:
+                    k = {1: "1", 2: "X", 3: "2"}.get(e.get("T"))
+                    if k and e.get("C"):
+                        odds[k] = float(e["C"])
+                if odds:
+                    m.odds = {**(m.odds or {}), "22bet": odds}
+            db.commit()
+    return f"x22 line new {n}"
+
+
 def sync_other_results(db: Session) -> str:
     pending = db.scalars(select(Match).where(Match.ext.like("mbo:%"), Match.start < datetime.utcnow(),
                                              or_(Match.status.in_(["scheduled", "live"]), and_(Match.status == "finished", Match.settled == False)))).all()  # noqa
@@ -344,7 +395,7 @@ def sync_live(db: Session) -> str:
             continue
         own_feed = m.ext.startswith("fm:") or m.ext.startswith("nba:")
         if not own_feed and d["score"] is not None and m.start <= datetime.utcnow() + timedelta(minutes=5):
-            if m.sport in ("tennis", "volleyball") and d.get("per"):
+            if m.sport in ("tennis", "volleyball", "tabletennis") and d.get("per"):
                 m.score_home, m.score_away = sets_won_from_periods(d["per"], m.sport)
             else:
                 m.score_home, m.score_away = d["score"]
@@ -1010,7 +1061,7 @@ def translate_names(db: Session, limit: int = 120) -> str:
     except Exception:  # noqa
         pass
     # tennis players keep their own names (no "translation" of a person's name)
-    for t in db.scalars(select(Team).where(Team.sport == "tennis", or_(Team.name_ru != Team.short_name, Team.name_ru == ""))).all():
+    for t in db.scalars(select(Team).where(Team.sport.in_(["tennis", "tabletennis"]), or_(Team.name_ru != Team.short_name, Team.name_ru == ""))).all():
         t.name_sr = t.name_cyr = t.name_ru = t.short_name or t.name
     db.commit()
     for lg in db.scalars(select(League).where(League.name_ru == "").limit(40)).all():
@@ -1095,7 +1146,7 @@ def sync_xfeed(db: Session) -> str:
                 continue
             if g.get("start") and abs(datetime.utcfromtimestamp(g["start"]) - m.start).total_seconds() > 3 * 3600:
                 continue
-            if m.sport == "tennis":
+            if m.sport in ("tennis", "tabletennis"):
                 ok = _tennis_same(m.home.name, g["home"]) and _tennis_same(m.away.name, g["away"])
                 sc = 2.0 if ok else 0
             else:
@@ -1180,7 +1231,7 @@ def sync_xfeed(db: Session) -> str:
         if m.status == "scheduled" and g.get("ts"):
             m.status = "live"
         if m.status == "live" and not m.settled and g.get("score") and None not in g["score"]:
-            if m.sport in ("tennis", "volleyball") and g.get("periods"):
+            if m.sport in ("tennis", "volleyball", "tabletennis") and g.get("periods"):
                 # sets won = finished sets in the set scores (the bare counter can glitch)
                 m.score_home, m.score_away = sets_won_from_periods(g["periods"], m.sport)
             else:
@@ -1235,7 +1286,7 @@ def sets_won_from_periods(per, sport: str) -> list[int]:
     for i, p in enumerate(per or []):
         a, b = int(p[0] or 0), int(p[1] or 0)
         hi, lo = max(a, b), min(a, b)
-        if sport == "tennis":
+        if sport in ("tennis", "tabletennis"):
             done = (hi >= 6 and hi - lo >= 2) or hi == 7
         else:
             target = 15 if i == 4 else 25
@@ -1248,7 +1299,7 @@ def sets_won_from_periods(per, sport: str) -> list[int]:
 def close_if_decided(m: Match) -> bool:
     """Tennis / volleyball: the match is over the moment a side has won the needed sets.
     The match is closed for the live view right away; bets are settled only after the official result."""
-    if m.status != "live" or m.sport not in ("tennis", "volleyball") or m.score_home is None:
+    if m.status != "live" or m.sport not in ("tennis", "volleyball", "tabletennis") or m.score_home is None:
         return False
     if max(m.score_home or 0, m.score_away or 0) < sets_to_win(m):
         return False

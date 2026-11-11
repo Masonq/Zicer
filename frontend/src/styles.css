@@ -1377,3 +1377,10 @@ img { display: block; max-width: 100%; }
   background: rgba(10,24,18,.82); border: 1px solid rgba(255,255,255,.12); backdrop-filter: blur(8px); box-shadow: 0 8px 18px rgba(0,0,0,.35); animation: undoIn .3s; text-align: right; }
 .atk-call.s0 { right: 12%; border-right: 3px solid #3D8EF0; } .atk-call.s1 { left: 12%; border-left: 3px solid #8BD12F; text-align: left; }
 .atk-call span { font-size: 11px; font-weight: 700; color: #cfdbd5; } .atk-call b { font-size: 12px; font-weight: 900; letter-spacing: .04em; text-transform: uppercase; color: #fff; } .atk-call b.hot { color: #FFC54D; }
+
+/* new sports: colours */
+.sc-handball { --sc: #E86A5A; } .sc-tabletennis { --sc: #F28C38; } .sc-futsal { --sc: #36C2A0; } .sc-esports { --sc: #A78BFA; }
+.league-sport.ls-handball { background: #E86A5A; } .league-sport.ls-tabletennis { background: #F28C38; } .league-sport.ls-futsal { background: #36C2A0; } .league-sport.ls-esports { background: #8B6CF0; }
+.eng-ball.ball-handball { background: transparent url(/balls/handball.webp) center / contain no-repeat !important; }
+.eng-ball.ball-futsal { background: transparent url(/balls/futsal.webp) center / contain no-repeat !important; }
+.eng-ball.ball-tabletennis { background: transparent url(/balls/tabletennis.webp) center / contain no-repeat !important; width: 10px !important; height: 10px !important; }

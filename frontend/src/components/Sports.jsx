@@ -4,7 +4,7 @@ import { api, tz } from '../api'
 import { useT, translate, LangCtx } from '../i18n'
 import { usePoll } from '../store'
 
-import { IconBallFootball, IconBallBasketball, IconBallTennis, IconBallVolleyball, IconWaterpolo, IconLayoutGrid } from '@tabler/icons-react'
+import { IconBallFootball, IconBallBasketball, IconBallTennis, IconBallVolleyball, IconWaterpolo, IconLayoutGrid, IconPlayHandball, IconPingPong, IconDeviceGamepad2, IconShoe } from '@tabler/icons-react'
 
 function HockeyIcon({ size }) {
   return (
@@ -15,7 +15,7 @@ function HockeyIcon({ size }) {
   )
 }
 
-const ICONS = { football: IconBallFootball, basketball: IconBallBasketball, tennis: IconBallTennis, volleyball: IconBallVolleyball, waterpolo: IconWaterpolo, all: IconLayoutGrid }
+const ICONS = { football: IconBallFootball, basketball: IconBallBasketball, tennis: IconBallTennis, volleyball: IconBallVolleyball, waterpolo: IconWaterpolo, handball: IconPlayHandball, tabletennis: IconPingPong, futsal: IconShoe, esports: IconDeviceGamepad2, all: IconLayoutGrid }
 export function SportIcon({ sport, size = 24 }) {
   if (sport === 'hockey') return <HockeyIcon size={size} />
   const I = ICONS[sport] || IconLayoutGrid

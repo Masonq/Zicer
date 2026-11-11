@@ -617,7 +617,7 @@ def _profile_bento(db, u):
 
 
 # ---------------- home / derby / trends / bookmakers ----------------
-SPORTS = ["football", "basketball", "tennis", "hockey", "volleyball", "waterpolo"]
+SPORTS = ["football", "basketball", "tennis", "hockey", "volleyball", "waterpolo", "handball", "tabletennis", "futsal", "esports"]
 
 
 @router.get("/sports")

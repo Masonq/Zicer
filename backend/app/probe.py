@@ -31,6 +31,16 @@ def main():
                         break
                 except Exception:  # noqa
                     pass
+        out.append("")
+        out.append("## 22Bet line (prematch) with tf: MMA / boxing search")
+        for sid in range(1, 200):
+            try:
+                r = c.get(f"https://22bet.com/LineFeed/Get1x2_VZip?sports={sid}&count=20&lng=en&tf=2200000&mode=4&country=1&getEmpty=true")
+                v = (r.json() or {}).get("Value") or []
+                if v:
+                    out.append(f"- {sid}: {v[0].get('SN') or v[0].get('SE')}, games {len(v)}; {v[0].get('L')}")
+            except Exception:  # noqa
+                pass
     print("\n".join(out))
 
 
