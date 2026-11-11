@@ -6,6 +6,7 @@ import { useT } from '../i18n'
 import { useAuth, usePoll } from '../store'
 import { MatchList, SectionHead, Skeleton, Crest, Avatar, fmtNum, fmtOdds, Countdown, pickLabel, Empty } from '../components/ui'
 import HeroCarousel from '../components/HeroCarousel'
+import Safe from '../components/Safe'
 import { HighlightsStrip } from '../components/Highlights'
 import { HotMatches, LineTrends } from '../components/HomeBlocks'
 import { FeaturedMatch } from './Match'
@@ -76,9 +77,9 @@ export default function Home() {
         ? <HeroCarousel matches={d.featured_list && d.featured_list.length ? d.featured_list : d.featured ? [d.featured] : []} banners={d.banners || []} label={t('matchOfDay')} />
         : d.featured && <FeaturedMatch m={d.featured} label={t('matchOfDay')} />}
       {switcher}
-      <HotMatches list={d.hot || []} />
-      <HighlightsStrip list={d.highlights || []} />
-      <LineTrends list={d.line_moves || []} />
+      <Safe><HotMatches list={d.hot || []} /></Safe>
+      <Safe><HighlightsStrip list={d.highlights || []} /></Safe>
+      <Safe><LineTrends list={d.line_moves || []} /></Safe>
 
       {user && d.my_club.length > 0 && (
         <section className="section">
