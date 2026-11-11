@@ -1020,7 +1020,9 @@ function useArenaEngine(cfgNow) {
       }
       // field sports: centre while nobody presses, the attacking side's spot during an attack / dangerous attack
       const a = c.att, k = c.intensity || 0
-      const x = a === null || a === undefined || k < 0.6 ? SPOT[1] : a === 0 ? SPOT[2] : SPOT[0]
+      // court sports: having the ball is attacking; football/hockey: only a real attack moves it off the centre
+      const possAttacks = ['basketball', 'handball', 'futsal', 'waterpolo'].includes(c.sport)
+      const x = a === null || a === undefined || (k < 0.6 && !possAttacks) ? SPOT[1] : a === 0 ? SPOT[2] : SPOT[0]
       return { to: { x, y: 50 }, dur: Math.max(380, Math.abs(x - (s.pos?.x ?? 50)) * 14), hop: 0 }
     }
     const serveFrom = (side) => { // the ball rolls back to the server along the line, then the serve (no teleport)
