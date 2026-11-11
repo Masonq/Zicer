@@ -1192,7 +1192,7 @@ function Arena({ m, data, t }) {
   const brk = lv.brk || null
   const rule = breakRule(sport, (brk && brk.k) || lv.p || m.minute, m.league)
   const brkUntil = brk ? (brk.at + rule.sec) * 1000 + (Date.now() - nowS * 1000) : null
-  const brkTitle = sport === 'tennis' ? t('setBreak') : t(rule.k)
+  const brkTitle = t('pause') // one simple word for every kind of break
   const brkLabel = brkUntil ? (brkUntil > Date.now() ? `${brkTitle} ${fmtLeft(brkUntil)}` : `${brkTitle}, ${t('resumeSoon')}`) : brkTitle
   const eng = useArenaEngine({ live, sport, att, intensity, server, srvY, rcvY })
   const [, tick] = useState(0)
@@ -1313,7 +1313,7 @@ function Arena({ m, data, t }) {
   let status = null
   if (finished) status = null
   else if (phase.kind === 'stop' && phase.ev) status = { side: phase.ev.side, title: xevLabel(phase.ev, sport, t), icon: phase.ev.t, time: fmtLeft(phase.until) }
-  else if (phase.kind === 'stats') status = { side: null, title: phase.title || (phase.setBreak ? t('setBreak') : t('changeover')), icon: 'timeout', time: fmtLeft(phase.until) }
+  else if (phase.kind === 'stats') status = { side: null, title: phase.title || (phase.setBreak ? t('pause') : t('changeover')), icon: 'timeout', time: fmtLeft(phase.until) }
   else if (isBreak && phase.kind === 'idle') status = { side: null, title: brkTitle, icon: 'timeout', time: brkUntil && brkUntil > Date.now() ? fmtLeft(brkUntil) : null }
   else if (phase.kind !== 'idle' && phase.ev) status = { side: phase.ev.side, title: phase.kind === 'finish' ? (net ? t('rally') : sport === 'basketball' ? t('shot') : t('ev_shot_on')) : bannerTitle(phase.ev, sport, t), icon: phase.kind === 'finish' ? null : (sport === 'tennis' ? 'ace' : 'score') }
   else if (infoShown) status = { side: infoShown.side, title: infoShown.t === 'bp' ? t('ev_bp') : xevLabel(infoShown, sport, t), icon: infoShown.t === 'bp' ? 'break' : infoShown.t }
@@ -1422,8 +1422,8 @@ function Arena({ m, data, t }) {
           {(finished || (isBreak && phase.kind === 'idle') || phase.kind === 'stats') && (
             <motion.div key={finished ? 'fin' : 'brk'} className="arena-break" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
               <StatsBoard sport={sport} data={data} t={t} names={names}
-                title={finished ? t('matchOver') : phase.kind === 'stats' ? (phase.title || (phase.setBreak ? t('setBreak') : t('changeover'))) : brkTitle}
-                sub={finished ? null : phase.kind === 'stats' ? fmtLeft(phase.until) : brkUntil ? (brkUntil > Date.now() ? fmtLeft(brkUntil) : t('resumeSoon')) : null}
+                title={finished ? t('matchOver') : phase.kind === 'stats' ? (phase.title || (phase.setBreak ? t('pause') : t('changeover'))) : brkTitle}
+                sub={finished ? null : phase.kind === 'stats' ? fmtLeft(phase.until) : brkUntil && brkUntil > Date.now() ? fmtLeft(brkUntil) : null}
                 winner={finished && scoreNow[0] !== scoreNow[1] ? (scoreNow[0] > scoreNow[1] ? 0 : 1) : null} />
             </motion.div>
           )}
