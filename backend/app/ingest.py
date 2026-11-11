@@ -980,6 +980,12 @@ def _top_team_ids(db: Session) -> set:
 def translate_names(db: Session, limit: int = 120) -> str:
     import time
     done = 0
+    # NBA / NHL: full official names (feeds give only nicknames or cities) and proper Russian names
+    try:
+        from .teamnames import apply_full_names
+        apply_full_names(db)
+    except Exception:  # noqa
+        pass
     # tennis players keep their own names (no "translation" of a person's name)
     for t in db.scalars(select(Team).where(Team.sport == "tennis", or_(Team.name_ru != Team.short_name, Team.name_ru == ""))).all():
         t.name_sr = t.name_cyr = t.name_ru = t.short_name or t.name
