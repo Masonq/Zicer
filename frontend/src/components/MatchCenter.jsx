@@ -992,6 +992,7 @@ function useArenaEngine(cfgNow) {
     const s = e.current
     let raf = 0
     const net = () => ['tennis', 'volleyball', 'tabletennis'].includes(cfg.current.sport)
+    if (typeof window !== 'undefined') window.__eng = { s, cfg }
     const place = (p, h = 0) => {
       const b = ballEl.current, sh = shadowEl.current
       if (b) { b.style.left = `${p.x}%`; b.style.top = '50%'; b.style.transform = `translate(-50%, -50%)` }
@@ -1042,7 +1043,7 @@ function useArenaEngine(cfgNow) {
       if (!cfg.current.live) return
       if (s.stopped) {
         // safety net: if no new point arrives to restart play (and it is not a break), serve again after 6 s instead of freezing
-        if (!s.brk) { s.stoppedAt = s.stoppedAt || now; if (now - s.stoppedAt > 6000) { s.stopped = false; s.stoppedAt = 0; serveFrom(1 - (s.side ?? 0)) } }
+        if (!s.brk) { s.stoppedAt = s.stoppedAt || now; if (now - s.stoppedAt > (net() ? 6000 : 12000)) { s.stopped = false; s.stoppedAt = 0; if (net()) serveFrom(1 - (s.side ?? 0)); else { const n = next(); seg(n.to, n.dur, n.hop) } } }
         return
       }
       if (s.toss) {
@@ -1087,8 +1088,8 @@ function useArenaEngine(cfgNow) {
         const n = next(); seg(n.to, n.dur, n.hop)
       },
       serve(side) { if (net()) { s.stopped = false; s.brk = false; s.stoppedAt = 0; s.strike = null; serveFrom(side) } },
-      pause() { // breaks: ball rests in the middle, no play
-        s.stopped = true; s.brk = true; s.strike = null; s.pos = { x: 50, y: 50 }; place(s.pos); s.trail = []; s.marks = []
+      pause(realBreak = true) { // breaks: ball rests in the middle, no play
+        s.stopped = true; s.brk = realBreak; s.strike = null; s.pos = { x: 50, y: 50 }; place(s.pos); s.trail = []; s.marks = []
         if (trailEl.current) trailEl.current.setAttribute('points', ''); if (marksEl.current) marksEl.current.innerHTML = ''
       },
     }
@@ -1333,7 +1334,7 @@ function Arena({ m, data, t }) {
   useEffect(() => { if (!isBreak) return; const id = setInterval(() => tick((v) => v + 1), 1000); return () => clearInterval(id) }, [isBreak])
   useEffect(() => {
     if (phase.kind !== 'stats' && phase.kind !== 'stop') return
-    eng.api.current && eng.api.current.pause()
+    eng.api.current && eng.api.current.pause(false)
     const id = setInterval(() => {
       tick((v) => v + 1)
       if (Date.now() >= phase.until || queue.current.length) {
