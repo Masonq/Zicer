@@ -788,7 +788,13 @@ def fb_connect(body: FbConnectIn, db: Session = Depends(get_db)):
         pages = c.get(f"{g}/me/accounts", params={"access_token": r["access_token"], "fields": "id,name,access_token,tasks"}).json()
         data = pages.get("data") or []
         if not data:
-            raise HTTPException(400, f"fb: no pages ({(pages.get('error') or {}).get('message', 'check pages_show_list permission')[:160]})")
+            # page owned by a business portfolio: reach it through the portfolio (needs business_management)
+            biz = c.get(f"{g}/me/businesses", params={"access_token": r["access_token"], "fields": "id,name,owned_pages{id,name,access_token},client_pages{id,name,access_token}"}).json()
+            for b in biz.get("data") or []:
+                for key in ("owned_pages", "client_pages"):
+                    data += [p for p in ((b.get(key) or {}).get("data") or []) if p.get("access_token")]
+        if not data:
+            raise HTTPException(400, f"fb: no pages ({(pages.get('error') or {}).get('message', 'add business_management permission and pick the Winly page')[:160]})")
         page = next((p for p in data if p.get("name", "").lower().startswith("winly")), data[0])
         # Instagram business account linked to the page, if any
         ig = c.get(f"{g}/{page['id']}", params={"fields": "instagram_business_account", "access_token": page["access_token"]}).json()
