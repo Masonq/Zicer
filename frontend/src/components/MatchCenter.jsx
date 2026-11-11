@@ -1513,6 +1513,7 @@ function Arena({ m, data, t }) {
         {use3d && live && !isBreak && att !== null && !net && intensity >= 0.6 && phase.kind === 'idle' && (
           <div className={`lmt-card s${att}`}><i /><div><b>{intensity >= 0.9 ? t('dangerAttack') : t('attack')}</b><span className="ellip">{names[att]}</span></div><em /></div>
         )}
+        {use3d && <div className="lmt-pill num">{periodTxt}{sport === 'tennis' && live && dataSS && (dataSS[0] || dataSS[1]) ? <b>{dataSS[0]}–{dataSS[1]}</b> : null}</div>}
         {use3d && sport === 'tennis' && (
           <>
             <div className="lmt-name near"><span className="ellip">{names[0]}</span>{live && server === 0 && <b>{t('serve')}</b>}</div>

@@ -1446,3 +1446,7 @@ img { display: block; max-width: 100%; }
 .lmt-name.near { left: 10px; bottom: 10px; border-left: 3px solid #3D8EF0; } .lmt-name.far { right: 10px; top: 10px; border-right: 3px solid #8BD12F; }
 .lmt-name b { color: #F2C230; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
 @media (max-width: 560px) { .lmt-card { height: 46px; min-width: 60%; } .lmt-card b { font-size: 16px; } }
+
+.lmt-pill { position: absolute; z-index: 4; top: 10px; left: 50%; translate: -50% 0; display: inline-flex; align-items: center; gap: 8px; height: 28px; padding: 0 12px; border-radius: 14px;
+  background: rgba(10,16,14,.78); color: #fff; font-size: 13px; font-weight: 700; white-space: nowrap; }
+.lmt-pill b { color: var(--gold); }

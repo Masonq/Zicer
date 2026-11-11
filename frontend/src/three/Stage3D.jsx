@@ -40,11 +40,17 @@ function pitchTexture() {
 
 function tennisTexture() {
   // hard court 23.77 x 10.97 m + 6.4 m behind baselines, 3.66 m at the sides (ITF)
-  const S = 72, L = 23.77, Wd = 10.97, mx = 6.4, my = 3.66, W = (L + 2 * mx) * S, H = (Wd + 2 * my) * S, c = document.createElement('canvas')
+  const S = 56, L = 23.77, Wd = 10.97, mx = 22, my = 16, W = (L + 2 * mx) * S, H = (Wd + 2 * my) * S, c = document.createElement('canvas')
   c.width = W; c.height = H
   const g = c.getContext('2d')
-  g.fillStyle = '#2f6d4f'; g.fillRect(0, 0, W, H)
+  g.fillStyle = '#245c45'; g.fillRect(0, 0, W, H)
   g.fillStyle = '#2b5e9b'; g.fillRect(mx * S, my * S, L * S, Wd * S)
+  // brand painted on the surround behind each baseline and along the sides (as on TV courts)
+  g.save(); g.fillStyle = 'rgba(255,255,255,.22)'; g.font = `700 ${2.2 * S}px Oswald, Arial Narrow, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'
+  for (const [x, rot] of [[(mx - 3.2) * S, -Math.PI / 2], [(mx + L + 3.2) * S, Math.PI / 2]]) { g.save(); g.translate(x, H / 2); g.rotate(rot); g.fillText('WINLY', 0, 0); g.restore() }
+  g.font = `700 ${1.1 * S}px Oswald, Arial Narrow, sans-serif`; g.fillStyle = 'rgba(242,194,48,.35)'
+  g.fillText('WINLY · LIGA PROGNOZA', W / 2, (my - 1.8) * S); g.fillText('WINLY · LIGA PROGNOZA', W / 2, (my + Wd + 1.8) * S)
+  g.restore()
   const img = g.getImageData(0, 0, W, H), d = img.data
   for (let i = 0; i < d.length; i += 4) { const n = (Math.random() - 0.5) * 10; d[i] += n; d[i + 1] += n; d[i + 2] += n }
   g.putImageData(img, 0, 0)
@@ -102,8 +108,6 @@ function addBoards(scene, len, wid, h = 0.9) {
     return g
   }
   board(len + 4, 0, -(wid / 2 + 2.6), 0)
-  board(wid + 4, -(len / 2 + 2.6), 0, Math.PI / 2)
-  board(wid + 4, len / 2 + 2.6, 0, -Math.PI / 2)
 }
 
 function addBackdrop(scene, len, wid) {
@@ -111,8 +115,6 @@ function addBackdrop(scene, len, wid) {
   const mk = (repX) => { const t = new THREE.TextureLoader().load('/tex/backdrop.webp'); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; t.repeat.set(repX, 1); return new THREE.MeshBasicMaterial({ map: t }) }
   const H = Math.max(14, len * 0.32)
   const far = new THREE.Mesh(new THREE.PlaneGeometry(len * 2.2, H), mk(2)); far.position.set(0, H / 2 - 1, -(wid / 2 + 14)); scene.add(far)
-  const left = new THREE.Mesh(new THREE.PlaneGeometry(wid * 2.4, H), mk(1)); left.rotation.y = Math.PI / 2; left.position.set(-(len / 2 + 16), H / 2 - 1, 0); scene.add(left)
-  const right = left.clone(); right.rotation.y = -Math.PI / 2; right.position.x = len / 2 + 16; scene.add(right)
   // dark ground around the field of play
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(len * 3, wid * 4), new THREE.MeshStandardMaterial({ color: 0x0d1714, roughness: 1 }))
   floor.rotation.x = -Math.PI / 2; floor.position.y = -0.05; scene.add(floor)
@@ -172,19 +174,18 @@ export default function Stage3D({ sport, eng, att = null, level = 0 }) {
     el.appendChild(renderer.domElement)
     const ANISO = renderer.capabilities.getMaxAnisotropy()
     const sharpen = (o) => o.traverse((m) => { const mats = Array.isArray(m.material) ? m.material : m.material ? [m.material] : []; mats.forEach((mt) => ['map', 'emissiveMap'].forEach((k) => { if (mt[k]) { mt[k].anisotropy = ANISO; mt[k].needsUpdate = true } })) })
-    const scene = new THREE.Scene()
-    scene.background = new THREE.Color(0x0b1512)
-    scene.fog = new THREE.Fog(0x0b1512, 300, 600)
     const football = sport !== 'tennis'
+    const scene = new THREE.Scene()
+    scene.background = new THREE.Color(football ? 0x0b1512 : 0x1d4d39)
+    scene.fog = football ? new THREE.Fog(0x0b1512, 300, 600) : new THREE.Fog(0x1d4d39, 38, 85) // tennis: the surround melts into the background, no visible edge
     const len = football ? 105 : 23.77, wid = football ? 68 : 10.97
     // ground with markings
-    const pw = football ? len + 12 : len + 12.8, ph = football ? wid + 12 : wid + 7.32
+    const pw = football ? len + 12 : len + 44, ph = football ? wid + 12 : wid + 32
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(pw, ph), new THREE.MeshStandardMaterial({ map: football ? pitchTexture() : tennisTexture(), roughness: 0.95 }))
     ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground)
-    const apron = new THREE.Mesh(new THREE.PlaneGeometry(pw + 30, ph + 30), new THREE.MeshStandardMaterial({ color: football ? 0x1f4d2a : 0x24503a, roughness: 1 }))
+    const apron = new THREE.Mesh(new THREE.PlaneGeometry(pw + 400, ph + 400), new THREE.MeshStandardMaterial({ color: football ? 0x1f4d2a : 0x245c45, roughness: 1 }))
     apron.rotation.x = -Math.PI / 2; apron.position.y = -0.02; apron.receiveShadow = true; scene.add(apron)
-    addBackdrop(scene, pw, ph)
-    addBoards(scene, pw, ph, football ? 0.9 : 0.8)
+    if (football) { addBackdrop(scene, pw, ph); addBoards(scene, pw, ph, 0.9) }
     if (football) { addGoal(scene, -len / 2, -1); addGoal(scene, len / 2, 1); addFlags(scene, len, wid) } else addNetTennis(scene)
     // lights: soft sky + four floodlights
     scene.add(new THREE.HemisphereLight(0xdfeee6, 0x1b2a22, 1.0))
@@ -207,8 +208,8 @@ export default function Stage3D({ sport, eng, att = null, level = 0 }) {
     const hist = []
     let frame = 0
     // camera
-    const cam = new THREE.PerspectiveCamera(football ? 33 : 40, 1, 0.5, 500)
-    if (football) { cam.position.set(0, 62, 112); cam.lookAt(0, 0, -6) } else { cam.position.set(-25, 9.5, 0); cam.lookAt(3, 0, 0) }
+    const cam = new THREE.PerspectiveCamera(football ? 33 : 36, 1, 0.5, 500)
+    if (football) { cam.position.set(0, 62, 112); cam.lookAt(0, 0, -6) } else { cam.position.set(-22, 11.5, 0); cam.lookAt(4.5, 0, 0) }
     const toWorld = (xp, yp) => {
       // engine coordinates are % of the playing area (x along the length, y across)
       const x = (xp / 100 - 0.5) * len, z = (yp / 100 - 0.5) * wid
@@ -239,8 +240,10 @@ export default function Stage3D({ sport, eng, att = null, level = 0 }) {
       // trail = where the ball really flew in the last ~0.6 s (sampled from its 3D position), so it never jumps with the ball
       if (ball.visible) {
         const last = hist[hist.length - 1]
-        if (!last || last.distanceTo(ball.position) > (football ? 0.15 : 0.04)) hist.push(ball.position.clone())
-        if (hist.length > (football ? 14 : 18)) hist.shift()
+        // only travel along the ground counts (a serve toss straight up is not a trail)
+        const moved = last ? Math.hypot(last.x - ball.position.x, last.z - ball.position.z) : 1
+        if (moved > (football ? 0.15 : 0.05)) hist.push(ball.position.clone())
+        if (hist.length > (football ? 14 : 11)) hist.shift()
         if (last && last.distanceTo(ball.position) > (football ? 18 : 6)) hist.splice(0, hist.length - 1) // teleport (new serve / restart): start over
       }
       if (++frame % 2 === 0) {
