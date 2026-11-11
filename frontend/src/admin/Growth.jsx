@@ -108,6 +108,35 @@ const CH = [['telegram', 'Telegram', [['token', 'Токен бота'], ['chat',
   ['bluesky', 'Bluesky', [['handle', 'Ник (name.bsky.social)'], ['app_password', 'Пароль приложения']]],
   ['viber', 'Viber-канал', [['token', 'Токен канала'], ['from', 'ID администратора']]]]
 
+function FbConnect({ onDone }) {
+  const [f, setF] = useState({ app_id: '', app_secret: '', user_token: '' })
+  const [msg, setMsg] = useState('')
+  const [busy, setBusy] = useState(false)
+  const connect = async () => {
+    setBusy(true); setMsg('')
+    try { const r = await api('/admin/social/fb-connect', { method: 'POST', body: f }); setMsg(`Подключено: страница «${r.page}»${r.instagram ? ' + Instagram' : ''}. Ключ бессрочный.`); setF({ app_id: '', app_secret: '', user_token: '' }); onDone() }
+    catch (e) { setMsg(`Не получилось: ${e.message || e.code}`) } finally { setBusy(false) }
+  }
+  const test = async () => {
+    setBusy(true); setMsg('')
+    try { const r = await api('/admin/social/fb-test', { method: 'POST' }); setMsg(r.facebook === 'ok' ? 'Пост опубликован на странице — проверь Facebook.' : `Facebook ответил: ${r.facebook || 'нет ответа'}`) }
+    catch (e) { setMsg(`Не получилось: ${e.message || e.code}`) } finally { setBusy(false) }
+  }
+  return (
+    <div className="adm-tile span2">
+      <div className="tile-h"><b>Подключить страницу Facebook</b></div>
+      <p className="small" style={{ marginTop: 0 }}>ID и секрет приложения — developers.facebook.com → твоё приложение → Настройки → Основное. Ключ пользователя — Graph API Explorer с разрешениями pages_show_list, pages_read_engagement, pages_manage_posts. Сервер сам сделает бессрочный ключ страницы.</p>
+      <div className="g-form">
+        <label>App ID<input className="input" value={f.app_id} onChange={(e) => setF({ ...f, app_id: e.target.value.trim() })} /></label>
+        <label>App Secret<input className="input" value={f.app_secret} onChange={(e) => setF({ ...f, app_secret: e.target.value.trim() })} /></label>
+        <label>Ключ пользователя (User Access Token)<input className="input" value={f.user_token} onChange={(e) => setF({ ...f, user_token: e.target.value.trim() })} /></label>
+        <div className="g-act"><button className="btn btn-gold btn-sm" disabled={busy || !f.app_id || !f.app_secret || !f.user_token} onClick={connect}>Подключить</button><button className="btn btn-ghost btn-sm" disabled={busy} onClick={test}>Тестовый пост на страницу</button></div>
+      </div>
+      {msg && <div className="small" style={{ marginTop: 8, color: msg.startsWith('Не') ? '#FF6B6B' : '#3DD68C' }}>{msg}</div>}
+    </div>
+  )
+}
+
 export function Social() {
   const [ver, setVer] = useState(0)
   const { data } = usePoll(() => api('/admin/social'), [ver], 30000)
@@ -128,6 +157,7 @@ export function Social() {
   return (
     <div className="g-page">
       <div className="bento">
+        <FbConnect onDone={() => setVer((x) => x + 1)} />
         <div className="adm-tile span2">
           <div className="tile-h"><b>Режим</b></div>
           <div className="seg4" style={{ gridTemplateColumns: '1fr 1fr' }}>

@@ -768,3 +768,50 @@ def groups_del(gid: int, db: Session = Depends(get_db)):
 def contest(db: Session = Depends(get_db)):
     c = setting(db, "contest", {}) or {}
     return c if c.get("active") else {}
+
+
+class FbConnectIn(BaseModel):
+    app_id: str
+    app_secret: str
+    user_token: str
+
+
+@adm.post("/social/fb-connect")
+def fb_connect(body: FbConnectIn, db: Session = Depends(get_db)):
+    """Short user token from Graph API Explorer -> long-lived user token -> page token that does not expire."""
+    g = "https://graph.facebook.com/v21.0"
+    with httpx.Client(timeout=25) as c:
+        r = c.get(f"{g}/oauth/access_token", params={"grant_type": "fb_exchange_token", "client_id": body.app_id.strip(),
+                                                   "client_secret": body.app_secret.strip(), "fb_exchange_token": body.user_token.strip()}).json()
+        if "access_token" not in r:
+            raise HTTPException(400, f"fb: {(r.get('error') or {}).get('message', 'exchange failed')[:200]}")
+        pages = c.get(f"{g}/me/accounts", params={"access_token": r["access_token"], "fields": "id,name,access_token,tasks"}).json()
+        data = pages.get("data") or []
+        if not data:
+            raise HTTPException(400, f"fb: no pages ({(pages.get('error') or {}).get('message', 'check pages_show_list permission')[:160]})")
+        page = next((p for p in data if p.get("name", "").lower().startswith("winly")), data[0])
+        # Instagram business account linked to the page, if any
+        ig = c.get(f"{g}/{page['id']}", params={"fields": "instagram_business_account", "access_token": page["access_token"]}).json()
+    cfg = social_cfg(db)
+    cfg["channels"]["facebook"] = {"page_id": page["id"], "token": page["access_token"]}
+    if (ig.get("instagram_business_account") or {}).get("id"):
+        cfg["channels"]["instagram"] = {"ig_id": ig["instagram_business_account"]["id"], "token": page["access_token"]}
+    set_setting(db, "social_cfg", cfg)
+    return {"page": page.get("name"), "page_id": page["id"], "instagram": bool((ig.get("instagram_business_account") or {}).get("id"))}
+
+
+@adm.post("/social/fb-test")
+def fb_test(db: Session = Depends(get_db)):
+    """Publish one real post to the page right now (motd), regardless of test mode."""
+    cfg = social_cfg(db)
+    fb = cfg["channels"]["facebook"]
+    if not fb.get("page_id") or not fb.get("token"):
+        raise HTTPException(400, "fb not connected")
+    p = make_post(db, "motd", test=False) or make_post(db, "results", test=False)
+    if not p:
+        raise HTTPException(400, "nothing to post")
+    only = json.loads(json.dumps(cfg))
+    for k in list(only["channels"].keys()):
+        if k != "facebook":
+            only["channels"][k] = {kk: "" for kk in only["channels"][k]}
+    return send_post(db, p, only)
