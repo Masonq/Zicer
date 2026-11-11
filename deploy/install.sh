@@ -6,8 +6,10 @@ OLDDOM=zicer.89-208-113-147.sslip.io
 NEWDOM=winly.rs
 SERVER_IP=89.208.113.147
 # switch to the real domain by itself as soon as its DNS points to this server; until then keep the temporary address
-if getent ahostsv4 $NEWDOM | grep -q "$SERVER_IP"; then DOMAIN=$NEWDOM; else DOMAIN=$OLDDOM; fi
-WWW=""; getent ahostsv4 www.$NEWDOM | grep -q "$SERVER_IP" && WWW="www.$NEWDOM"
+# (checked over HTTP, so it also works when the domain is behind Cloudflare)
+reach() { getent ahostsv4 "$1" | grep -q "$SERVER_IP" || curl -s -m 8 "http://$1/api/health" | grep -q '"app":"zicer"'; }
+if reach $NEWDOM; then DOMAIN=$NEWDOM; else DOMAIN=$OLDDOM; fi
+WWW=""; reach www.$NEWDOM && WWW="www.$NEWDOM"
 EMAIL=maxsim_kolesnikov@icloud.com
 REPORT=$APP/reports/deploy.md
 mkdir -p $APP/reports
