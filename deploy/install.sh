@@ -203,6 +203,8 @@ fi
 systemctl reload nginx
 
 step "Проверки"
+# every file from frontend/public must exist in the built site (catches a forgotten build)
+miss=0; for f in $(cd $APP/frontend/public && find . -type f); do [ -f "$APP/frontend/dist/$f" ] || { bad "нет в сборке: $f"; miss=1; }; done; [ $miss = 0 ] && ok "сборка сайта полная"
 sleep 20
 H=$(curl -s -m 10 http://127.0.0.1:$PORT/api/health); echo "api local: $H"; echo "$H" | grep -q '"app":"zicer"' || bad "api local"
 HS=$(curl -s -m 10 --resolve $DOMAIN:443:127.0.0.1 https://$DOMAIN/api/health); echo "api https: $HS"; echo "$HS" | grep -q '"app":"zicer"' || bad "api https отвечает не Zicer"
