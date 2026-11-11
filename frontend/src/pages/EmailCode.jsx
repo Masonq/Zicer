@@ -122,3 +122,52 @@ export function ResetPassword() {
     </div>
   )
 }
+
+// passwordless sign-in: email -> 6-digit code -> signed in
+export function LoginByCode() {
+  const t = useT()
+  const { login } = useAuth()
+  const nav = useNavigate()
+  const [step, setStep] = useState(1)
+  const [email, setEmail] = useState('')
+  const [code, setCode] = useState('')
+  const [err, setErr] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [left, setLeft] = useCooldown()
+  const send = async (e) => {
+    e?.preventDefault(); setErr(''); setBusy(true)
+    try { await api('/auth/email/send', { method: 'POST', body: { purpose: 'login', email } }); setStep(2); setLeft(60) }
+    catch (ex) { setErr(errText(t, ex)); if (ex.code === 'too_soon') { setStep(2); setLeft(60) } } finally { setBusy(false) }
+  }
+  const go = async (c = code) => {
+    if (c.length !== 6 || busy) return
+    setErr(''); setBusy(true)
+    try { const r = await api('/auth/login/code', { method: 'POST', body: { email, code: c } }); login(r.token, r.user); nav('/', { replace: true }) }
+    catch (ex) { setErr(errText(t, ex)); setCode('') } finally { setBusy(false) }
+  }
+  return (
+    <div className="auth-wrap">
+      <div className="card pad stack code-card">
+        <div className="code-ico"><MailCheck size={26} /></div>
+        <h1 className="h2" style={{ textAlign: 'center' }}>{t('codeLoginTitle')}</h1>
+        {step === 1 ? (
+          <form className="stack" onSubmit={send}>
+            <p className="small" style={{ textAlign: 'center', margin: 0 }}>{t('codeLoginLead')}</p>
+            <div className="field"><label htmlFor="le">Email</label><input id="le" className="input" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
+            {err && <div className="form-error">{err}</div>}
+            <button className="btn btn-gold btn-block" disabled={busy}>{t('sendCode')}</button>
+          </form>
+        ) : (
+          <div className="stack">
+            <p className="small" style={{ textAlign: 'center', margin: 0 }}>{t('resetSent')} <b className="ellip-email">{email}</b></p>
+            <CodeInput value={code} onChange={setCode} onDone={go} />
+            {err && <div className="form-error" style={{ textAlign: 'center' }}>{err}</div>}
+            <button className="btn btn-gold btn-block" disabled={busy || code.length !== 6} onClick={() => go()}>{t('signIn')}</button>
+            <button type="button" className="linkbtn code-resend" disabled={left > 0} onClick={() => send()}>{left > 0 ? `${t('resendIn')} ${left} s` : t('resendCode')}</button>
+          </div>
+        )}
+        <div className="small" style={{ textAlign: 'center' }}><Link to="/prijava" className="gold">{t('backToLogin')}</Link></div>
+      </div>
+    </div>
+  )
+}

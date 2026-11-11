@@ -339,6 +339,23 @@ def sync_x22_line(db: Session) -> str:
     return f"x22 line new {n}, fetched {fetched}"
 
 
+def probe_sports(db: Session) -> str:
+    """Gentle one-off check (a few requests, 1 s apart): is the 22Bet prematch line reachable, and are MMA / boxing / futsal in it?"""
+    import time as _t
+    out = []
+    with httpx.Client(headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"}, timeout=20) as c:
+        for name, sid in (("football", 1), ("futsal", 14), ("boxing", 9), ("mma", 56), ("mma2", 189), ("combat", 41)):
+            for kind, extra in (("line", "&tf=2200000"), ("live", "")):
+                path = f"/{'LineFeed' if kind == 'line' else 'LiveFeed'}/Get1x2_VZip?sports={sid}&count=5&lng=en&mode=4&country=1&getEmpty=true{extra}"
+                try:
+                    v = xfeed._get(c, path).json().get("Value") or []
+                    out.append(f"{name}/{kind}:{len(v)}" + (f"({(v[0].get('SN') or '')[:10]}|{(v[0].get('L') or '')[:24]})" if v else ""))
+                except Exception as e:  # noqa
+                    out.append(f"{name}/{kind}:err")
+                _t.sleep(1.2)
+    return " ".join(out)
+
+
 def sync_other_results(db: Session) -> str:
     pending = db.scalars(select(Match).where(Match.ext.like("mbo:%"), Match.start < datetime.utcnow(),
                                              or_(Match.status.in_(["scheduled", "live"]), and_(Match.status == "finished", Match.settled == False)))).all()  # noqa

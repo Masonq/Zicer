@@ -43,10 +43,12 @@ def mail_on(db) -> bool:
 
 
 TXT = {
-    "sr": {"verify": ("Tvoj kod za potvrdu", "Potvrdi svoju email adresu", "Unesi ovaj kod na sajtu Winly da potvrdiš adresu:"),
+    "sr": {"login": ("Kod za prijavu", "Prijava na Winly", "Unesi ovaj kod na sajtu Winly da se prijaviš:"),
+           "verify": ("Tvoj kod za potvrdu", "Potvrdi svoju email adresu", "Unesi ovaj kod na sajtu Winly da potvrdiš adresu:"),
            "reset": ("Kod za novu lozinku", "Promena lozinke", "Unesi ovaj kod na sajtu Winly da postaviš novu lozinku:"),
            "foot": "Kod važi 15 minuta. Ako nisi ti tražio kod, samo ignoriši ovo pismo.", "test": ("Winly: probno pismo", "Pošta radi", "Ovo je probno pismo iz admin panela.")},
-    "ru": {"verify": ("Код подтверждения", "Подтверди свою почту", "Введи этот код на сайте Winly, чтобы подтвердить адрес:"),
+    "ru": {"login": ("Код для входа", "Вход в Winly", "Введи этот код на сайте Winly, чтобы войти:"),
+           "verify": ("Код подтверждения", "Подтверди свою почту", "Введи этот код на сайте Winly, чтобы подтвердить адрес:"),
            "reset": ("Код для нового пароля", "Смена пароля", "Введи этот код на сайте Winly, чтобы задать новый пароль:"),
            "foot": "Код действует 15 минут. Если ты не запрашивал код — просто проигнорируй это письмо.", "test": ("Winly: тестовое письмо", "Почта работает", "Это тестовое письмо из админки.")},
 }
@@ -155,11 +157,11 @@ def email_send(body: SendIn, u: User | None = Depends(current_user_opt), db: Ses
         if u.email_verified:
             return {"ok": True, "already": True}
         return issue_code(db, u.email, "verify", u.lang)
-    if body.purpose == "reset":
+    if body.purpose in ("reset", "login"):
         email = body.email.strip().lower()
         user = db.scalar(select(User).where(User.email == email)) if email else None
         if user and not user.is_banned:
-            issue_code(db, email, "reset", user.lang)
+            issue_code(db, email, body.purpose, user.lang)
         return {"ok": True}  # same answer whether the address exists or not
     raise HTTPException(400, "bad_purpose")
 
@@ -194,6 +196,26 @@ def reset_password(body: ResetIn, db: Session = Depends(get_db)):
     check_code(db, email, "reset", body.code)
     u.pw_hash = hash_pw(body.password)
     u.email_verified = True  # the code proved the address
+    db.commit()
+    return {"token": make_token(u.id), "user": user_me(u)}
+
+
+class CodeLoginIn(BaseModel):
+    email: str
+    code: str
+
+
+@router.post("/auth/login/code")
+def login_by_code(body: CodeLoginIn, db: Session = Depends(get_db)):
+    """Passwordless sign-in: a 6-digit code sent to the account's email."""
+    email = body.email.strip().lower()
+    u = db.scalar(select(User).where(User.email == email))
+    if not u:
+        raise HTTPException(400, "code_wrong")
+    if u.is_banned:
+        raise HTTPException(403, "banned")
+    check_code(db, email, "login", body.code)
+    u.email_verified = True
     db.commit()
     return {"token": make_token(u.id), "user": user_me(u)}
 

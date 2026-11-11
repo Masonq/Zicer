@@ -32,6 +32,7 @@ export function Login() {
         <div style={{ textAlign: 'right', marginTop: -4 }}><Link to="/zaboravljena-lozinka" className="small" style={{ color: 'var(--gold)', fontWeight: 700 }}>{t('forgotPassword')}</Link></div>
         {err && <div className="form-error">{err}</div>}
         <button className="btn btn-gold btn-block" disabled={busy}>{t('signIn')}</button>
+        <Link to="/prijava-kod" className="btn btn-line btn-block">{t('codeLoginBtn')}</Link>
         <div className="small" style={{ textAlign: 'center' }}>{t('noAccount')} <Link to={`/registracija${next !== '/' ? `?next=${encodeURIComponent(next)}` : ''}`} style={{ color: 'var(--gold)', fontWeight: 700 }}>{t('createAccount')}</Link></div>
       </form>
     </div>
