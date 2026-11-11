@@ -1516,7 +1516,7 @@ function Arena({ m, data, t }) {
       </div>
       )}
       {sport === 'basketball' && fouls && live ? (
-        <div className="tt-sets num bb-sub">{bonusDots(fouls[0])}<span>{clock && /^\d{1,2}:\d{2}$/.test(String(clock.t).trim()) ? `Q${clock.q} ${String(clock.t).trim()}` : periodClock}</span>{bonusDots(fouls[1])}</div>
+        <div className="tt-sets num bb-sub">{bonusDots(fouls[0])}<span>{gClock && live && !/PAUSE|BREAK/.test(`${lv.p || ''} ${m.minute || ''}`) ? `Q${Math.min(4, Math.floor(Number(x.ts) / (/nba/i.test(m.league?.name || '') ? 720 : 600)) + 1)} ${gClock}` : clock && /^\d{1,2}:\d{2}$/.test(String(clock.t).trim()) ? `Q${clock.q} ${String(clock.t).trim()}` : periodClock}</span>{bonusDots(fouls[1])}</div>
       ) : (
         sport === 'tennis' ? (
           <div className="tt-sets num tn-sets">
