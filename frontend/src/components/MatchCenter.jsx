@@ -1027,12 +1027,15 @@ function useArenaEngine(cfgNow) {
       const y = Math.max(18, Math.min(82, s.pos.y + rnd(-(c.sport === 'hockey' ? 46 : 34), c.sport === 'hockey' ? 46 : 34)))
       return { to: { x, y }, dur: travelMs(c.sport, s.pos, { x, y }) * rnd(1, 1.25) * (c.sport === 'football' ? 1 - 0.15 * k : 1), hop: c.sport === 'basketball' ? 0.25 : 0 }
     }
-    const serveFrom = (side) => { // toss at the server, behind the baseline
+    const serveFrom = (side) => { // the ball rolls back to the server along the line, then the serve (no teleport)
       const c = cfg.current
+      const now = performance.now()
+      if (s.lastServe && now - s.lastServe < 4000 && s.side === side && !s.stopped) return // same serve asked again by a re-render
+      s.lastServe = now
       s.side = side; s.shot = 0
-      s.pos = { x: c.sport === 'tabletennis' ? (side === 0 ? 4 : 96) : side === 0 ? -3 : 103, y: c.sport === 'tennis' ? c.srvY : rnd(30, 70) }
-      s.toss = performance.now() + 900
+      const to = { x: c.sport === 'tabletennis' ? (side === 0 ? 4 : 96) : side === 0 ? 1 : 99, y: 50 }
       s.trail = []; s.marks = []; if (marksEl.current) marksEl.current.innerHTML = ''
+      s.toss = 0; s.toServe = true; seg(to, Math.max(350, Math.abs((s.pos?.x ?? 50) - to.x) * 9), 0)
     }
     const frame = (now) => {
       raf = requestAnimationFrame(frame)
@@ -1060,6 +1063,7 @@ function useArenaEngine(cfgNow) {
         if (trailEl.current) trailEl.current.setAttribute('points', s.trail.map((q) => `${q.x.toFixed(2)},50`).join(' '))
       }
       if (tt < 1) return
+      if (s.toServe) { s.toServe = false; s.toss = performance.now() + 700; return } // arrived at the server: short pause, then serve
       mark(s.to)
       const st = s.strike
       if (st && st.launched) { // the deciding ball has landed
