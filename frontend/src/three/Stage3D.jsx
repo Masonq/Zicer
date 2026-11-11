@@ -301,7 +301,7 @@ export default function Stage3D({ sport, eng, att = null, level = 0 }) {
     const cam = new THREE.PerspectiveCamera(football ? 33 : REAR ? 38 : 34, 1, size * 0.004, size * 8)
     if (football) { cam.position.set(0, 62, 112); cam.lookAt(0, 0, -6) }
     else if (tennis) { cam.position.set(-29, 14.5, 0); cam.lookAt(3, 0, 0) } // further back: the near baseline stays inside the frame
-    else if (REAR) { cam.position.set(ox - len * 0.82, top + len * 0.5, oz); cam.lookAt(ox + len * 0.14, top, oz) }
+    else if (REAR) { const k = sport === 'tabletennis' ? [1.35, 0.8, 0.1] : [0.82, 0.5, 0.14]; cam.position.set(ox - len * k[0], top + len * k[1], oz); cam.lookAt(ox + len * k[2], top, oz) }
     else { cam.position.set(ox, top + len * 0.54, oz + len * 0.9); cam.lookAt(ox, top, oz - len * 0.06) }
     const toWorld = (xp, yp) => {
       // engine coordinates are % of the playing area (x along the length, y across)
