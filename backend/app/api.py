@@ -31,6 +31,7 @@ class RegisterIn(BaseModel):
     email: str = Field(min_length=5, max_length=160)
     password: str = Field(min_length=6, max_length=128)
     lang: str = "sr"
+    ref: str = ""
 
 
 class LoginIn(BaseModel):
@@ -54,6 +55,11 @@ def register(body: RegisterIn, db: Session = Depends(get_db)):
              bank=config.START_BANK, color=random.choice(COLORS), tg_code=secrets.token_hex(8))
     db.add(u)
     db.commit()
+    try:
+        from .growth import apply_referral
+        apply_referral(db, u, body.ref.strip())
+    except Exception:  # noqa
+        db.rollback()
     return {"token": make_token(u.id), "user": user_me(u)}
 
 
@@ -240,8 +246,12 @@ def _day_bounds(day: str, tz_offset: int):
 
 
 @router.get("/matches")
-def matches(sport: str = "all", day: str = "today", serbian: bool = False, tz: int = 60, ids: str = "", db: Session = Depends(get_db)):
+def matches(sport: str = "all", day: str = "today", serbian: bool = False, tz: int = 60, ids: str = "", league: int = 0, db: Session = Depends(get_db)):
     q = select(Match).join(League, Match.league_id == League.id)
+    if league:
+        n = utcnow()
+        ms = db.scalars(q.where(Match.league_id == league, Match.start > n - timedelta(days=3), Match.start < n + timedelta(days=12)).order_by(Match.start)).unique().all()
+        return _list(db, ms)
     if day == "fav":
         want = [int(x) for x in ids.split(",") if x.strip().isdigit()][:200]
         ms = db.scalars(q.where(Match.id.in_(want or [0])).order_by(Match.start)).unique().all()

@@ -1,5 +1,6 @@
 import { Shield, Flame, Trophy } from 'lucide-react'
 import { AreaChart, Ring, Badges } from '../components/Bits'
+import { InviteCard } from '../components/Invite'
 import { SportIcon } from '../components/Sports'
 import { Link, useParams } from 'react-router-dom'
 import { api } from '../api'
@@ -43,6 +44,7 @@ export function ProfileView({ data, editable = false }) {
             <b className="pb-v num pos">+{fmtNum(data.bento.best_win.profit)}</b><small className="ellip">{t.team(data.bento.best_win.match.home)} – {t.team(data.bento.best_win.match.away)}, {fmtOdds(data.bento.best_win.odds)}</small></Link>}
         </>}
       </div>
+      {editable && <InviteCard />}
       {data.bento && <section className="section"><div className="section-head"><h2 className="h2">{t('achievements')}</h2></div><Badges list={data.bento.achievements} /></section>}
 
       {data.tickets.length > 0 && (

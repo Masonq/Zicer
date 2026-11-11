@@ -93,6 +93,12 @@ export function OddsButtons({ m, wide = false }) {
   )
 }
 
+// readable match URLs: /mec/123-partizan-baskonija
+const tr = { č: 'c', ć: 'c', š: 's', ž: 'z', đ: 'dj' }
+export const slug = (s) => (s || '').toLowerCase().replace(/[čćšžđ]/g, (c) => tr[c]).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60)
+export const matchUrl = (m) => `/mec/${m.id}-${slug(m.home?.names?.sr || m.home?.short || m.home?.name)}-${slug(m.away?.names?.sr || m.away?.short || m.away?.name)}`
+export const leagueUrl = (id, name) => `/liga/${id}-${slug(name)}`
+
 // Odometer-style number: every digit rolls to its new value
 export function RollNum({ value, className = '' }) {
   const str = String(value ?? '')
@@ -147,7 +153,7 @@ export function MatchRow({ m }) {
         <span className={`ru-fav${dx > 70 ? ' go' : ''}`}><Star size={18} fill={fav ? 'currentColor' : 'none'} />{fav ? t('unfav') : t('fav')}</span>
         <span className={`ru-add${dx < -70 ? ' go' : ''}`}><Plus size={18} />{t('ticket')}</span>
       </div>
-      <Link to={`/mec/${m.id}`} state={{ m }} className={`row${fav ? ' is-fav' : ''}${m.status === 'live' ? ' is-live' : ''}`} style={dx ? { transform: `translateX(${dx}px)`, transition: 'none' } : undefined}
+      <Link to={matchUrl(m)} state={{ m }} className={`row${fav ? ' is-fav' : ''}${m.status === 'live' ? ' is-live' : ''}`} style={dx ? { transform: `translateX(${dx}px)`, transition: 'none' } : undefined}
         onTouchStart={onStart} onTouchMove={onMove} onTouchEnd={onEnd} onClick={(e) => { if (Math.abs(dx) > 6) e.preventDefault() }}>
         <button type="button" className={`row-fav${fav ? ' on' : ''}`} aria-label={fav ? t('unfav') : t('fav')} title={fav ? t('unfav') : t('fav')}
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); const on = toggleFav(m.id); showUndo(on ? t('favAdded') : t('favRemoved'), () => toggleFav(m.id)) }}>
@@ -211,7 +217,7 @@ export function MatchList({ matches, headExtra = null }) {
   }
   return groups.map((g) => (
     <div className="league" key={g.key}>
-      <div className="league-head" ref={stickRef}><span className={`league-sport ls-${g.sample.sport}`} title={t(g.sample.sport)}><SportIcon sport={g.sample.sport} size={14} /></span>{g.league.country && g.league.country !== 'INT' && <span className="flag">{g.league.country === 'EU' ? 'EU' : g.league.country}</span>}<span className="ellip">{leagueLabel(g.sample, t)}</span>{headExtra}</div>
+      <div className="league-head" ref={stickRef}><span className={`league-sport ls-${g.sample.sport}`} title={t(g.sample.sport)}><SportIcon sport={g.sample.sport} size={14} /></span>{g.league.country && g.league.country !== 'INT' && <span className="flag">{g.league.country === 'EU' ? 'EU' : g.league.country}</span>}{g.league.id ? <Link to={leagueUrl(g.league.id, g.league.names?.sr || g.league.name)} className="ellip lh-link">{leagueLabel(g.sample, t)}</Link> : <span className="ellip">{leagueLabel(g.sample, t)}</span>}{headExtra}</div>
       <div className="rows">{g.items.map((m) => <MatchRow key={m.id} m={m} />)}</div>
     </div>
   ))

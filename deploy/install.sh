@@ -15,7 +15,7 @@ bad() { echo "FAIL: $*"; fail=1; }
 step "Пакеты"
 export DEBIAN_FRONTEND=noninteractive
 need=""
-for p in python3-venv postgresql nginx certbot python3-certbot-nginx; do dpkg -s $p >/dev/null 2>&1 || need="$need $p"; done
+for p in python3-venv postgresql nginx certbot python3-certbot-nginx ffmpeg; do dpkg -s $p >/dev/null 2>&1 || need="$need $p"; done
 if [ -n "$need" ]; then apt-get update -qq && apt-get install -y -qq $need && ok "установлено:$need" || bad "apt"; else ok "всё уже стоит"; fi
 systemctl enable --now postgresql >/dev/null 2>&1
 
@@ -61,7 +61,7 @@ if [ ! -d /root/.cache/ms-playwright ] || ! ls /root/.cache/ms-playwright | grep
 else
   ok "chromium уже установлен"
 fi
-mkdir -p $APP/backend/media/share
+mkdir -p $APP/backend/media/share $APP/backend/media/video
 
 step "Сервисы"
 cat > /etc/systemd/system/zicer-api.service <<UNIT
@@ -128,6 +128,13 @@ fi
 [ -f /etc/zicer-admin.txt ] && ADMIN_INFO=$(cat /etc/zicer-admin.txt) && ok "админ есть"
 
 step "nginx"
+# robots (search engines, link previews) get server-rendered pages with the same content; people get the app
+cat > /etc/nginx/conf.d/winly-bots.conf <<'BOTS'
+map $http_user_agent $winly_bot {
+    default 0;
+    ~*(googlebot|google-site-verification|google-inspectiontool|bingbot|yandex|duckduckbot|baiduspider|slurp|applebot|facebookexternalhit|facebot|twitterbot|telegrambot|linkedinbot|discordbot|viber|whatsapp|skypeuripreview|pinterest) 1;
+}
+BOTS
 cat > /etc/nginx/sites-available/zicer.conf <<NG
 server {
     listen 80;
@@ -142,7 +149,13 @@ server {
     location /t/ { proxy_pass http://127.0.0.1:$PORT; proxy_set_header Host \$host; }
     location /assets/ { expires 1y; add_header Cache-Control "public, max-age=31536000, immutable"; try_files \$uri =404; }
     location = /index.html { add_header Cache-Control "no-cache, no-store, must-revalidate"; expires -1; }
-    location / { add_header Cache-Control "no-cache, no-store, must-revalidate"; try_files \$uri \$uri/ /index.html; }
+    location = /sitemap.xml { proxy_pass http://127.0.0.1:$PORT; proxy_set_header Host \$host; }
+    location = /robots.txt { proxy_pass http://127.0.0.1:$PORT; proxy_set_header Host \$host; }
+    location /w/ { proxy_pass http://127.0.0.1:$PORT; proxy_set_header Host \$host; }
+    location /r/ { proxy_pass http://127.0.0.1:$PORT; proxy_set_header Host \$host; }
+    location ~ ^/(google[0-9a-f]+|yandex_[0-9a-f]+)\.html\$ { proxy_pass http://127.0.0.1:$PORT; proxy_set_header Host \$host; }
+    location @bot { rewrite ^(.*)\$ /seo-render\$1 break; proxy_pass http://127.0.0.1:$PORT; proxy_set_header Host \$host; proxy_set_header User-Agent \$http_user_agent; }
+    location / { error_page 418 = @bot; if (\$winly_bot) { return 418; } add_header Cache-Control "no-cache, no-store, must-revalidate"; try_files \$uri \$uri/ /index.html; }
 }
 NG
 ln -sf /etc/nginx/sites-available/zicer.conf /etc/nginx/sites-enabled/zicer.conf

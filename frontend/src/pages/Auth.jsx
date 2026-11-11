@@ -46,7 +46,7 @@ export function Register() {
   const [busy, setBusy] = useState(false)
   const submit = async (e) => {
     e.preventDefault(); setErr(''); setBusy(true)
-    try { const r = await api('/auth/register', { method: 'POST', body: { ...f, lang: t.lang } }); login(r.token, r.user); nav('/izbor-kluba?novi=1', { replace: true }) }
+    try { const r = await api('/auth/register', { method: 'POST', body: { ...f, lang: t.lang, ref: (() => { try { return localStorage.getItem('winly_ref') || '' } catch { return '' } })() } }); login(r.token, r.user); nav('/izbor-kluba?novi=1', { replace: true }) }
     catch (ex) { const k = `err_${ex.code}`; setErr(t(k) !== k ? t(k) : t('error')) } finally { setBusy(false) }
   }
   return (

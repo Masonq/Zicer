@@ -31,12 +31,20 @@ import TeamPage from './pages/Team'
 import Admin from './admin/Admin'
 import { installHScroll } from './hscroll'
 import { installAutoUpdate } from './autoupdate'
+import League from './pages/League'
 installHScroll()
 installAutoUpdate()
 
 function LangRoot({ children }) {
   const { user, setUser } = useAuth()
-  const [lang, setLangState] = useState(() => { try { return localStorage.getItem('zicer_lang') || 'sr' } catch { return 'sr' } })
+  const [lang, setLangState] = useState(() => {
+    try {
+      const q = new URLSearchParams(location.search).get('lang')
+      const ql = q === 'ru' ? 'ru' : q === 'cyr' ? 'sr-cyr' : q === 'sr' ? 'sr' : null
+      if (ql) localStorage.setItem('zicer_lang', ql)
+      return ql || localStorage.getItem('zicer_lang') || 'sr'
+    } catch { return 'sr' }
+  })
   useEffect(() => { if (user?.lang && user.lang !== lang) setLangState(user.lang) // eslint-disable-next-line
   }, [user?.id])
   useEffect(() => { document.documentElement.lang = lang === 'ru' ? 'ru' : 'sr' }, [lang])
@@ -67,6 +75,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                 <Route path="/derbi" element={<Derby />} />
                 <Route path="/trendovi" element={<Navigate to="/" replace />} />
                 <Route path="/kladionice" element={<Bookmakers />} />
+                <Route path="/liga/:id" element={<League />} />
                 <Route path="/klub/:id" element={<TeamPage />} />
                 <Route path="/u/:username" element={<Profile />} />
                 <Route path="/profil" element={<Me />} />

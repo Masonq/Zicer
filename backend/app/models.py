@@ -88,6 +88,7 @@ class User(Base):
     display_name: Mapped[str] = mapped_column(String(48), default="")
     bio: Mapped[str] = mapped_column(Text, default="")
     avatar: Mapped[str] = mapped_column(String(256), default="")
+    ref_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     fav_football = relationship("Team", foreign_keys=[fav_football_id], lazy="joined")
     fav_basket = relationship("Team", foreign_keys=[fav_basket_id], lazy="joined")
@@ -251,3 +252,52 @@ class OddsSnap(Base):
     o1: Mapped[float | None] = mapped_column(Float, nullable=True)
     ox: Mapped[float | None] = mapped_column(Float, nullable=True)
     o2: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+
+
+class PageView(Base):
+    """Own privacy-friendly analytics: one row per page opened in the app."""
+    __tablename__ = "page_views"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    ts: Mapped[datetime] = mapped_column(DateTime, default=now, index=True)
+    sid: Mapped[str] = mapped_column(String(40), default="", index=True)
+    path: Mapped[str] = mapped_column(String(300), default="")
+    source: Mapped[str] = mapped_column(String(80), default="direct", index=True)
+    campaign: Mapped[str] = mapped_column(String(120), default="")
+    user_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    first: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class BotHit(Base):
+    """Search engine / link preview robots that fetched a page."""
+    __tablename__ = "bot_hits"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    ts: Mapped[datetime] = mapped_column(DateTime, default=now, index=True)
+    bot: Mapped[str] = mapped_column(String(40), default="")
+    path: Mapped[str] = mapped_column(String(300), default="")
+
+
+class SocialPost(Base):
+    """Generated posts for the Winly page/channels; sent automatically or copied by hand into groups."""
+    __tablename__ = "social_posts"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now, index=True)
+    kind: Mapped[str] = mapped_column(String(24), default="")
+    day: Mapped[str] = mapped_column(String(10), default="", index=True)
+    text_sr: Mapped[str] = mapped_column(Text, default="")
+    image: Mapped[str] = mapped_column(String(200), default="")
+    link: Mapped[str] = mapped_column(String(400), default="")
+    sent: Mapped[dict] = mapped_column(JSON, default=dict)  # channel -> "ok" / error text
+    test: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class FbGroup(Base):
+    __tablename__ = "fb_groups"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(160), default="")
+    url: Mapped[str] = mapped_column(String(400), default="")
+    topic: Mapped[str] = mapped_column(String(24), default="general")  # general|football|basketball|partizan|zvezda|betting
+    every_days: Mapped[int] = mapped_column(Integer, default=3)
+    last_posted: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    posts: Mapped[int] = mapped_column(Integer, default=0)
+    note: Mapped[str] = mapped_column(String(300), default="")

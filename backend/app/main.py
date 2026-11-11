@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from sqlalchemy import select
 from .db import engine, Base, SessionLocal
 from .models import Bookmaker
-from . import api, admin, share, center
+from . import api, admin, share, center, growth
 
 logging.basicConfig(level=logging.INFO)
 app = FastAPI(title="Winly", docs_url=None, redoc_url=None)
@@ -39,6 +39,7 @@ MIGRATIONS = [
     "ALTER TABLE matches ADD COLUMN IF NOT EXISTS x_id INTEGER",
     "CREATE INDEX IF NOT EXISTS ix_matches_x_id ON matches (x_id)",
     "ALTER TABLE highlights ADD COLUMN IF NOT EXISTS status VARCHAR(8) DEFAULT ''",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS ref_by INTEGER",
 ]
 
 
@@ -89,3 +90,5 @@ app.include_router(api.router)
 app.include_router(admin.router)
 app.include_router(share.router)
 app.include_router(center.router)
+app.include_router(growth.router)
+app.include_router(growth.adm)

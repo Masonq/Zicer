@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Navigate, NavLink, Routes, Route, Link, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Users as UsersIcon, MessageSquare, CalendarDays, Image as ImageIcon, Landmark, Cpu, ArrowLeft, Menu } from 'lucide-react'
+import { LayoutDashboard, Users as UsersIcon, MessageSquare, CalendarDays, Image as ImageIcon, Landmark, Cpu, ArrowLeft, Menu, BarChart3, Search, Megaphone, UsersRound, Code2 } from 'lucide-react'
 import Overview from './Overview'
+import { Traffic, Seo, Social, Groups, Widget } from './Growth'
 import { LOGO_SRC } from '../logoData'
 import { api } from '../api'
 import { useAuth, usePoll } from '../store'
@@ -235,9 +236,10 @@ const NAV = [
   ['ГЛАВНОЕ', [['', 'Обзор', LayoutDashboard]]],
   ['ЛЮДИ', [['users', 'Пользователи', UsersIcon], ['comments', 'Комментарии', MessageSquare]]],
   ['КОНТЕНТ', [['matches', 'Матчи', CalendarDays], ['banners', 'Баннеры', ImageIcon], ['bookmakers', 'Букмекеры', Landmark]]],
+  ['РОСТ', [['traffic', 'Трафик', BarChart3], ['seo', 'SEO', Search], ['social', 'Публикации', Megaphone], ['groups', 'Группы Facebook', UsersRound], ['widget', 'Виджет', Code2]]],
   ['СИСТЕМА', [['system', 'Сбор данных', Cpu]]],
 ]
-const TITLES = { '': 'Обзор', users: 'Пользователи', comments: 'Комментарии', matches: 'Матчи', banners: 'Баннеры', bookmakers: 'Букмекеры', system: 'Сбор данных' }
+const TITLES = { traffic: 'Трафик', seo: 'SEO', social: 'Публикации', groups: 'Группы Facebook', widget: 'Виджет', '': 'Обзор', users: 'Пользователи', comments: 'Комментарии', matches: 'Матчи', banners: 'Баннеры', bookmakers: 'Букмекеры', system: 'Сбор данных' }
 
 export default function Admin() {
   const { user, ready } = useAuth()
@@ -291,6 +293,11 @@ export default function Admin() {
             <Route path="banners" element={<Banners />} />
             <Route path="bookmakers" element={<Bookmakers />} />
             <Route path="system" element={<Dashboard />} />
+            <Route path="traffic" element={<Traffic />} />
+            <Route path="seo" element={<Seo />} />
+            <Route path="social" element={<Social />} />
+            <Route path="groups" element={<Groups />} />
+            <Route path="widget" element={<Widget />} />
           </Routes>
         </div>
       </main>

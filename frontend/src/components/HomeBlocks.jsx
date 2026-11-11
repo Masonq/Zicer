@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Flame, TrendingDown } from 'lucide-react'
 import { useT } from '../i18n'
-import { Crest, StatusTime, OddsButtons, fmtOdds } from './ui'
+import { Crest, StatusTime, OddsButtons, fmtOdds , matchUrl } from './ui'
 import HScroll from './HScroll'
 import { SportIcon } from './Sports'
 
@@ -16,7 +16,7 @@ export function HotMatches({ list = [] }) {
         {list.map(({ match: m, split, picks, src }) => {
           const keys = ['1', 'X', '2'].filter((k) => split[k] != null && !(k === 'X' && (m.sport === 'tennis' || m.sport === 'volleyball')))
           return (
-            <Link key={m.id} to={`/mec/${m.id}`} state={{ m }} className={`hot-card sc-${m.sport}`}>
+            <Link key={m.id} to={matchUrl(m)} state={{ m }} className={`hot-card sc-${m.sport}`}>
               <div className="hot-top">
                 <span className="hot-sport"><SportIcon sport={m.sport} size={14} />{t(m.sport)}</span>
                 <StatusTime m={m} />
@@ -57,7 +57,7 @@ export function LineTrends({ list = [] }) {
         {list.map((x, i) => {
           const m = x.match
           return (
-            <Link key={m.id} to={`/mec/${m.id}`} state={{ m }} className="tr-row">
+            <Link key={m.id} to={matchUrl(m)} state={{ m }} className="tr-row">
               <span className="tr-n num">{i + 1}</span>
               <div className="tr-main">
                 <b className="ellip">{t.team(m.home)} – {t.team(m.away)}</b>

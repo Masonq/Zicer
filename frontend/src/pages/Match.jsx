@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useParams, useNavigate, useLocation } from 'react-router-dom'
 import { ChevronLeft, Languages, Sparkles, X, Star } from 'lucide-react'
 import { toggleFav, useFav, showUndo } from '../fav'
+import { useSeo } from '../seo'
 import { buildMarkets, tt } from '../markets'
 import MatchCenter, { periodLabel } from '../components/MatchCenter'
 import { SportIcon } from '../components/Sports'
@@ -9,7 +10,7 @@ import { MatchHighlights } from '../components/Highlights'
 import { api } from '../api'
 import { useT } from '../i18n'
 import { useAuth, usePoll, useSlip } from '../store'
-import { Crest, OddsButtons, FormPills, SplitBar, Avatar, UserName, fmtTime, fmtDay, fmtOdds, fmtNum, Skeleton, Empty, pickLabel, MatchRow, leagueLabel, Toast } from '../components/ui'
+import { Crest, OddsButtons, FormPills, SplitBar, Avatar, UserName, fmtTime, fmtDay, fmtOdds, fmtNum, Skeleton, Empty, pickLabel, MatchRow, leagueLabel, Toast , matchUrl } from '../components/ui'
 
 function Tablo({ m }) {
   const t = useT()
@@ -61,7 +62,7 @@ export function FeaturedMatch({ m, label, linkable = true }) {
       </div>
       {linkable && m.status !== 'finished' && <OddsButtons m={m} wide />}
       {m.split && m.split.total > 0 && <div style={{ marginTop: 14 }} className="pitch-vote"><SplitBar split={m.split} m={m} /><span className="small">{t.n(m.split.total, 'predictions')}</span></div>}
-      {linkable && <Link to={`/mec/${m.id}`} className="btn btn-ghost btn-block" style={{ marginTop: 14 }}>{t('placePrediction')}{m.predictions?.length ? ` (${m.predictions.length})` : ''}</Link>}
+      {linkable && <Link to={matchUrl(m)} className="btn btn-ghost btn-block" style={{ marginTop: 14 }}>{t('placePrediction')}{m.predictions?.length ? ` (${m.predictions.length})` : ''}</Link>}
     </>
   )
   return (
@@ -226,7 +227,8 @@ function ScorePicker({ m, sp, onSaved }) {
 }
 
 export default function MatchPage() {
-  const { id } = useParams()
+  const { id: rawId } = useParams()
+  const id = parseInt(rawId, 10)
   const t = useT()
   const nav = useNavigate()
   const [ver, setVer] = useState(0)
@@ -234,6 +236,8 @@ export default function MatchPage() {
   const [sel, setSel] = useState(null)
   const loc = useLocation()
   const { data: full, loading } = usePoll(() => api(`/matches/${id}`), [id, ver], 30000, true, `match:${id}`)
+  const sm = full || loc.state?.m
+  useSeo(sm ? `${t.team(sm.home)} – ${t.team(sm.away)} ${t('seoMatch')} | Winly` : null, sm ? `${t.team(sm.home)} – ${t.team(sm.away)}, ${t.league(sm.league)}. ${t('seoHomeDesc')}` : '')
   const placeholder = loc.state?.m && String(loc.state.m.id) === String(id) ? loc.state.m : null
   const m = full || placeholder
   useEffect(() => {

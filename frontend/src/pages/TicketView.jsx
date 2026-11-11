@@ -4,7 +4,7 @@ import { Share2, Link2, Download, CheckCircle2, Send, MessageCircle, Phone } fro
 import { api } from '../api'
 import { useT } from '../i18n'
 import { usePoll } from '../store'
-import { Avatar, Crest, fmtOdds, fmtNum, pickLabel, Skeleton, Empty, Toast, StatusTime } from '../components/ui'
+import { Avatar, Crest, fmtOdds, fmtNum, pickLabel, Skeleton, Empty, Toast, StatusTime , matchUrl } from '../components/ui'
 
 export default function TicketView() {
   const { id } = useParams()
@@ -82,7 +82,7 @@ export default function TicketView() {
         {tk.items.map((i) => {
           const m = i.match
           return (
-            <Link key={m.id} to={`/mec/${m.id}`} className={`tsel ${i.status}`}>
+            <Link key={m.id} to={matchUrl(m)} className={`tsel ${i.status}`}>
               <div className="tsel-top">
                 <span className="tsel-lg">
                   <span className="ellip">{t.league(m.league)}</span>

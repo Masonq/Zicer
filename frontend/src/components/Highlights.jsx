@@ -3,7 +3,7 @@ import { api } from '../api'
 import { Link } from 'react-router-dom'
 import { Play } from 'lucide-react'
 import { useT } from '../i18n'
-import { Crest } from './ui'
+import { Crest , matchUrl } from './ui'
 import HScroll from './HScroll'
 
 // ---- availability check: leagues block some videos in some countries (e.g. NBA in Serbia).
@@ -111,7 +111,7 @@ export function HighlightsStrip({ list: all = [] }) {
         {list.map((v) => {
           const m = v.match
           return (
-            <Link key={v.video_id} to={`/mec/${m.id}#highlights`} className="hl-card">
+            <Link key={v.video_id} to={`${matchUrl(m)}#highlights`} className="hl-card">
               <span className="hl-thumb"><img src={`https://i.ytimg.com/vi/${v.video_id}/mqdefault.jpg`} alt="" loading="lazy" /><span className="yt-play sm"><Play size={16} fill="currentColor" /></span></span>
               <span className="hl-teams"><Crest team={m.home} size={18} /><span className="ellip">{t.team(m.home)}</span>{m.score && <b className="num">{m.score[0]}</b>}</span>
               <span className="hl-teams"><Crest team={m.away} size={18} /><span className="ellip">{t.team(m.away)}</span>{m.score && <b className="num">{m.score[1]}</b>}</span>

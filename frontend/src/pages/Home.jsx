@@ -7,6 +7,7 @@ import { useAuth, usePoll } from '../store'
 import { MatchList, SectionHead, Skeleton, Crest, Avatar, fmtNum, fmtOdds, Countdown, pickLabel, Empty } from '../components/ui'
 import HeroCarousel from '../components/HeroCarousel'
 import Safe from '../components/Safe'
+import { useSeo } from '../seo'
 import { HighlightsStrip } from '../components/Highlights'
 import { HotMatches } from '../components/HomeBlocks'
 import { FeaturedMatch } from './Match'
@@ -29,6 +30,7 @@ export function TipsterRow({ r, i }) {
 
 export default function Home() {
   const t = useT()
+  useSeo(t('seoHome'), t('seoHomeDesc'))
   const { user } = useAuth()
   const [sp, setSp] = useSearchParams()
   const sport = sp.get('sport') || 'all'

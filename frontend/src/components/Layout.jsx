@@ -1,3 +1,4 @@
+import { trackPage } from '../seo'
 import Island from './Island'
 import { useUndoToast } from '../fav'
 import { NavLink, Link, Outlet, useLocation } from 'react-router-dom'
@@ -65,6 +66,8 @@ export default function Layout() {
     }, 1500)
     return () => clearTimeout(id)
   }, [user?.id])
+  const locn = useLocation()
+  useEffect(() => { trackPage(locn.pathname, locn.search) }, [locn.pathname]) // eslint-disable-line react-hooks/exhaustive-deps
   // the bookmakers section only appears in the menu when there is at least one bookmaker
   const { data: bms } = usePoll(() => api('/bookmakers'), [], 300000, false, 'bookmakers')
   const nav = [

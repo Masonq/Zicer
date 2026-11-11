@@ -31,7 +31,7 @@ def best(m: Match, full: bool = False) -> dict:
 
 
 def match_out(m: Match, extra: dict | None = None, full: bool = False) -> dict:
-    d = {"id": m.id, "sport": m.sport, "league": {"name": m.league.name, "country": m.league.country, "priority": m.league.priority,
+    d = {"id": m.id, "sport": m.sport, "league": {"id": m.league.id, "name": m.league.name, "country": m.league.country, "priority": m.league.priority,
                                               "names": {"sr": m.league.name_sr or "", "ru": m.league.name_ru or ""}},
          "home": team_out(m.home), "away": team_out(m.away), "start": iso(m.start), "status": m.status,
          "minute": m.minute, "score": [m.score_home, m.score_away] if m.score_home is not None else None,

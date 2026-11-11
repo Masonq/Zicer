@@ -15,9 +15,13 @@ export default function Ranking() {
   const set = (k, v) => { const n = new URLSearchParams(sp); n.set(k, v); setSp(n, { replace: true }) }
   const url = tab === 'klubovi' ? `/clubs/battle?sport=${sport}&period=${period}` : tab === 'tiketi' ? '/tickets?scope=won' : `/ranking?period=${period}`
   const { data, loading } = usePoll(() => api(url), [url], 60000, false, `rank:${url}`)
+  const { data: contest } = usePoll(() => api('/contest'), [], 300000, false, 'contest')
   return (
     <div>
       <h1 className="h1">{t('ranking')}</h1>
+      {contest && contest.title && (
+        <div className="contest"><span className="ct-tag">{t('contestTitle')}</span><b>{contest.title}</b>{contest.prize && <p>{t('contestPrize')}: <span className="gold">{contest.prize}</span></p>}{contest.until && <small>{contest.until}</small>}</div>
+      )}
       <div className="seg" style={{ marginTop: 12 }}>
         {[['prognozeri', t('tipsters')], ['klubovi', t('fanBattle')], ['tiketi', t('tickets')]].map(([k, l]) => <button key={k} className={tab === k ? 'on' : ''} onClick={() => set('tab', k)}>{l}</button>)}
       </div>
