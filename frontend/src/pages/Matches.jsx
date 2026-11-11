@@ -56,7 +56,16 @@ export default function Matches() {
   const nF = f.leagues.length + (f.live ? 1 : 0) + f.times.length + (serb ? 1 : 0)
   const liveN = (data || []).filter((m) => m.status === 'live').length
   const days = [['live', t('live')], ['yesterday', t('yesterday')], ['today', t('today')], ['tomorrow', t('tomorrow')], ['fav', t('favorites')]]
-  const toLive = () => { const el = document.querySelector('.row .row-time.live'); el?.closest('.league')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }
+  // scroll so the first live match sits just below the top bar and the pinned league bar (not hidden under them)
+  const toLive = () => {
+    const row = document.querySelector('.row .row-time.live')?.closest('.row-swipe') || document.querySelector('.row .row-time.live')?.closest('.row')
+    if (!row) return
+    const top = document.querySelector('.topbar')
+    const topH = top && getComputedStyle(top).display !== 'none' ? top.getBoundingClientRect().height : 0
+    const head = row.closest('.league')?.querySelector('.league-head')
+    const headH = head ? head.getBoundingClientRect().height : 0
+    window.scrollTo({ top: row.getBoundingClientRect().top + window.scrollY - topH - headH - 12, behavior: 'smooth' })
+  }
   const [scrolled, setScrolled] = useState(false)
   useEffect(() => {
     const on = () => setScrolled(window.scrollY > 320)
