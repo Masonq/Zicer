@@ -31,6 +31,19 @@ function Tablo({ m }) {
   )
 }
 
+// Faint field markings of the sport, drawn across the card background
+function FieldArt({ sport }) {
+  const L = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.2, vectorEffect: 'non-scaling-stroke' }
+  let g
+  if (sport === 'basketball') g = (<><circle cx="200" cy="100" r="28" {...L} /><line x1="200" y1="0" x2="200" y2="200" {...L} /><path d="M0 22 H40 A78 78 0 0 1 40 178 H0" {...L} /><path d="M400 22 H360 A78 78 0 0 0 360 178 H400" {...L} /><rect x="0" y="70" width="70" height="60" {...L} /><rect x="330" y="70" width="70" height="60" {...L} /></>)
+  else if (sport === 'hockey') g = (<><rect x="2" y="2" width="396" height="196" rx="60" {...L} /><line x1="200" y1="0" x2="200" y2="200" {...L} /><line x1="140" y1="0" x2="140" y2="200" {...L} /><line x1="260" y1="0" x2="260" y2="200" {...L} /><circle cx="200" cy="100" r="26" {...L} /><circle cx="70" cy="55" r="22" {...L} /><circle cx="70" cy="145" r="22" {...L} /><circle cx="330" cy="55" r="22" {...L} /><circle cx="330" cy="145" r="22" {...L} /></>)
+  else if (sport === 'tennis') g = (<><rect x="20" y="20" width="360" height="160" {...L} /><line x1="20" y1="40" x2="380" y2="40" {...L} /><line x1="20" y1="160" x2="380" y2="160" {...L} /><line x1="110" y1="40" x2="110" y2="160" {...L} /><line x1="290" y1="40" x2="290" y2="160" {...L} /><line x1="110" y1="100" x2="290" y2="100" {...L} /><line x1="200" y1="10" x2="200" y2="190" {...L} strokeDasharray="3 4" /></>)
+  else if (sport === 'volleyball') g = (<><rect x="40" y="30" width="320" height="140" {...L} /><line x1="200" y1="15" x2="200" y2="185" {...L} /><line x1="146" y1="30" x2="146" y2="170" {...L} /><line x1="254" y1="30" x2="254" y2="170" {...L} /></>)
+  else if (sport === 'waterpolo') g = (<>{[0, 1, 2, 3, 4, 5, 6].map((i) => <path key={i} d={`M0 ${30 + i * 24} Q 100 ${22 + i * 24} 200 ${30 + i * 24} T 400 ${30 + i * 24}`} {...L} />)}</>)
+  else g = (<><rect x="2" y="2" width="396" height="196" {...L} /><line x1="200" y1="0" x2="200" y2="200" {...L} /><circle cx="200" cy="100" r="34" {...L} /><rect x="0" y="50" width="60" height="100" {...L} /><rect x="340" y="50" width="60" height="100" {...L} /><path d="M60 78 A26 26 0 0 1 60 122" {...L} /><path d="M340 78 A26 26 0 0 0 340 122" {...L} /></>)
+  return <svg className="field-art" viewBox="0 0 400 200" preserveAspectRatio="none" aria-hidden="true">{g}</svg>
+}
+
 export function FeaturedMatch({ m, label, linkable = true }) {
   const t = useT()
   const inner = (
@@ -52,6 +65,8 @@ export function FeaturedMatch({ m, label, linkable = true }) {
   )
   return (
     <div className={`pitch sc-${m.sport}`}>
+      <FieldArt sport={m.sport} />
+      <span className="pitch-glow" aria-hidden="true" />
       <span className="pitch-ball" aria-hidden="true"><img src={`/balls/${['football', 'basketball', 'tennis', 'hockey', 'volleyball', 'waterpolo'].includes(m.sport) ? m.sport : 'football'}.png`} alt="" width="104" height="104" /></span>
       {inner}
     </div>
