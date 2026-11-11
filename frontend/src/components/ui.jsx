@@ -159,6 +159,15 @@ export function leagueLabel(m, t) {
   return t.league(m.league)
 }
 
+// adds .stuck to a sticky header while it is pinned to the top
+function stickRef(el) {
+  if (!el || el.__st) return
+  el.__st = true
+  const io = new IntersectionObserver(([e]) => el.classList.toggle('stuck', e.intersectionRatio < 1 && e.boundingClientRect.top < 120),
+    { threshold: [1], rootMargin: `-${window.innerWidth >= 1024 ? 1 : 57}px 0px 0px 0px` })
+  io.observe(el)
+}
+
 export function MatchList({ matches }) {
   const t = useT()
   const groups = []
@@ -170,7 +179,7 @@ export function MatchList({ matches }) {
   }
   return groups.map((g) => (
     <div className="league" key={g.key}>
-      <div className="league-head"><span className={`league-sport ls-${g.sample.sport}`} title={t(g.sample.sport)}><SportIcon sport={g.sample.sport} size={14} /></span>{g.league.country && g.league.country !== 'INT' && <span className="flag">{g.league.country === 'EU' ? 'EU' : g.league.country}</span>}<span className="ellip">{leagueLabel(g.sample, t)}</span></div>
+      <div className="league-head" ref={stickRef}><span className={`league-sport ls-${g.sample.sport}`} title={t(g.sample.sport)}><SportIcon sport={g.sample.sport} size={14} /></span>{g.league.country && g.league.country !== 'INT' && <span className="flag">{g.league.country === 'EU' ? 'EU' : g.league.country}</span>}<span className="ellip">{leagueLabel(g.sample, t)}</span></div>
       <div className="rows">{g.items.map((m) => <MatchRow key={m.id} m={m} />)}</div>
     </div>
   ))
