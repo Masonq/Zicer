@@ -803,7 +803,7 @@ function Court({ m, data, t }) {
       </div>
       <div ref={courtRef} className={`court court-${m.sport} tt-court`} style={{ aspectRatio: courtAspect(m.sport) }}>
         <CourtLines sport={m.sport} />
-        <span className={`court-tex tex-${m.sport}`} aria-hidden="true" /><span className="court-light" aria-hidden="true" />
+        <span className={`court-tex tex-${m.sport}`} aria-hidden="true" /><span className="court-light" aria-hidden="true" /><span className="court-depth" aria-hidden="true"><i className="cd-boards" /><i className="cd-front" /></span>
         <div className="arena-field" style={fieldStyle(m.sport)}>
         {live && att !== null && server === null && (
           <div className={`terr t${att}`} aria-hidden="true" />
@@ -937,7 +937,7 @@ function TennisCourt({ m, data, t }) {
       <div className="tt-sets num">{setsTxt || '\u00a0'}</div>
       <div ref={tcRef} className="court court-tennis tt-court" style={{ aspectRatio: courtAspect('tennis') }}>
         <CourtLines sport="tennis" />
-        <span className="court-tex tex-tennis" aria-hidden="true" /><span className="court-light" aria-hidden="true" />
+        <span className="court-tex tex-tennis" aria-hidden="true" /><span className="court-light" aria-hidden="true" /><span className="court-depth" aria-hidden="true"><i className="cd-boards" /><i className="cd-front" /></span>
         <div className="arena-field" style={fieldStyle('tennis')}>
         {live && phase.kind !== 'big' && (
           <>
@@ -1506,7 +1506,7 @@ function Arena({ m, data, t }) {
       </div>
       <div className={`court court-${sport} tt-court`} style={{ aspectRatio: courtAspect(sport) }}>
         <CourtLines sport={sport} />
-        <span className={`court-tex tex-${sport}`} aria-hidden="true" /><span className="court-light" aria-hidden="true" />
+        <span className={`court-tex tex-${sport}`} aria-hidden="true" /><span className="court-light" aria-hidden="true" /><span className="court-depth" aria-hidden="true"><i className="cd-boards" /><i className="cd-front" /></span>
         <div className="arena-field" style={fieldStyle(sport)}>
           {live && att !== null && !net && !isBreak && <AttackZone side={att} level={intensity >= 0.9 ? 2 : intensity >= 0.6 ? 1 : 0} />}
           {live && att !== null && !net && !isBreak && phase.kind === 'idle' && sport !== 'basketball' && intensity >= 0.6 && (
