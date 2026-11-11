@@ -75,11 +75,11 @@ def _letter(lang, purpose, code):
 <div style="font:700 20px/1.3 Arial,Helvetica,sans-serif;color:#EEF3EE;margin-bottom:10px">{title}</div>
 <div style="font:400 15px/1.5 Arial,Helvetica,sans-serif;color:#C9D6CF;margin-bottom:18px">{lead}</div>
 {code_html}
-<div style="font:400 12px/1.5 Arial,Helvetica,sans-serif;color:#8FA89D;margin-top:20px">{foot}</div>
+{f'<div style="font:400 12px/1.5 Arial,Helvetica,sans-serif;color:#8FA89D;margin-top:20px">{foot}</div>' if code else ''}
 </td></tr></table>
 <div style="font:400 11px/1.5 Arial,Helvetica,sans-serif;color:#6E8A7E;margin-top:14px">Winly · liga prognoza · winly.rs</div>
 </td></tr></table></body></html>'''
-    text = f"{title}\n\n{lead}\n\n{code}\n\n{foot}\n\nWinly · winly.rs"
+    text = f"{title}\n\n{lead}\n\n{code}\n\n{foot}\n\nWinly · winly.rs" if code else f"{title}\n\n{lead}\n\nWinly · winly.rs"
     return subj, html, text
 
 
