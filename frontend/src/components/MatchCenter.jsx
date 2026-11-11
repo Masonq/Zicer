@@ -390,7 +390,18 @@ function useScene(m, data, t) {
     if (g && cur - g.min >= 0 && cur - g.min <= 1) return { x: g.home ? 92 : 8, title: `${t('goal')}!`, sub: `${g.player}, ${g.home ? H : A}`, flash: true }
     const a = Math.abs(v), team = v >= 0 ? H : A
     const x = 50 + Math.max(-1, Math.min(1, v / 100)) * 36
-    if (!mom.length) return { x: 50, title: t('live'), sub: m.minute ? `${m.minute}` : '', flash: false }
+    if (!mom.length) {
+      // no momentum curve (smaller matches): keep showing the side that attacks, from the live feed of the last minutes
+      const nowS = data.now || Date.now() / 1000
+      const recentX = [...xev].reverse().find((e) => ['danger', 'attack', 'shot_on', 'shot_off', 'corner'].includes(e.t) && nowS - e.at < 240)
+      if (recentX) {
+        const ageX = nowS - recentX.at
+        const lvl = recentX.t === 'attack' ? (ageX < 120 ? 1 : 0) : ageX < 120 ? 2 : 1
+        const base = [62, 72, 84][lvl]
+        return { x: recentX.side === 0 ? base : 100 - base, title: [t('possession'), t('attack'), t('dangerAttack')][lvl], sub: recentX.side === 0 ? H : A, flash: false }
+      }
+      return { x: 50, title: t('live'), sub: m.minute ? `${m.minute}` : '', flash: false }
+    }
     return { x, title: a >= 60 ? t('dangerAttack') : a >= 25 ? t('attack') : t('possession'), sub: team, flash: false }
   }
   if (m.sport === 'basketball' && data.plays && data.plays.length) {
