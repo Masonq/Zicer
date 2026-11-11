@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { SlidersHorizontal, X, Radio, Star } from 'lucide-react'
 import { api, tz } from '../api'
@@ -42,6 +42,12 @@ export default function Matches() {
   const liveN = (data || []).filter((m) => m.status === 'live').length
   const days = [['live', t('live')], ['yesterday', t('yesterday')], ['today', t('today')], ['tomorrow', t('tomorrow')], ['fav', t('favorites')]]
   const toLive = () => { const el = document.querySelector('.row .row-time.live'); el?.closest('.league')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }
+  const [scrolled, setScrolled] = useState(false)
+  useEffect(() => {
+    const on = () => setScrolled(window.scrollY > 320)
+    on(); window.addEventListener('scroll', on, { passive: true })
+    return () => window.removeEventListener('scroll', on)
+  }, [])
   const tog = (arr, v) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v])
   return (
     <div>
@@ -53,11 +59,13 @@ export default function Matches() {
         </div>
         <button className={`flt-btn${nF ? ' on' : ''}`} onClick={() => { setDraft(f); setSheet(true) }} aria-label={t('filters')}><SlidersHorizontal size={18} />{nF > 0 && <b>{nF}</b>}</button>
       </div>
+      {day === 'today' && liveN > 0 && scrolled && (
+        <div className="to-live-wrap"><button className="to-live" onClick={toLive}><Radio size={14} />{t('toLive')}<b>{liveN}</b></button></div>
+      )}
       <div style={{ marginTop: 16 }} className={stale ? 'is-loading' : ''}>
         {loading && !data ? <Skeleton /> : list.length ? <MatchList matches={list} />
           : <div className="card"><Empty title={day === 'fav' ? t('favorites') : t('noMatches')} text={day === 'fav' ? t('noFav') : t('tryOtherDay')} /></div>}
       </div>
-      {day === 'today' && liveN > 0 && <button className="to-live" onClick={toLive}><Radio size={16} />{t('toLive')} <b>{liveN}</b></button>}
       {sheet && (
         <div className="sheet-wrap" onClick={() => setSheet(false)}>
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
