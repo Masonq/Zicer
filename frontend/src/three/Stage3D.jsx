@@ -150,7 +150,7 @@ function addFlags(scene, len, wid) {
 function addNetTennis(scene) {
   const W = 10.97 + 2 * 0.914, H = 1.07
   const nc = document.createElement('canvas'); nc.width = nc.height = 64
-  const g = nc.getContext('2d'); g.strokeStyle = 'rgba(20,20,20,.85)'; g.lineWidth = 2
+  const g = nc.getContext('2d'); g.fillStyle = 'rgba(10,10,10,.3)'; g.fillRect(0, 0, 64, 64); g.strokeStyle = 'rgba(20,20,20,.9)'; g.lineWidth = 2
   for (let i = 0; i <= 64; i += 8) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i, 64); g.moveTo(0, i); g.lineTo(64, i); g.stroke() }
   const t = new THREE.CanvasTexture(nc); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(W * 4, H * 4)
   const net = new THREE.Mesh(new THREE.PlaneGeometry(W, 0.914), new THREE.MeshBasicMaterial({ map: t, transparent: true, side: THREE.DoubleSide, depthWrite: false }))
@@ -177,7 +177,7 @@ function svgTexture(sport, crop) {
 
 function netMat(w, h, dark) {
   const nc = document.createElement('canvas'); nc.width = nc.height = 64
-  const g = nc.getContext('2d'); g.strokeStyle = dark ? 'rgba(20,20,20,.85)' : 'rgba(255,255,255,.8)'; g.lineWidth = 2
+  const g = nc.getContext('2d'); if (dark) { g.fillStyle = 'rgba(10,10,10,.28)'; g.fillRect(0, 0, 64, 64) } g.strokeStyle = dark ? 'rgba(20,20,20,.9)' : 'rgba(255,255,255,.8)'; g.lineWidth = 2
   for (let i = 0; i <= 64; i += 8) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i, 64); g.moveTo(0, i); g.lineTo(64, i); g.stroke() }
   const t = new THREE.CanvasTexture(nc); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(w * 5, h * 5)
   return new THREE.MeshBasicMaterial({ map: t, transparent: true, side: THREE.DoubleSide, depthWrite: false })
@@ -300,8 +300,8 @@ export default function Stage3D({ sport, eng, att = null, level = 0 }) {
     // camera
     const cam = new THREE.PerspectiveCamera(football ? 33 : REAR ? 38 : 34, 1, size * 0.004, size * 8)
     if (football) { cam.position.set(0, 62, 112); cam.lookAt(0, 0, -6) }
-    else if (tennis) { cam.position.set(-29, 14.5, 0); cam.lookAt(3, 0, 0) } // further back: the near baseline stays inside the frame
-    else if (REAR) { const k = sport === 'tabletennis' ? [1.35, 0.8, 0.1] : [0.82, 0.5, 0.14]; cam.position.set(ox - len * k[0], top + len * k[1], oz); cam.lookAt(ox + len * k[2], top, oz) }
+    else if (tennis) { cam.position.set(0, 11.5, 23.5); cam.lookAt(0, 0, -0.8) } // court across the screen, same broadcast look // further back: the near baseline stays inside the frame
+    else if (REAR) { const k = sport === 'tabletennis' ? [0.6, 0.95, 0.04] : [0.42, 0.88, 0.04]; cam.position.set(ox, top + len * k[0], oz + len * k[1]); cam.lookAt(ox, top, oz - len * k[2]) }
     else { cam.position.set(ox, top + len * 0.54, oz + len * 0.9); cam.lookAt(ox, top, oz - len * 0.06) }
     const toWorld = (xp, yp) => {
       // engine coordinates are % of the playing area (x along the length, y across)
