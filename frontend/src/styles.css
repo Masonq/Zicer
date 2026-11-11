@@ -1404,3 +1404,15 @@ img { display: block; max-width: 100%; }
 .eng-ball[class*="ball-"] { box-shadow: none !important; outline: none !important; }
 /* water: calmer, larger caustics */
 .tex-waterpolo { opacity: .28 !important; background-size: 140% auto !important; filter: blur(.4px); }
+
+/* broadcast camera: the playing surface is seen in perspective from the main stand, like the 3D trackers of bookmakers;
+   stands with a crowd behind, everything on the surface keeps its exact coordinates (same transform, same origin) */
+.court { --tilt: 30deg; background: linear-gradient(180deg, rgba(8,14,12,.2), rgba(8,14,12,.9) 70%), url(/tex/crowd.webp) center top / cover, #0B1512 !important; perspective: 1100px; }
+.court > .court-svg, .court > .court-tex, .court > .court-light { transform-origin: 50% 100%; transform: rotateX(var(--tilt)); }
+.court > .arena-field { transform: rotateX(var(--tilt)); transform-style: preserve-3d; }
+.court::after { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 22%; z-index: 0; pointer-events: none;
+  background: linear-gradient(180deg, rgba(255,255,255,.08), transparent); }
+/* labels on the surface stand up towards the camera so they don't look squashed */
+.court .arena-field .atk-call, .court .arena-field .tt-tag { transform: rotateX(calc(-1 * var(--tilt))); transform-origin: 50% 100%; }
+.court-tabletennis { --tilt: 38deg; } .court-tennis, .court-volleyball { --tilt: 32deg; } .court-hockey { --tilt: 28deg; }
+@media (max-width: 560px) { .court { --tilt: 24deg; } .court-tabletennis { --tilt: 32deg; } }

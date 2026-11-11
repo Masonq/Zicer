@@ -399,7 +399,7 @@ def sync_live(db: Session) -> str:
     for m in ms:
         d = data[m.mb_id]
         keep = {k: v for k, v in (m.live or {}).items() if k in ("x", "xev", "x_seen", "fin_by", "fin_at", "brk")}
-        if m.sport == "volleyball" and not (keep.get("x_seen") and int(datetime.utcnow().timestamp()) - keep["x_seen"] < 60):
+        if m.sport in ("volleyball", "tabletennis") and not (keep.get("x_seen") and int(datetime.utcnow().timestamp()) - keep["x_seen"] < 60):
             old_per = (m.live or {}).get("per") or []
             new_per = d.get("per") or []
             if old_per and new_per and len(old_per) == len(new_per):
@@ -1210,7 +1210,7 @@ def sync_xfeed(db: Session) -> str:
                 if d > 0:
                     new.append({"t": "score", "side": side, "at": now_ts, "ts": g.get("ts"), "n": int(d)})
         # volleyball: every rally point from the current set score (FS holds sets, PS the points per set)
-        if m.sport == "volleyball" and g["periods"]:
+        if m.sport in ("volleyball", "tabletennis") and g["periods"]:
             pper = (live.get("x") or {}).get("periods") or []
             cur = g["periods"][-1]
             if pper and len(pper) == len(g["periods"]):
@@ -1294,6 +1294,9 @@ GRAND_SLAMS = ("australian open", "roland garros", "french open", "wimbledon", "
 def sets_to_win(m: Match) -> int:
     if m.sport == "volleyball":
         return 3
+    if m.sport == "tabletennis":  # best of 5 (TT Cup, Liga Pro, Setka); best of 7 only in some majors
+        lg = ((m.league.name if m.league else "") or "").lower()
+        return 4 if ("world" in lg or "olymp" in lg) else 3
     lg = ((m.league.name if m.league else "") or "").lower()
     if m.sport == "tennis" and any(g in lg for g in GRAND_SLAMS) and "wta" not in lg and "women" not in lg and "žene" not in lg:
         return 3
@@ -1306,7 +1309,9 @@ def sets_won_from_periods(per, sport: str) -> list[int]:
     for i, p in enumerate(per or []):
         a, b = int(p[0] or 0), int(p[1] or 0)
         hi, lo = max(a, b), min(a, b)
-        if sport in ("tennis", "tabletennis"):
+        if sport == "tabletennis":  # ITTF: game to 11, two points clear
+            done = hi >= 11 and hi - lo >= 2
+        elif sport == "tennis":
             done = (hi >= 6 and hi - lo >= 2) or hi == 7
         else:
             target = 15 if i == 4 else 25

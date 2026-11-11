@@ -123,7 +123,7 @@ export const COURT = {
   futsal: { w: 44, h: 24, fx: 2, fy: 2, fw: 40, fh: 20 },     // FIFA futsal 40 x 20 m
   tabletennis: { w: 3.54, h: 2.125, fx: 0.4, fy: 0.3, fw: 2.74, fh: 1.525 }, // ITTF table 2.74 x 1.525 m
 }
-export const fieldStyle = (sport) => { const c = COURT[sport] || COURT.football; return { left: `${(c.fx / c.w) * 100}%`, top: `${(c.fy / c.h) * 100}%`, width: `${(c.fw / c.w) * 100}%`, height: `${(c.fh / c.h) * 100}%` } }
+export const fieldStyle = (sport) => { const c = COURT[sport] || COURT.football; const l = (c.fx / c.w) * 100, t = (c.fy / c.h) * 100, w = (c.fw / c.w) * 100, h = (c.fh / c.h) * 100; return { left: `${l}%`, top: `${t}%`, width: `${w}%`, height: `${h}%`, transformOrigin: `${((50 - l) / w) * 100}% ${((100 - t) / h) * 100}%` } }
 export const courtAspect = (sport) => { const c = COURT[sport] || COURT.football; return `${c.w} / ${c.h}` }
 const WL = { stroke: '#fff', strokeOpacity: 0.72, fill: 'none', vectorEffect: 'non-scaling-stroke', strokeWidth: 1.6 }
 export const fmtClock = (c) => { const v = String(c || '').trim(); if (/^\d+(\.\d+)?$/.test(v)) { const sec = Math.floor(parseFloat(v)); return `0:${String(sec).padStart(2, '0')}` } return v }
@@ -660,7 +660,7 @@ function usePlayEngine({ live, sport, att, intensity, eventSpot, eventKey, isSco
     const next = () => {
       const { att: a, intensity: k, sport: sp, server: srv } = cfg.current
       const [d0, d1] = SEG[sp] || [900, 1400]
-      if (sp === 'volleyball') { // rally over the net, arcs, until the real point arrives
+      if (sp === 'volleyball' || sp === 'tabletennis') { // rally over the net, arcs, until the real point arrives
         e.side = e.side === 0 ? 1 : 0
         return { to: { x: e.side === 1 ? rnd(60, 86) : rnd(14, 40), y: rnd(22, 78) }, dur: rnd(d0, d1), hop: 1 }
       }
@@ -674,7 +674,7 @@ function usePlayEngine({ live, sport, att, intensity, eventSpot, eventKey, isSco
     }
     const seg = (to, dur, hop) => { e.from = { ...e.pos }; e.to = to; e.t0 = performance.now(); e.dur = dur; e.hop = hop }
     if (!live) { e.pos = { x: 50, y: 50 }; place(e.pos); if (trailEl.current) trailEl.current.setAttribute('points', ''); return }
-    if (cfg.current.sport === 'volleyball' && cfg.current.server !== null) { e.pos = { x: cfg.current.server === 0 ? 6 : 94, y: 50 }; e.side = cfg.current.server }
+    if ((cfg.current.sport === 'volleyball' || cfg.current.sport === 'tabletennis') && cfg.current.server !== null) { e.pos = { x: cfg.current.server === 0 ? 6 : 94, y: 50 }; e.side = cfg.current.server }
     const n = next(); seg(n.to, n.dur, n.hop)
     const frame = (now) => {
       if (e.hold && now < e.hold) { raf = requestAnimationFrame(frame); return }
@@ -722,8 +722,8 @@ function Court({ m, data, t }) {
   const periodTxt = !live ? t('finished') : m.sport === 'football' ? (m.minute === 'HT' ? t('ht') : m.minute || '') : periodLabel(lv.p, m.sport, t) || (/^[A-Z0-9_]+$/.test(m.minute || '') ? periodLabel(m.minute, m.sport, t) : m.minute)
   const scoresTxt = per.map((p) => `${p[0] ?? 0}-${p[1] ?? 0}`).join(', ')
   // volleyball: the team that won the last rally serves (feed value if present, otherwise from the last point)
-  const lastPt = m.sport === 'volleyball' ? [...(data.xev || [])].reverse().find((e) => e.t === 'point' || e.t === 'score') : null
-  const server = m.sport === 'volleyball' ? (x.server ? x.server - 1 : lastPt ? lastPt.side : null) : null
+  const lastPt = (m.sport === 'volleyball' || m.sport === 'tabletennis') ? [...(data.xev || [])].reverse().find((e) => e.t === 'point' || e.t === 'score') : null
+  const server = (m.sport === 'volleyball' || m.sport === 'tabletennis') ? (x.server ? x.server - 1 : lastPt ? lastPt.side : null) : null
   const plays = data.plays || []
   // ---- events (real): basketball play-by-play or the live stats feed
   const evList = m.sport === 'basketball' && plays.length
@@ -1103,7 +1103,7 @@ function scoreEvents(m, data, t) {
 
 function bannerTitle(ev, sport, t) {
   if (sport === 'tennis') return ev.t === 'game' ? (ev.brk ? t('ev_break') : t('ev_game')) : t('ev_point')
-  if (sport === 'volleyball') return ev.t === 'score' ? t('ev_set') : t('ev_vpoint')
+  if (sport === 'volleyball' || sport === 'tabletennis') return ev.t === 'score' ? t('ev_set') : t('ev_vpoint')
   if (sport === 'basketball') return `+${ev.n}`
   return t('ev_goal')
 }
@@ -1111,7 +1111,7 @@ function bannerTitle(ev, sport, t) {
 function strikeSpot(ev, sport) {
   const s = ev.side
   if (sport === 'tennis') return { x: s === 0 ? rnd(80, 97) : rnd(3, 20), y: rnd(18, 82) }
-  if (sport === 'volleyball') return { x: s === 0 ? rnd(62, 92) : rnd(8, 38), y: rnd(20, 80) }
+  if (sport === 'volleyball' || sport === 'tabletennis') return { x: s === 0 ? rnd(62, 92) : rnd(8, 38), y: rnd(20, 80) }
   if (sport === 'basketball') return { x: s === 0 ? 100 - HOOP_X : HOOP_X, y: 50 }
   return { x: s === 0 ? 100.6 : -0.6, y: rnd(46, 54) }
 }
@@ -1154,16 +1154,16 @@ function setsWon(per, sport) {
   const won = [0, 0]
   ;(per || []).forEach((p, i) => {
     const a = +p[0] || 0, b = +p[1] || 0, hi = Math.max(a, b), lo = Math.min(a, b)
-    const done = sport === 'tennis' ? (hi >= 6 && hi - lo >= 2) || hi === 7 : hi >= (i === 4 ? 15 : 25) && hi - lo >= 2
+    const done = sport === 'tennis' ? (hi >= 6 && hi - lo >= 2) || hi === 7 : sport === 'tabletennis' ? hi >= 11 && hi - lo >= 2 : hi >= (i === 4 ? 15 : 25) && hi - lo >= 2
     if (done) won[a > b ? 0 : 1] += 1
   })
   return won
 }
 // over only when the score AND the finished set scores both say so (one feed can glitch)
 export function isDecided(m, score, per) {
-  if (m.sport !== 'tennis' && m.sport !== 'volleyball') return false
+  if (m.sport !== 'tennis' && m.sport !== 'volleyball' && m.sport !== 'tabletennis') return false
   const lg = ((m.league && m.league.name) || '').toLowerCase()
-  const need = m.sport === 'volleyball' ? 3 : /australian open|roland garros|wimbledon|us open/.test(lg) && !/wta|women/.test(lg) ? 3 : 2
+  const need = m.sport === 'volleyball' || m.sport === 'tabletennis' ? 3 : /australian open|roland garros|wimbledon|us open/.test(lg) && !/wta|women/.test(lg) ? 3 : 2
   if (Math.max((score || [0, 0])[0] || 0, (score || [0, 0])[1] || 0) < need) return false
   return Math.max(...setsWon(per, m.sport)) >= need
 }
@@ -1210,6 +1210,7 @@ function breakRule(sport, code, league) {
   }
   if (sport === 'hockey') return { sec: nhl ? 1080 : 1020, k: 'brkPeriod' }
   if (sport === 'volleyball') return { sec: 180, k: 'brkSet' }
+  if (sport === 'tabletennis') return { sec: 60, k: 'brkSet' } // ITTF: up to 1 minute between games
   if (sport === 'waterpolo') return /HALF|Q2_Q3/.test(c) ? { sec: 180, k: 'brkHalf' } : { sec: 120, k: 'brkQuarter' }
   return { sec: 120, k: 'pause' }
 }
@@ -1286,7 +1287,7 @@ function Arena({ m, data, t }) {
   }
   // ---------- possession / serve ----------
   const plays = data.plays || []
-  const lastPt = sport === 'volleyball' ? [...(data.xev || [])].reverse().find((e) => e.t === 'point' || e.t === 'score') : null
+  const lastPt = (sport === 'volleyball' || sport === 'tabletennis') ? [...(data.xev || [])].reverse().find((e) => e.t === 'point' || e.t === 'score') : null
   const PVs = { 0: 0, 15: 1, 30: 2, 40: 3, A: 4 }
   const totalPts = (PVs[shown.ss[0]] ?? 0) + (PVs[shown.ss[1]] ?? 0)
   const deuce = totalPts % 2 === 0
@@ -1296,7 +1297,7 @@ function Arena({ m, data, t }) {
   const tServer = srvOverride && srvOverride.base === feedServer ? srvOverride.val : feedServer
   const tServerRef = useRef(tServer)
   tServerRef.current = tServer
-  const server = sport === 'tennis' ? tServer : sport === 'volleyball' ? (x.server ? x.server - 1 : lv.spl ? (lv.spl === 'AWAY' ? 1 : 0) : lastPt ? lastPt.side : 0) : null
+  const server = sport === 'tennis' ? tServer : (sport === 'volleyball' || sport === 'tabletennis') ? (x.server ? x.server - 1 : lv.spl ? (lv.spl === 'AWAY' ? 1 : 0) : lastPt ? lastPt.side : 0) : null
   const srvY = server === 0 ? (deuce ? 68 : 32) : (deuce ? 32 : 68)
   const rcvY = 100 - srvY
   let att = null
@@ -1369,7 +1370,7 @@ function Arena({ m, data, t }) {
             }
           }
           setPhase({ kind: 'idle', ev: null })
-          const nextServer = sport === 'volleyball' ? ev.side : sport === 'tennis' ? (ev.t === 'game' ? 1 - tServer : tServer) : null
+          const nextServer = (sport === 'volleyball' || sport === 'tabletennis') ? ev.side : sport === 'tennis' ? (ev.t === 'game' ? 1 - tServer : tServer) : null
           if (net) eng.api.current.resume({ serveSide: nextServer })
           else eng.api.current.resume({ reset: { x: sport === 'basketball' ? (ev.side === 0 ? 8 : 92) : 50, y: 50 } })
         }, 2300)
