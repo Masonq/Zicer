@@ -1450,3 +1450,19 @@ img { display: block; max-width: 100%; }
 .lmt-pill { position: absolute; z-index: 4; top: 10px; left: 50%; translate: -50% 0; display: inline-flex; align-items: center; gap: 8px; height: 28px; padding: 0 12px; border-radius: 14px;
   background: rgba(10,16,14,.78); color: #fff; font-size: 13px; font-weight: 700; white-space: nowrap; }
 .lmt-pill b { color: var(--gold); }
+
+/* flat bookmaker-style view (top-down, no camera tilt): the ball runs along the centre line */
+.court { --tilt: 0deg !important; perspective: none !important; background: transparent !important; }
+.court > .court-svg, .court > .court-tex, .court > .court-light, .court > .arena-field { transform: none !important; }
+.court-depth, .court::after { display: none !important; }
+.court > .court-svg { filter: none !important; }
+.court .arena-fx g { display: none; }
+.court .arena-field .atk-call, .court .arena-field .tt-tag { transform: none !important; }
+.court .eng-ball { transition: left .9s cubic-bezier(.35,.1,.25,1); }
+/* bookmaker look: brighter lawn with clear mowing stripes, larger ball */
+.court-football .court-svg { filter: saturate(1.25) brightness(1.18) !important; }
+.tex-football { opacity: .35 !important; }
+.court-football .court-light { background: repeating-linear-gradient(90deg, rgba(255,255,255,.07) 0 8.33%, rgba(0,0,0,.05) 8.33% 16.66%), radial-gradient(140% 120% at 50% 50%, transparent 60%, rgba(0,0,0,.3) 100%) !important; }
+.tex-waterpolo { opacity: .18 !important; }
+.court .eng-ball { width: 22px !important; height: 22px !important; }
+.court .eng-ball.ball-tennis, .court .eng-ball.ball-tabletennis { width: 15px !important; height: 15px !important; }

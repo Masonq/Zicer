@@ -202,15 +202,12 @@ function buildGeneric(scene, sport) {
   const ox = isTT ? 0 : c.fx + c.fw / 2 - c.w / 2, oz = isTT ? 0 : c.fy + c.fh / 2 - c.h / 2
   const L = c.fw, Wd = c.fh
   if (isTT) {
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 30), new THREE.MeshStandardMaterial({ color: 0x6e2a2a, roughness: 1 })); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor)
     const slab = new THREE.Mesh(new THREE.BoxGeometry(L, 0.03, Wd), new THREE.MeshStandardMaterial({ color: 0x173f6e })); slab.position.y = top - 0.016; slab.castShadow = true; scene.add(slab)
     const legM = new THREE.MeshStandardMaterial({ color: 0x222222 })
     for (const lx of [-L / 2 + 0.25, L / 2 - 0.25]) for (const lz of [-Wd / 2 + 0.2, Wd / 2 - 0.2]) { const lg = new THREE.Mesh(new THREE.BoxGeometry(0.05, top, 0.05), legM); lg.position.set(lx, top / 2, lz); lg.castShadow = true; scene.add(lg) }
     const nw = 1.83, nh = 0.1525
     const net = new THREE.Mesh(new THREE.PlaneGeometry(nw, nh), netMat(nw, nh, true)); net.rotation.y = Math.PI / 2; net.position.set(0, top + nh / 2, 0); scene.add(net)
     const tape = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.012, nw), new THREE.MeshStandardMaterial({ color: 0xffffff })); tape.position.set(0, top + nh, 0); scene.add(tape)
-  } else {
-    const apron = new THREE.Mesh(new THREE.PlaneGeometry(c.w * 6, c.h * 6), new THREE.MeshStandardMaterial({ color: 0x0f1d18, roughness: 1 })); apron.rotation.x = -Math.PI / 2; apron.position.y = -0.02; scene.add(apron)
   }
   if (sport === 'handball' || sport === 'futsal') { goalFrame(scene, ox - L / 2, -1, 3, 2, 1, sport === 'handball' ? 0xe5544b : 0xffffff); goalFrame(scene, ox + L / 2, 1, 3, 2, 1, sport === 'handball' ? 0xe5544b : 0xffffff) }
   if (sport === 'hockey') {
@@ -240,6 +237,53 @@ function buildGeneric(scene, sport) {
   return { L, Wd, ox, oz, top, size: Math.max(c.w, c.h) }
 }
 
+// branded surround painted on the floor around any court (like the tennis one): WINLY on every side
+function brandFloor(scene, w, h, margin, color, y = -0.01) {
+  const W = w + margin * 2, H = h + margin * 2, ppm = Math.min(4096 / W, 2048 / H)
+  const cv = document.createElement('canvas'); cv.width = Math.round(W * ppm); cv.height = Math.round(H * ppm)
+  const g = cv.getContext('2d')
+  g.fillStyle = color; g.fillRect(0, 0, cv.width, cv.height)
+  const n = g.getImageData(0, 0, cv.width, cv.height), d = n.data
+  for (let i = 0; i < d.length; i += 4) { const k = (Math.random() - 0.5) * 8; d[i] += k; d[i + 1] += k; d[i + 2] += k }
+  g.putImageData(n, 0, 0)
+  const band = margin * ppm, fs = Math.min(band * 0.42, cv.width / 14)
+  g.textAlign = 'center'; g.textBaseline = 'middle'
+  const write = (txt, x, yy, rot, col, size) => { g.save(); g.translate(x, yy); g.rotate(rot); g.font = `700 ${size}px Oswald, Arial Narrow, sans-serif`; g.fillStyle = col; g.fillText(txt, 0, 0); g.restore() }
+  write('WINLY · LIGA PROGNOZA', cv.width / 2, band / 2, 0, 'rgba(242,194,48,.42)', fs)
+  write('WINLY · LIGA PROGNOZA', cv.width / 2, cv.height - band / 2, 0, 'rgba(242,194,48,.42)', fs)
+  write('WINLY', band / 2, cv.height / 2, -Math.PI / 2, 'rgba(255,255,255,.22)', fs * 1.1)
+  write('WINLY', cv.width - band / 2, cv.height / 2, Math.PI / 2, 'rgba(255,255,255,.22)', fs * 1.1)
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(W, H), new THREE.MeshStandardMaterial({ map: t, roughness: 0.95 }))
+  m.rotation.x = -Math.PI / 2; m.position.y = y; m.receiveShadow = true; scene.add(m)
+  const outer = new THREE.Mesh(new THREE.PlaneGeometry(W * 12, H * 12), new THREE.MeshStandardMaterial({ color, roughness: 1 }))
+  outer.rotation.x = -Math.PI / 2; outer.position.y = y - 0.01; outer.receiveShadow = true; scene.add(outer)
+}
+
+// volumetric arena atmosphere: gradient dome, gold light beams from above, slowly drifting particles in the air
+function addAtmosphere(scene, size, horizon) {
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(size * 9, 32, 16), new THREE.ShaderMaterial({
+    side: THREE.BackSide, depthWrite: false, fog: false,
+    uniforms: { top: { value: new THREE.Color(0x050b09) }, mid: { value: new THREE.Color(horizon) }, gold: { value: new THREE.Color(0x6b5413) } },
+    vertexShader: 'varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+    fragmentShader: 'uniform vec3 top; uniform vec3 mid; uniform vec3 gold; varying vec3 vP; void main(){ float h = clamp(vP.y*1.6, 0.0, 1.0); vec3 c = mix(mid, top, pow(h, 0.7)); float glow = exp(-pow(vP.y-0.18,2.0)*30.0) * exp(-pow(vP.x,2.0)*2.5) * 0.55; gl_FragColor = vec4(c + gold*glow, 1.0); }',
+  }))
+  scene.add(dome)
+  const beamMat = new THREE.MeshBasicMaterial({ color: 0xf2c230, transparent: true, opacity: 0.07, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false })
+  const beams = []
+  for (const [x, z] of [[-0.55, -0.6], [0.55, -0.6], [-0.2, -0.75], [0.2, -0.75]]) {
+    const h = size * 1.6
+    const b = new THREE.Mesh(new THREE.ConeGeometry(size * 0.18, h, 24, 1, true), beamMat)
+    b.position.set(x * size, h / 2 - size * 0.05, z * size); b.rotation.z = x * 0.35; scene.add(b); beams.push(b)
+  }
+  const N = 260, pos = new Float32Array(N * 3)
+  for (let i = 0; i < N; i++) { pos[i * 3] = (Math.random() - 0.5) * size * 1.6; pos[i * 3 + 1] = Math.random() * size * 0.5; pos[i * 3 + 2] = (Math.random() - 0.8) * size }
+  const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(pos, 3))
+  const dust = new THREE.Points(pg, new THREE.PointsMaterial({ color: 0xf6dc8a, size: size * 0.004, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending }))
+  scene.add(dust)
+  return (t) => { dust.position.y = Math.sin(t * 0.0002) * size * 0.01; dust.rotation.y = t * 0.00002; beams.forEach((b, i) => { b.material.opacity = 0.06 + Math.sin(t * 0.0006 + i) * 0.015 }) }
+}
+
 export default function Stage3D({ sport, eng, att = null, level = 0 }) {
   const host = useRef(null)
   const live = useRef({ att, level })
@@ -266,17 +310,20 @@ export default function Stage3D({ sport, eng, att = null, level = 0 }) {
     let len, wid, ox = 0, oz = 0, top = 0, size
     if (generic) {
       const g = buildGeneric(scene, sport); len = g.L; wid = g.Wd; ox = g.ox; oz = g.oz; top = g.top; size = g.size
-      if (!REAR) { const c = COURT[sport]; addBackdrop(scene, c.w, c.h) } // our branded LED wall behind the far side
     } else {
       len = football ? 105 : 23.77; wid = football ? 68 : 10.97; size = len
       const pw = football ? len + 12 : len + 44, ph = football ? wid + 12 : wid + 32
       const ground = new THREE.Mesh(new THREE.PlaneGeometry(pw, ph), new THREE.MeshStandardMaterial({ map: football ? pitchTexture() : tennisTexture(), roughness: 0.95 }))
       ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground)
       const apron = new THREE.Mesh(new THREE.PlaneGeometry(pw + 400, ph + 400), new THREE.MeshStandardMaterial({ color: football ? 0x1f4d2a : 0x245c45, roughness: 1 }))
-      apron.rotation.x = -Math.PI / 2; apron.position.y = -0.02; apron.receiveShadow = true; scene.add(apron)
-      if (football) { addBackdrop(scene, pw, ph); addBoards(scene, pw, ph, 0.9); addGoal(scene, -len / 2, -1); addGoal(scene, len / 2, 1); addFlags(scene, len, wid) } else addNetTennis(scene)
+      apron.rotation.x = -Math.PI / 2; apron.position.y = -0.02; apron.receiveShadow = true; if (tennis) scene.add(apron)
+      if (football) { addGoal(scene, -len / 2, -1); addGoal(scene, len / 2, 1); addFlags(scene, len, wid); brandFloor(scene, pw, ph, 10, '#1e5a2c', -0.015) } else addNetTennis(scene)
     }
-    scene.fog = tennis ? new THREE.Fog(bg, 38, 85) : new THREE.Fog(bg, size * 3, size * 6)
+    const HORIZON = { football: 0x123a22, tennis: 0x1d4d39, basketball: 0x2a1c12, hockey: 0x1a2a3a, volleyball: 0x15304a, handball: 0x16304e, futsal: 0x12352a, waterpolo: 0x0e2c3e, tabletennis: 0x3a1616 }[sport] || 0x123a22
+    if (generic) { const c = COURT[sport]; const SURR = { basketball: '#2b2018', hockey: '#1d2a36', volleyball: '#1d3a58', handball: '#1c3a5c', futsal: '#173f33', waterpolo: '#183848', tabletennis: '#4a1c1c' }[sport] || '#1d3a2c'; if (sport === 'tabletennis') brandFloor(scene, 6, 4, 3, SURR, 0.0); else brandFloor(scene, c.w, c.h, Math.max(2, c.w * 0.12), SURR, -0.012) }
+    scene.background = new THREE.Color(HORIZON)
+    scene.fog = new THREE.Fog(HORIZON, size * (tennis ? 1.6 : 1.3), size * (tennis ? 3.6 : 3.2))
+    const atmo = addAtmosphere(scene, size * (tennis ? 1.4 : 1), HORIZON)
     // lights: soft sky + four floodlights
     scene.add(new THREE.HemisphereLight(0xdfeee6, 0x1b2a22, 1.0))
     const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(-size * 0.3, size * 0.6, size * 0.25); sun.castShadow = true
@@ -317,8 +364,9 @@ export default function Stage3D({ sport, eng, att = null, level = 0 }) {
     resize()
     const ro = new ResizeObserver(resize); ro.observe(el)
     let raf = 0
-    const tick = () => {
+    const tick = (now = 0) => {
       raf = requestAnimationFrame(tick)
+      atmo(now)
       const be = eng?.ballEl?.current
       if (be && be.style.left) {
         const p = toWorld(parseFloat(be.style.left), parseFloat(be.style.top))

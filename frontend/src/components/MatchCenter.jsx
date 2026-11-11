@@ -656,8 +656,8 @@ function usePlayEngine({ live, sport, att, intensity, eventSpot, eventKey, isSco
     let raf = 0
     const rnd = (a, b) => a + Math.random() * (b - a)
     const place = (p, h = 0) => {
-      if (ballEl.current) { ballEl.current.style.left = `${p.x}%`; ballEl.current.style.top = `${p.y}%`; ballEl.current.style.transform = `translate(-50%, calc(-50% - ${h * 24}px)) scale(${1 + h * 0.3})` }
-      if (shadowEl.current) { shadowEl.current.style.left = `${p.x}%`; shadowEl.current.style.top = `${p.y}%`; shadowEl.current.style.opacity = String(0.5 - h * 0.25) }
+      if (ballEl.current) { ballEl.current.style.left = `${p.x}%`; ballEl.current.style.top = '50%'; ballEl.current.style.transform = `translate(-50%, -50%)` }
+      if (shadowEl.current) { shadowEl.current.style.left = `${p.x}%`; shadowEl.current.style.top = '50%'; shadowEl.current.style.opacity = '0.45' }
     }
     const next = () => {
       const { att: a, intensity: k, sport: sp, server: srv } = cfg.current
@@ -689,7 +689,7 @@ function usePlayEngine({ live, sport, att, intensity, eventSpot, eventKey, isSco
       place(p, h)
       if (now - e.lastTrail > 60) {
         e.lastTrail = now; e.trail.push(p); if (e.trail.length > 22) e.trail.shift()
-        if (trailEl.current) trailEl.current.setAttribute('points', e.trail.map((q) => `${q.x.toFixed(2)},${q.y.toFixed(2)}`).join(' '))
+        if (trailEl.current) trailEl.current.setAttribute('points', e.trail.map((q) => `${q.x.toFixed(2)},50`).join(' '))
       }
       if (tt >= 1) {
         if (e.event) { e.event = false; e.hold = now + 1500 } else { const n3 = next(); seg(n3.to, n3.dur, n3.hop) }
@@ -706,7 +706,7 @@ function usePlayEngine({ live, sport, att, intensity, eventSpot, eventKey, isSco
     e.from = { ...e.pos }; e.to = eventSpot; e.t0 = performance.now(); e.dur = 520; e.hop = sport === 'basketball' ? 0.8 : 0.15; e.event = true
     e.after = isScore ? (sport === 'basketball' ? { x: eventSpot.x > 50 ? 92 : 8, y: 50 } : { x: 50, y: 50 }) : null
     if (rippleEl.current) {
-      rippleEl.current.style.left = `${eventSpot.x}%`; rippleEl.current.style.top = `${eventSpot.y}%`
+      rippleEl.current.style.left = `${eventSpot.x}%`; rippleEl.current.style.top = '50%'
       rippleEl.current.classList.remove('go'); void rippleEl.current.offsetWidth; rippleEl.current.classList.add('go')
     }
   }, [eventKey]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -891,8 +891,8 @@ function TennisCourt({ m, data, t }) {
       if (!el || !sh || !tr) return
       if (now < t0) { // toss
         const k = 1 - Math.abs((now - (t0 - 900)) / 450 - 1)
-        el.style.left = `${start.x}%`; el.style.top = `${start.y}%`; el.style.transform = `translate(-50%, calc(-50% - ${k * 22}px)) scale(${1 + k * 0.25})`
-        sh.style.left = `${start.x}%`; sh.style.top = `${start.y}%`
+        el.style.left = `${start.x}%`; el.style.top = '50%'; el.style.transform = `translate(-50%, -50%)`
+        sh.style.left = `${start.x}%`; sh.style.top = '50%'
         tr.setAttribute('points', '')
         raf.current = requestAnimationFrame(draw); return
       }
@@ -900,9 +900,9 @@ function TennisCourt({ m, data, t }) {
       const tt = Math.min(1, (now - t0) / dur(shot))
       const x = p0.x + (p1.x - p0.x) * tt, y = p0.y + (p1.y - p0.y) * tt
       const h = 4 * tt * (1 - tt)
-      el.style.left = `${x}%`; el.style.top = `${y}%`; el.style.transform = `translate(-50%, calc(-50% - ${h * 24}px)) scale(${1 + h * 0.3})`
-      sh.style.left = `${x}%`; sh.style.top = `${y}%`; sh.style.opacity = String(0.55 - h * 0.3)
-      tr.setAttribute('points', [...pts.slice(Math.max(0, shot - 2), shot + 1), { x, y }].map((p) => `${p.x},${p.y}`).join(' '))
+      el.style.left = `${x}%`; el.style.top = '50%'; el.style.transform = `translate(-50%, -50%)`
+      sh.style.left = `${x}%`; sh.style.top = '50%'; sh.style.opacity = '0.45'
+      tr.setAttribute('points', [...pts.slice(Math.max(0, shot - 2), shot + 1), { x, y }].map((p) => `${p.x},50`).join(' '))
       if (tt >= 1) {
         marks.push(p1); if (marks.length > 3) marks.shift()
         if (marksEl.current) marksEl.current.innerHTML = marks.map((m) => `<circle cx="${m.x}" cy="${m.y}" r="0.9" />`).join('')
@@ -998,8 +998,8 @@ function useArenaEngine(cfgNow) {
     const net = () => ['tennis', 'volleyball', 'tabletennis'].includes(cfg.current.sport)
     const place = (p, h = 0) => {
       const b = ballEl.current, sh = shadowEl.current
-      if (b) { b.style.left = `${p.x}%`; b.style.top = `${p.y}%`; b.style.transform = `translate(-50%, calc(-50% - ${h * 24}px)) scale(${1 + h * 0.3})` }
-      if (sh) { sh.style.left = `${p.x}%`; sh.style.top = `${p.y}%`; sh.style.opacity = String(0.5 - h * 0.25) }
+      if (b) { b.style.left = `${p.x}%`; b.style.top = '50%'; b.style.transform = `translate(-50%, -50%)` }
+      if (sh) { sh.style.left = `${p.x}%`; sh.style.top = '50%'; sh.style.opacity = '0.45' }
     }
     const mark = (p) => {
       if (!net()) return
@@ -1008,7 +1008,7 @@ function useArenaEngine(cfgNow) {
     }
     const ripple = (p) => {
       const r = rippleEl.current; if (!r) return
-      r.style.left = `${p.x}%`; r.style.top = `${p.y}%`; r.classList.remove('go'); void r.offsetWidth; r.classList.add('go')
+      r.style.left = `${p.x}%`; r.style.top = '50%'; r.classList.remove('go'); void r.offsetWidth; r.classList.add('go')
     }
     const seg = (to, dur, hop) => { s.from = { ...s.pos }; s.to = to; s.t0 = performance.now(); s.dur = dur; s.hop = hop }
     const next = () => {
@@ -1056,7 +1056,7 @@ function useArenaEngine(cfgNow) {
       s.pos = p; place(p, h)
       if (now - s.lastTrail > 60) {
         s.lastTrail = now; s.trail.push(p); if (s.trail.length > (net() ? 40 : 22)) s.trail.shift()
-        if (trailEl.current) trailEl.current.setAttribute('points', s.trail.map((q) => `${q.x.toFixed(2)},${q.y.toFixed(2)}`).join(' '))
+        if (trailEl.current) trailEl.current.setAttribute('points', s.trail.map((q) => `${q.x.toFixed(2)},50`).join(' '))
       }
       if (tt < 1) return
       mark(s.to)
@@ -1321,7 +1321,7 @@ function Arena({ m, data, t }) {
   const brkLabel = brkUntil ? (brkUntil > Date.now() ? `${brkTitle} ${fmtLeft(brkUntil)}` : `${brkTitle}, ${t('resumeSoon')}`) : brkTitle
   const eng = useArenaEngine({ live, sport, att, intensity, server, srvY, rcvY })
   // 3D broadcast view (LMT-style) where it is ready; everything else stays 2D. ?2d in the address forces the flat view
-  const use3d = webgl && ['football', 'tennis', 'basketball', 'hockey', 'volleyball', 'handball', 'futsal', 'waterpolo', 'tabletennis'].includes(sport) && !/[?&]2d\b/.test(window.location.search)
+  const use3d = false && webgl // flat bookmaker-style view everywhere (3D kept in code, switched off)
   const [, tick] = useState(0)
   const [pp, setPp] = useState(null) // hockey power play: { side, until }
   useEffect(() => { if (!pp) return; const id = setInterval(() => { tick((v) => v + 1); if (Date.now() > pp.until) setPp(null) }, 1000); return () => clearInterval(id) }, [pp])
