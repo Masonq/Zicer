@@ -1077,6 +1077,15 @@ function breakRule(sport, code, league) {
   if (sport === 'waterpolo') return /HALF|Q2_Q3/.test(c) ? { sec: 180, k: 'brkHalf' } : { sec: 120, k: 'brkQuarter' }
   return { sec: 120, k: 'pause' }
 }
+// Play stops after these events (seconds of stoppage before play resumes), per sport
+const STOPS = {
+  football: { yellow: 15, red: 30, sub: 15, corner: 12, penalty: 35 },
+  hockey: { pen2: 25, penalty: 40 },
+  basketball: { foul: 8 },
+  waterpolo: { foul: 6 },
+  volleyball: {},
+  tennis: {},
+}
 const TIMEOUT_SEC = { basketball: 60, volleyball: 30, waterpolo: 60, hockey: 30, football: 0 }
 const fmtLeft = (until) => { const s = Math.max(0, Math.round((until - Date.now()) / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` }
 
@@ -1166,9 +1175,11 @@ function Arena({ m, data, t }) {
   const brkLabel = brkUntil ? (brkUntil > Date.now() ? `${brkTitle} ${fmtLeft(brkUntil)}` : `${brkTitle}, ${t('resumeSoon')}`) : brkTitle
   const eng = useArenaEngine({ live, sport, att, intensity, server, srvY, rcvY })
   const [, tick] = useState(0)
+  const [pp, setPp] = useState(null) // hockey power play: { side, until }
+  useEffect(() => { if (!pp) return; const id = setInterval(() => { tick((v) => v + 1); if (Date.now() > pp.until) setPp(null) }, 1000); return () => clearInterval(id) }, [pp])
   useEffect(() => { if (!isBreak) return; const id = setInterval(() => tick((v) => v + 1), 1000); return () => clearInterval(id) }, [isBreak])
   useEffect(() => {
-    if (phase.kind !== 'stats') return
+    if (phase.kind !== 'stats' && phase.kind !== 'stop') return
     eng.api.current && eng.api.current.pause()
     const id = setInterval(() => {
       tick((v) => v + 1)
@@ -1226,7 +1237,7 @@ function Arena({ m, data, t }) {
     return () => clearTimeout(guard)
   }, [phase.kind, queue.current.length, live]) // eslint-disable-line react-hooks/exhaustive-deps
   // non-scoring events: short info in the status row, ball goes to the spot (shot, corner...)
-  const info = (data.xev || []).filter((e) => !SCORING.has(e.t) && ['shot_on', 'shot_off', 'corner', 'yellow', 'red', 'penalty', 'pen2', 'foul', 'bp', 'ace', 'df', 'timeout'].includes(e.t))
+  const info = (data.xev || []).filter((e) => !SCORING.has(e.t) && ['shot_on', 'shot_off', 'corner', 'yellow', 'red', 'penalty', 'pen2', 'foul', 'bp', 'ace', 'df', 'timeout', 'sub'].includes(e.t))
   const lastInfo = info[info.length - 1]
   const [infoShown, setInfoShown] = useState(null)
   const infoSeen = useRef(null)
@@ -1236,6 +1247,11 @@ function Arena({ m, data, t }) {
     if (!lastInfo || lastInfo.at + lastInfo.t === infoSeen.current || !live) return
     infoSeen.current = lastInfo.at + lastInfo.t
     setInfoShown(lastInfo)
+    const stopSec = (STOPS[sport] || {})[lastInfo.t]
+    if (stopSec && phase.kind === 'idle') {
+      setPhase({ kind: 'stop', ev: lastInfo, until: Date.now() + stopSec * 1000 })
+      if (sport === 'hockey' && lastInfo.t === 'pen2') setPp({ side: 1 - lastInfo.side, until: Date.now() + (stopSec + 120) * 1000 })
+    }
     if (lastInfo.t === 'timeout' && TIMEOUT_SEC[sport] && phase.kind === 'idle') {
       setPhase({ kind: 'stats', ev: null, until: Date.now() + TIMEOUT_SEC[sport] * 1000, title: `${t('ev_timeout')} ${names[lastInfo.side] || ''}`.trim() })
     }
@@ -1244,6 +1260,17 @@ function Arena({ m, data, t }) {
     const id = setTimeout(() => setInfoShown(null), 4000)
     return () => clearTimeout(id)
   }, [lastInfo?.at, lastInfo?.t, data.now]) // eslint-disable-line react-hooks/exhaustive-deps
+  // basketball play-by-play fouls stop the play (whistle, clock stops)
+  const lastFoul = sport === 'basketball' ? [...plays].reverse().find((p) => ['CM', 'CMU', 'CMT'].includes(p.pt)) : null
+  const foulKey = lastFoul ? `${lastFoul.q}-${lastFoul.clock}-${lastFoul.player}` : ''
+  const foulSeen = useRef(null)
+  useEffect(() => {
+    if (!data.now) return
+    if (foulSeen.current === null) { foulSeen.current = foulKey; return }
+    if (!foulKey || foulKey === foulSeen.current || !live) return
+    foulSeen.current = foulKey
+    if (phase.kind === 'idle') setPhase({ kind: 'stop', ev: { t: 'foul', side: lastFoul.home ? 0 : 1, at: Date.now() }, until: Date.now() + 8000 })
+  }, [foulKey, data.now]) // eslint-disable-line react-hooks/exhaustive-deps
   // basketball play-by-play timeouts (EuroLeague / NBA feeds)
   const lastTout = sport === 'basketball' ? [...plays].reverse().find((p) => p.pt === 'TOUT') : null
   const toutKey = lastTout ? `${lastTout.q}-${lastTout.clock}-${lastTout.home}` : ''
@@ -1264,10 +1291,12 @@ function Arena({ m, data, t }) {
   const boardR = sport === 'tennis' ? (live ? shown.ss[1] : scoreNow[1]) : finished ? scoreNow[1] : shown.score[1]
   let status = null
   if (finished) status = null
+  else if (phase.kind === 'stop' && phase.ev) status = { side: phase.ev.side, title: `${xevLabel(phase.ev, sport, t)} ${fmtLeft(phase.until)}`, icon: phase.ev.t }
   else if (phase.kind === 'stats') status = { side: null, title: `${phase.setBreak ? t('setBreak') : t('changeover')} ${fmtLeft(phase.until)}`, icon: 'timeout' }
   else if (isBreak && phase.kind === 'idle') status = { side: null, title: brkLabel, icon: 'timeout' }
   else if (phase.kind !== 'idle' && phase.ev) status = { side: phase.ev.side, title: phase.kind === 'finish' ? (net ? t('rally') : sport === 'basketball' ? t('shot') : t('ev_shot_on')) : bannerTitle(phase.ev, sport, t), icon: phase.kind === 'finish' ? null : (sport === 'tennis' ? 'ace' : 'score') }
   else if (infoShown) status = { side: infoShown.side, title: infoShown.t === 'bp' ? t('ev_bp') : xevLabel(infoShown, sport, t), icon: infoShown.t === 'bp' ? 'break' : infoShown.t }
+  else if (pp && live) status = { side: pp.side, title: `${t('powerPlay')} ${fmtLeft(pp.until)}`, icon: 'pen2' }
   else if (live && att !== null) status = { side: att, title: net ? t('serve') : sport === 'basketball' ? t('withBall') : sport === 'hockey' ? t('withPuck') : (ttl && ![t('live'), t('finished'), t('pause'), t('ev_goal'), t('ev_set'), t('ev_vpoint'), `${t('goal')}!`].includes(ttl) && !ttl.startsWith('+') ? ttl : (sport === 'hockey' ? t('withPuck') : t('withBall'))), arrow: !net }
   const ev = phase.ev
   const bannerScore = sport === 'tennis' ? (ev && ev.t === 'game' ? (shown.per[shown.per.length - 1] || [0, 0]) : shown.ss) : sport === 'volleyball' && ev && ev.t === 'point' ? (shown.per[shown.per.length - 1] || [0, 0]) : shown.score
@@ -1355,6 +1384,15 @@ function Arena({ m, data, t }) {
                 <span className="ellip">{names[ev.side]}{ev.sub ? `, ${ev.sub}` : ''}</span>
               </div>
               <div className="ab-score num"><span className={ev.side === 0 ? 'hl' : ''}>{bannerScore[0]}</span><i>:</i><span className={ev.side === 1 ? 'hl' : ''}>{bannerScore[1]}</span></div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        <AnimatePresence>
+          {phase.kind === 'stop' && phase.ev && (
+            <motion.div key={'stop' + phase.ev.at + phase.ev.t} className={`stop-card s${phase.ev.side}`} initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
+              <span className="sc-ico"><EvIconBig type={phase.ev.t} sport={sport} /></span>
+              <span className="sc-txt"><b>{xevLabel(phase.ev, sport, t)}</b><span className="ellip">{names[phase.ev.side]}</span></span>
+              <span className="sc-time num">{fmtLeft(phase.until)}</span>
             </motion.div>
           )}
         </AnimatePresence>

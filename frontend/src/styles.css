@@ -445,7 +445,8 @@ img { display: block; max-width: 100%; }
 .board-team { padding-top: 2px; }
 .board .tablo { align-self: start; }
 
-.is-loading { opacity: 0.6; transition: opacity .2s; pointer-events: none; }
+.is-loading { opacity: 0.6; transition: opacity .2s; animation: unstale 0s linear 2.5s forwards; }
+@keyframes unstale { to { opacity: 1; } }
 .center-skel { height: 470px; border-radius: var(--r-lg); }
 @media (min-width: 600px) { .center-skel { height: 520px; } }
 
@@ -742,3 +743,12 @@ img { display: block; max-width: 100%; }
   box-shadow: 0 0 0 0.5px rgba(0,0,0,0.6), 0 0.5px 1px rgba(0,0,0,0.4) !important; }
 .court-hockey .eng-shadow { display: none; }
 .court-hockey .arena-fx polyline { stroke: rgba(40, 55, 70, 0.35) !important; stroke-dasharray: none; }
+
+/* stoppage card (cards, penalties, fouls, corners, substitutions) */
+.stop-card { position: absolute; left: 50%; top: 10%; translate: -50% 0; z-index: 6; display: flex; align-items: center; gap: 10px; min-width: 200px; max-width: 86%;
+  padding: 8px 12px; border-radius: 12px; background: rgba(10, 16, 14, 0.9); border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 8px 20px rgba(0,0,0,0.35); }
+.stop-card.s0 { border-left: 4px solid var(--c0); } .stop-card.s1 { border-left: 4px solid var(--c1); }
+.sc-ico { display: flex; color: #fff; } .sc-ico svg { width: 22px; height: 22px; }
+.sc-txt { display: flex; flex-direction: column; min-width: 0; flex: 1; line-height: 1.2; }
+.sc-txt b { color: #fff; font-size: 14px; font-weight: 800; } .sc-txt span { color: #b9c6bf; font-size: 12px; }
+.sc-time { color: var(--gold); font-size: 15px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(242,194,48,0.12); }

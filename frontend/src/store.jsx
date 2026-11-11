@@ -78,22 +78,23 @@ export function usePoll(fn, deps, every = 0, keep = false, cacheKey = null) {
   const key = cacheKey || fn.toString() + '|' + JSON.stringify(deps)
   const [state, setState] = useState(() => {
     const c = POLL_CACHE.get(key)
-    return { data: c ?? null, error: null, loading: true }
+    return { data: c ?? null, error: null, loading: true, stale: false }
   })
   useEffect(() => {
     let alive = true
     let timer
     const cached = POLL_CACHE.get(key)
-    if (cached !== undefined) setState({ data: cached, error: null, loading: true })
-    else if (!keep) setState({ data: null, error: null, loading: true })
-    else setState((s) => ({ ...s, loading: true }))
+    // stale = we are still showing data of other parameters (e.g. another sport) while the new one loads
+    if (cached !== undefined) setState({ data: cached, error: null, loading: true, stale: false })
+    else if (!keep) setState({ data: null, error: null, loading: true, stale: false })
+    else setState((s) => ({ ...s, loading: true, stale: !!s.data }))
     const run = async (first) => {
       try {
         const d = await fn()
         if (cacheKey) cachePut(key, d); else POLL_CACHE.set(key, d)
         if (POLL_CACHE.size > 120) POLL_CACHE.delete(POLL_CACHE.keys().next().value)
-        if (alive) setState({ data: d, error: null, loading: false })
-      } catch (e) { if (alive) setState((s) => ({ data: first && cached === undefined && !keep ? null : s.data, error: e, loading: false })) }
+        if (alive) setState({ data: d, error: null, loading: false, stale: false })
+      } catch (e) { if (alive) setState((s) => ({ data: first && cached === undefined && !keep ? null : s.data, error: e, loading: false, stale: false })) }
       if (alive && every) timer = setTimeout(() => run(false), every)
     }
     run(true)
