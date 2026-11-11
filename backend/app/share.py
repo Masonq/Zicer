@@ -308,6 +308,14 @@ async def ticket_png(tid: int, lang: str = "sr", f: str = "wide", db: Session = 
     return Response(png, media_type="image/png", headers={"Cache-Control": "public, max-age=60"})
 
 
+def _events(n, lang):
+    if lang == "ru":
+        w = "событие" if n % 10 == 1 and n % 100 != 11 else "события" if n % 10 in (2, 3, 4) and n % 100 not in (12, 13, 14) else "событий"
+        return f"{n} {w}"
+    w = "događaj" if n % 10 == 1 and n % 100 != 11 else "događaja"
+    return f"{n} {w if lang == 'sr' else ('догађај' if w == 'događaj' else 'догађаја')}"
+
+
 @router.get("/t/{tid}", response_class=HTMLResponse)
 def ticket_share_page(tid: int, lang: str = "sr", db: Session = Depends(get_db)):
     t = db.get(Ticket, tid)
@@ -322,7 +330,7 @@ def ticket_share_page(tid: int, lang: str = "sr", db: Session = Depends(get_db))
     url = f"{config.PUBLIC_URL}/tiket/{tid}"
     self_url = f"{config.PUBLIC_URL}/t/{tid}?lang={lang}"
     return f"""<!doctype html><html lang="sr"><head><meta charset="utf-8"><title>{title}</title>
-<meta property="og:title" content="{title}"><meta property="og:description" content="Winly — {L['events'].format(n=n)}">
+<meta property="og:title" content="{title}"><meta property="og:description" content="Winly — {_events(n, lang)}">
 <meta property="og:image" content="{img}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
 <meta property="og:url" content="{self_url}"><meta property="og:site_name" content="Winly"><meta name="twitter:card" content="summary_large_image">
 <meta http-equiv="refresh" content="0;url={url}"></head><body><a href="{url}">{title}</a></body></html>"""
