@@ -351,7 +351,7 @@ def probe_sports(db: Session) -> str:
                     v = xfeed._get(c, path).json().get("Value") or []
                     out.append(f"{name}/{kind}:{len(v)}" + (f"({(v[0].get('SN') or '')[:10]}|{(v[0].get('L') or '')[:24]})" if v else ""))
                 except Exception as e:  # noqa
-                    out.append(f"{name}/{kind}:err")
+                    out.append(f"{name}/{kind}:err({str(e)[:50]})")
                 _t.sleep(1.2)
     return " ".join(out)
 
