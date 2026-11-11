@@ -276,7 +276,7 @@ def sync_x22_line(db: Session) -> str:
     """Futsal and esports: fixtures and 1-X-2 prices from the 22Bet line (MaxBet doesn't offer them)."""
     n = 0
     fetched = {}
-    with httpx.Client(headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"}, timeout=25) as c:
+    with httpx.Client(headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"}, timeout=25, follow_redirects=True) as c:
         for sport, sid in X22_LINE.items():
             games = []
             # the prematch feed answers only with the brand's partner/group ids on some mirrors: try the known variants
@@ -343,7 +343,7 @@ def probe_sports(db: Session) -> str:
     """Gentle one-off check (a few requests, 1 s apart): is the 22Bet prematch line reachable, and are MMA / boxing / futsal in it?"""
     import time as _t
     out = []
-    with httpx.Client(headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"}, timeout=20) as c:
+    with httpx.Client(headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"}, timeout=20, follow_redirects=True) as c:
         for name, sid in (("football", 1), ("futsal", 14), ("boxing", 9), ("mma", 56), ("mma2", 189), ("combat", 41)):
             for kind, extra in (("line", "&tf=2200000"), ("live", "")):
                 path = f"/{'LineFeed' if kind == 'line' else 'LiveFeed'}/Get1x2_VZip?sports={sid}&count=5&lng=en&mode=4&country=1&getEmpty=true{extra}"
