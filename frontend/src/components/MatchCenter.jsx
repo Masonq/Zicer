@@ -121,23 +121,38 @@ export function CourtLines({ sport }) {
   if (sport === 'basketball') {
     // FIBA court 28 x 15 m on maple planks, apron, benches, scorer's table, baseline boards, centre logo
     const cy = Y + H / 2, cx = X + W / 2
-    const paint = '#3B5249'
+    const paint = '#3F5272'
     const planks = Array.from({ length: 46 }, (_, i) => i)
+    const W2 = { ...WL, strokeWidth: 1.4 }
     const half = (dir) => {
       const bx = dir === 1 ? X : X + W
       const s = dir
       const hoop = bx + s * 1.575
+      const ft = bx + s * 5.8
+      const sweep = dir === 1 ? 1 : 0
+      // lane space marks (FIBA): block at 1.75 m, then neutral zone and marks every 0.85 m, outward 0.1 m
+      const marks = [1.75, 2.85, 3.7, 4.55]
       return (
         <g key={dir}>
-          <rect x={dir === 1 ? bx : bx - 5.8} y={cy - 2.45} width={5.8} height={4.9} fill={paint} fillOpacity="0.9" />
-          <rect x={dir === 1 ? bx : bx - 5.8} y={cy - 2.45} width={5.8} height={4.9} {...WL} />
-          <path d={`M ${bx + s * 5.8} ${cy - 1.8} A 1.8 1.8 0 0 ${dir === 1 ? 1 : 0} ${bx + s * 5.8} ${cy + 1.8}`} {...WL} />
-          <path d={`M ${bx} ${cy - 6.6} H ${bx + s * 2.99} A 6.75 6.75 0 0 ${dir === 1 ? 1 : 0} ${bx + s * 2.99} ${cy + 6.6} H ${bx}`} {...WL} />
-          <path d={`M ${hoop} ${cy - 1.25} A 1.25 1.25 0 0 ${dir === 1 ? 1 : 0} ${hoop} ${cy + 1.25}`} {...WL} />
-          <rect x={dir === 1 ? bx + 1.2 - 0.06 : bx - 1.2 - 0.06} y={cy - 0.9} width={0.12} height={1.8} fill="#E8ECEF" />
-          <line x1={bx + s * 1.2} y1={cy} x2={hoop - s * 0.23} y2={cy} stroke="#C8CDD1" strokeWidth="0.06" />
-          <circle cx={hoop} cy={cy} r={0.23} fill="none" stroke="#D0602A" strokeWidth="0.06" />
-          <rect x={dir === 1 ? bx - 1.6 : bx + 0.6} y={cy - 1.4} width={1} height={2.8} rx="0.15" fill="#232B33" />
+          <rect x={dir === 1 ? bx : bx - 5.8} y={cy - 2.45} width={5.8} height={4.9} fill={paint} fillOpacity="0.92" />
+          <rect x={dir === 1 ? bx : bx - 5.8} y={cy - 2.45} width={5.8} height={4.9} {...W2} />
+          {marks.map((d, i) => [-1, 1].map((sy) => (
+            <rect key={`${d}${sy}`} x={bx + s * d - (i === 0 ? 0.05 : 0.025)} y={sy < 0 ? cy - 2.45 - 0.22 : cy + 2.45} width={i === 0 ? 0.14 : 0.08} height={0.22} fill="#F2F2F0" fillOpacity="0.85" />
+          )))}
+          {/* free-throw circle: solid outside the lane, dashed inside */}
+          <path d={`M ${ft} ${cy - 1.8} A 1.8 1.8 0 0 ${sweep} ${ft} ${cy + 1.8}`} {...W2} />
+          <path d={`M ${ft} ${cy - 1.8} A 1.8 1.8 0 0 ${1 - sweep} ${ft} ${cy + 1.8}`} {...W2} strokeDasharray="4 4" />
+          {/* three-point line with corner straights */}
+          <path d={`M ${bx} ${cy - 6.6} H ${bx + s * 2.99} A 6.75 6.75 0 0 ${sweep} ${bx + s * 2.99} ${cy + 6.6} H ${bx}`} {...W2} />
+          {/* no-charge semi-circle */}
+          <path d={`M ${bx + s * 1.2} ${cy - 1.25} H ${hoop} A 1.25 1.25 0 0 ${sweep} ${hoop} ${cy + 1.25} H ${bx + s * 1.2}`} {...W2} />
+          {/* backboard, support, ring and net */}
+          <rect x={dir === 1 ? bx + 1.2 - 0.07 : bx - 1.2 - 0.07} y={cy - 0.9} width={0.14} height={1.8} fill="#EEF1F3" />
+          <rect x={dir === 1 ? bx - 0.9 : bx - 1.2} y={cy - 0.12} width={2.1} height={0.24} fill="#3A4249" />
+          <circle cx={hoop} cy={cy} r={0.3} fill="rgba(255,255,255,0.18)" stroke="#E0E3E5" strokeWidth="0.03" strokeDasharray="0.06 0.05" />
+          <circle cx={hoop} cy={cy} r={0.225} fill="none" stroke="#C8592A" strokeWidth="0.07" />
+          {/* throw-in marks on the sidelines */}
+          <line x1={bx + s * 8.325} y1={Y} x2={bx + s * 8.325} y2={Y - 0.35} stroke="#F2F2F0" strokeOpacity="0.8" strokeWidth="0.06" />
         </g>
       )
     }
@@ -159,7 +174,7 @@ export function CourtLines({ sport }) {
         <rect x={X} y={Y} width={W} height={H} fill={`url(#${uid}light)`} />
         <rect x={X} y={Y} width={W} height={H} {...WL} />
         <line x1={cx} y1={Y} x2={cx} y2={Y + H} {...WL} />
-        <circle cx={cx} cy={cy} r={1.8} fill={paint} fillOpacity="0.9" /><circle cx={cx} cy={cy} r={1.8} {...WL} />
+        <circle cx={cx} cy={cy} r={1.8} fill={paint} fillOpacity="0.85" /><circle cx={cx} cy={cy} r={1.8} {...WL} strokeWidth={1.4} />
         <image href={LOGO_SRC} x={cx - 1.3} y={cy - 0.65} width={2.6} height={1.3} opacity="0.55" preserveAspectRatio="xMidYMid meet" />
         {[1, -1].map(half)}
       </svg>
@@ -1089,6 +1104,11 @@ const STOPS = {
 const TIMEOUT_SEC = { basketball: 60, volleyball: 30, waterpolo: 60, hockey: 30, football: 0 }
 const fmtLeft = (until) => { const s = Math.max(0, Math.round((until - Date.now()) / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` }
 
+// basketball tank-top jersey
+const Jersey = ({ cls }) => (
+  <svg className={cls} width="16" height="18" viewBox="0 0 16 18" aria-hidden="true"><path d="M4 0 h2.2 a1.8 2.4 0 0 0 3.6 0 H12 l0.6 3.2 c0.4 1.6 1.4 2.4 2.4 2.8 V18 H1 V6 c1-0.4 2-1.2 2.4-2.8 Z" fill="currentColor" /></svg>
+)
+
 function Arena({ m, data, t }) {
   const sport = m.sport
   const statusNow = data.status || m.status
@@ -1329,13 +1349,13 @@ function Arena({ m, data, t }) {
         </div>
       ) : (
         <div className="tt-bar">
-        <span className="tt-player l"><IconShirtFilled size={18} className="c0i" /><span className="ellip">{H}</span></span>
+        <span className="tt-player l">{sport === 'basketball' ? <Jersey cls="c0i" /> : <IconShirtFilled size={18} className="c0i" />}<span className="ellip">{H}</span></span>
         <span className="tt-score num"><i className="c0b" />
           <span className="flip"><AnimatePresence mode="popLayout" initial={false}><motion.span key={`l${boardL}`} initial={{ y: -16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 16, opacity: 0 }} transition={{ duration: 0.28 }}>{boardL}</motion.span></AnimatePresence></span>
           <span className="colon">:</span>
           <span className="flip"><AnimatePresence mode="popLayout" initial={false}><motion.span key={`r${boardR}`} initial={{ y: -16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 16, opacity: 0 }} transition={{ duration: 0.28 }}>{boardR}</motion.span></AnimatePresence></span>
           <i className="c1b" /></span>
-        <span className="tt-player r"><span className="ellip">{A}</span><IconShirtFilled size={18} className="c1i" /></span>
+        <span className="tt-player r"><span className="ellip">{A}</span>{sport === 'basketball' ? <Jersey cls="c1i" /> : <IconShirtFilled size={18} className="c1i" />}</span>
       </div>
       )}
       {sport === 'basketball' && fouls && live ? (
