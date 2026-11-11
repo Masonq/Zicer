@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { Play } from 'lucide-react'
 import { useT } from '../i18n'
 import { Crest } from './ui'
+import HScroll from './HScroll'
 
 // ---- availability check: leagues block some videos in some countries (e.g. NBA in Serbia).
 // A hidden YouTube player tries each unchecked video once; the result is stored on the server for everyone.
@@ -106,7 +107,7 @@ export function HighlightsStrip({ list: all = [] }) {
   return (
     <section className="section">
       <div className="section-head"><h2 className="h2">{t('latestHighlights')}</h2></div>
-      <div className="hl-strip">
+      <HScroll className="hl-strip">
         {list.map((v) => {
           const m = v.match
           return (
@@ -117,7 +118,7 @@ export function HighlightsStrip({ list: all = [] }) {
             </Link>
           )
         })}
-      </div>
+      </HScroll>
     </section>
   )
 }

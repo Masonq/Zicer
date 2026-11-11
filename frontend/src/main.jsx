@@ -29,6 +29,8 @@ import { Login, Register } from './pages/Auth'
 import Onboarding from './pages/Onboarding'
 import TeamPage from './pages/Team'
 import Admin from './admin/Admin'
+import { installHScroll } from './hscroll'
+installHScroll()
 
 function LangRoot({ children }) {
   const { user, setUser } = useAuth()

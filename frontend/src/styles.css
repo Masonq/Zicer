@@ -976,3 +976,13 @@ img { display: block; max-width: 100%; }
   background: linear-gradient(105deg, rgba(255,255,255,.035) 0%, rgba(255,255,255,.035) 49.6%, rgba(255,255,255,.08) 50%, transparent 50.4%, rgba(0,0,0,.08) 100%); }
 .pitch[class*="sc-"] > .bg-crest, .pitch[class*="sc-"] > .pitch-split { position: absolute; }
 @media (min-width: 900px) { .bg-crest { width: 260px; height: 260px; } .bg-crest.l { left: -40px; } .bg-crest.r { right: -40px; } }
+
+/* sideways rows: arrows on desktop, grab cursor while dragging */
+.hs-wrap { position: relative; }
+.hs-btn { position: absolute; top: 50%; translate: 0 -50%; z-index: 3; width: 38px; height: 38px; border-radius: 50%; display: none; place-items: center;
+  background: rgba(16,36,29,.85); border: 1px solid rgba(255,255,255,.12); color: var(--chalk); box-shadow: 0 8px 20px rgba(0,0,0,.35); backdrop-filter: blur(10px); }
+.hs-btn.l { left: -6px; } .hs-btn.r { right: -6px; }
+.hs-btn:hover { background: var(--gold); color: var(--gold-ink); }
+@media (hover: hover) and (pointer: fine) { .hs-btn { display: grid; } .chips, .sports, .hl-strip, .scroll-x { cursor: grab; } }
+.dragging { cursor: grabbing !important; user-select: none; scroll-behavior: auto !important; }
+.dragging * { pointer-events: none; }

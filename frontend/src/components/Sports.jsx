@@ -1,3 +1,4 @@
+import HScroll from './HScroll'
 import { Component } from 'react'
 import { api, tz } from '../api'
 import { useT, translate, LangCtx } from '../i18n'
@@ -26,7 +27,7 @@ export function SportSwitcher({ value, onChange }) {
   const { data } = usePoll(() => api(`/sports?tz=${tz()}`), [], 60000, false, 'sports')
   const list = [{ sport: 'all', live: (data || []).reduce((a, x) => a + x.live, 0), soon: (data || []).reduce((a, x) => a + x.soon, 0) }, ...(data || [{ sport: 'football' }, { sport: 'basketball' }])]
   return (
-    <div className="sports" role="tablist" aria-label={t('allSports')}>
+    <HScroll className="sports" role="tablist" aria-label={t('allSports')}>
       {list.map((x) => (
         <button key={x.sport} role="tab" aria-selected={value === x.sport} className={`sport${value === x.sport ? ' on' : ''}`} onClick={() => onChange(x.sport)}>
           <span className="sport-ico"><SportIcon sport={x.sport} /></span>
@@ -34,7 +35,7 @@ export function SportSwitcher({ value, onChange }) {
           <span className="sport-count">{x.live > 0 ? <><span className="live-dot" />{x.live}</> : (x.soon ?? '')}</span>
         </button>
       ))}
-    </div>
+    </HScroll>
   )
 }
 
