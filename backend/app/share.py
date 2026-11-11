@@ -51,6 +51,12 @@ def team_name(team, lang):
     return team.name_sr or team.short_name or team.name
 
 
+def league_name(lg, lang):
+    if lang == "ru":
+        return getattr(lg, "name_ru", "") or lg.name
+    return getattr(lg, "name_sr", "") or lg.name
+
+
 def pick_text(key: str, lang: str) -> str:
     ru, sr = lang == "ru", lang != "ru"
     k = key or ""
@@ -171,7 +177,7 @@ def render_ticket(t: Ticket, lang: str = "sr", fmt: str = "wide") -> bytes:
         pw = d.textlength(pk, font=pf)
         name_w = rows_x1 - rows_x0 - 48 - ow - pw - 60
         name = fit(d, f"{team_name(m.home, lang)} – {team_name(m.away, lang)}", tf, name_w)
-        lg = m.league.name if m.league else ""
+        lg = league_name(m.league, lang) if m.league else ""
         if m.score_home is not None and m.status != "scheduled":
             lg = f"{lg}   {m.score_home}:{m.score_away}"
         has_sub = row_h >= (80 if story else 64)
