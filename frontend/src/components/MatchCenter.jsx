@@ -1036,7 +1036,12 @@ function useArenaEngine(cfgNow) {
     }
     const frame = (now) => {
       raf = requestAnimationFrame(frame)
-      if (!cfg.current.live || s.stopped) return
+      if (!cfg.current.live) return
+      if (s.stopped) {
+        // safety net: if no new point arrives to restart play (and it is not a break), serve again after 6 s instead of freezing
+        if (!s.brk) { s.stoppedAt = s.stoppedAt || now; if (now - s.stoppedAt > 6000) { s.stopped = false; s.stoppedAt = 0; serveFrom(1 - (s.side ?? 0)) } }
+        return
+      }
       if (s.toss) {
         if (now < s.toss) {
           const k = 1 - Math.abs((now - (s.toss - 900)) / 450 - 1)
@@ -1072,14 +1077,14 @@ function useArenaEngine(cfgNow) {
       },
       poke(spot) { if (!s.strike) s.poke = spot },
       resume({ serveSide = null, reset = null } = {}) {
-        s.stopped = false
+        s.stopped = false; s.brk = false; s.stoppedAt = 0
         if (net()) { serveFrom(serveSide ?? 0); return }
         if (reset) { s.pos = { ...reset }; s.trail = [] }
         const n = next(); seg(n.to, n.dur, n.hop)
       },
-      serve(side) { if (net()) { s.stopped = false; s.strike = null; serveFrom(side) } },
+      serve(side) { if (net()) { s.stopped = false; s.brk = false; s.stoppedAt = 0; s.strike = null; serveFrom(side) } },
       pause() { // breaks: ball rests in the middle, no play
-        s.stopped = true; s.strike = null; s.pos = { x: 50, y: 50 }; place(s.pos); s.trail = []; s.marks = []
+        s.stopped = true; s.brk = true; s.strike = null; s.pos = { x: 50, y: 50 }; place(s.pos); s.trail = []; s.marks = []
         if (trailEl.current) trailEl.current.setAttribute('points', ''); if (marksEl.current) marksEl.current.innerHTML = ''
       },
     }
