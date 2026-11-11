@@ -346,7 +346,8 @@ export function CourtLines({ sport }) {
         {Array.from({ length: 20 }, (_, i) => <rect key={i} x={X} y={Y + i} width={W} height={0.5} fill="#000" opacity="0.035" />)}
         <rect x={X} y={Y} width={W} height={H} {...WL} />
         <line x1={X + W / 2} y1={Y} x2={X + W / 2} y2={Y + H} {...WL} />
-        {side(1)}{side(-1)}
+        <defs><clipPath id={`${uid}hbc`}><rect x={X - 1.2} y={Y} width={W + 2.4} height={H} /></clipPath></defs>
+        <g clipPath={`url(#${uid}hbc)`}>{side(1)}{side(-1)}</g>
       </svg>
     )
   }
@@ -1045,7 +1046,7 @@ function useArenaEngine(cfgNow) {
       // court sports: having the ball is attacking; football/hockey: only a real attack moves it off the centre
       const possAttacks = ['basketball', 'handball', 'futsal', 'waterpolo'].includes(c.sport)
       const x = a === null || a === undefined || (k < 0.6 && !possAttacks) ? SPOT[1] : a === 0 ? SPOT[2] : SPOT[0]
-      return { to: { x, y: 50 }, dur: Math.max(380, Math.abs(x - (s.pos?.x ?? 50)) * 14), hop: 0 }
+      return { to: { x, y: 50 }, dur: Math.max(900, Math.abs(x - (s.pos?.x ?? 50)) * 24), hop: 0 }
     }
     const serveFrom = (side) => { // the ball rolls back to the server along the line, then the serve (no teleport)
       const c = cfg.current
@@ -1070,7 +1071,9 @@ function useArenaEngine(cfgNow) {
           const k = 1 - Math.abs((now - (s.toss - 900)) / 450 - 1)
           place(s.pos, k * 0.9); if (trailEl.current) trailEl.current.setAttribute('points', ''); return
         }
-        s.toss = 0; const n = next(); seg(n.to, n.dur, n.hop)
+        s.toss = 0
+        if (s.holdShot && s.strike) { s.holdShot = false; s.strike.launched = true; seg(s.strike.spot, s.strike.dur, s.strike.hop); return }
+        const n = next(); seg(n.to, n.dur, n.hop)
       }
       const tt = Math.min(1, (now - s.t0) / s.dur)
       // a puck slides: fast off the stick, slowing on the ice; balls ease in and out
@@ -1089,6 +1092,7 @@ function useArenaEngine(cfgNow) {
       if (st && st.launched) { // the deciding ball has landed
         s.strike = null; s.stopped = true; ripple(s.to); st.cb && st.cb(); return
       }
+      if (st && s.preHold) { const h = s.preHold; s.preHold = 0; s.toss = performance.now() + h; s.holdShot = true; return }
       if (st) { st.launched = true; seg(st.spot, st.dur, st.hop); return }
       if (s.poke) { const pk = s.poke; s.poke = null; seg(pk, travelMs(cfg.current.sport, s.pos, pk, 'shot'), cfg.current.sport === 'hockey' ? 0 : 0.2); return }
       const n = next(); seg(n.to, n.dur, n.hop)
@@ -1096,8 +1100,13 @@ function useArenaEngine(cfgNow) {
     api.current = {
       // finish the play with a deciding ball to `spot`; field sports cut in right away, net sports finish the current shot first
       strike(spot, hop, cb) {
-        s.strike = { spot, hop, dur: travelMs(cfg.current.sport, s.pos, spot, 'shot'), cb, launched: false }
-        if (!net()) { s.strike.launched = true; seg(spot, s.strike.dur, hop) }
+        s.strike = { spot, hop, dur: Math.max(450, travelMs(cfg.current.sport, s.pos, spot, 'shot') || 0), cb, launched: false }
+        if (!net()) {
+          // field sports: the scoring team's attack first (ball goes to their attacking spot), only then the shot
+          const pre = { x: spot.x > 50 ? 80 : 20, y: 50 }
+          if (Math.abs((s.pos?.x ?? 50) - pre.x) > 4) { s.stopped = false; s.preHold = 700; seg(pre, Math.max(700, Math.abs((s.pos?.x ?? 50) - pre.x) * 18), 0) }
+          else { s.strike.launched = true; seg(spot, s.strike.dur, hop) }
+        }
       },
       poke(spot) { if (!s.strike) s.poke = spot },
       resume({ serveSide = null, reset = null } = {}) {

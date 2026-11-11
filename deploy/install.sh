@@ -2,7 +2,12 @@
 # Zicer: установка/обновление на сервере. Запуск: bash /opt/zicer/deploy/install.sh
 set -uo pipefail
 APP=/opt/zicer
-DOMAIN=zicer.89-208-113-147.sslip.io
+OLDDOM=zicer.89-208-113-147.sslip.io
+NEWDOM=winly.rs
+SERVER_IP=89.208.113.147
+# switch to the real domain by itself as soon as its DNS points to this server; until then keep the temporary address
+if getent ahostsv4 $NEWDOM | grep -q "$SERVER_IP"; then DOMAIN=$NEWDOM; else DOMAIN=$OLDDOM; fi
+WWW=""; getent ahostsv4 www.$NEWDOM | grep -q "$SERVER_IP" && WWW="www.$NEWDOM"
 EMAIL=maxsim_kolesnikov@icloud.com
 REPORT=$APP/reports/deploy.md
 mkdir -p $APP/reports
@@ -127,6 +132,8 @@ if [ ! -f /etc/zicer-admin.txt ]; then
 fi
 [ -f /etc/zicer-admin.txt ] && ADMIN_INFO=$(cat /etc/zicer-admin.txt) && ok "админ есть"
 
+[ -f /etc/zicer.env ] && sed -i "s#^PUBLIC_URL=.*#PUBLIC_URL=https://$DOMAIN#" /etc/zicer.env
+echo "домен: $DOMAIN (winly.rs → $(getent ahostsv4 $NEWDOM | awk '{print $1; exit}'))"
 step "nginx"
 # robots (search engines, link previews) get server-rendered pages with the same content; people get the app
 cat > /etc/nginx/conf.d/winly-bots.conf <<'BOTS'
@@ -138,7 +145,7 @@ BOTS
 cat > /etc/nginx/sites-available/zicer.conf <<NG
 server {
     listen 80;
-    server_name $DOMAIN;
+    server_name $DOMAIN $([ "$DOMAIN" = "$NEWDOM" ] && echo $WWW);
     root $APP/frontend/dist;
     index index.html;
     client_max_body_size 10m;
@@ -159,11 +166,19 @@ server {
 }
 NG
 ln -sf /etc/nginx/sites-available/zicer.conf /etc/nginx/sites-enabled/zicer.conf
+# the old temporary address sends everyone to the real domain (links already shared keep working)
+if [ "$DOMAIN" = "$NEWDOM" ] && [ -d /etc/letsencrypt/live/$OLDDOM ]; then
+cat > /etc/nginx/sites-available/zicer-old.conf <<OLD
+server { listen 80; server_name $OLDDOM; return 301 https://$NEWDOM\$request_uri; }
+server { listen 443 ssl; server_name $OLDDOM; ssl_certificate /etc/letsencrypt/live/$OLDDOM/fullchain.pem; ssl_certificate_key /etc/letsencrypt/live/$OLDDOM/privkey.pem; return 301 https://$NEWDOM\$request_uri; }
+OLD
+ln -sf /etc/nginx/sites-available/zicer-old.conf /etc/nginx/sites-enabled/zicer-old.conf
+fi
 if nginx -t 2>&1; then systemctl reload nginx; ok "nginx перезагружен"; else bad "nginx -t"; fi
 
 step "HTTPS"
 if [ ! -d /etc/letsencrypt/live/$DOMAIN ]; then
-  certbot --nginx -d $DOMAIN --non-interactive --agree-tos -m $EMAIL --redirect && ok "сертификат выпущен" || bad "certbot"
+  certbot --nginx -d $DOMAIN $([ -n "$WWW" ] && [ "$DOMAIN" = "$NEWDOM" ] && echo "-d $WWW") --non-interactive --agree-tos -m $EMAIL --redirect && ok "сертификат выпущен" || bad "certbot"
 else
   grep -q "listen 443" /etc/nginx/sites-available/zicer.conf || certbot --nginx -d $DOMAIN --non-interactive --reinstall --redirect >/dev/null 2>&1
   ok "сертификат уже есть"
