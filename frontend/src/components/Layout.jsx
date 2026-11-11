@@ -65,9 +65,11 @@ export default function Layout() {
     }, 1500)
     return () => clearTimeout(id)
   }, [user?.id])
+  // the bookmakers section only appears in the menu when there is at least one bookmaker
+  const { data: bms } = usePoll(() => api('/bookmakers'), [], 300000, false, 'bookmakers')
   const nav = [
     ['/', t('home'), House], ['/mecevi', t('matches'), CalendarDays], ['/derbi', t('derby'), Swords],
-    ['/rang', t('ranking'), Trophy], ['/kladionice', t('bookmakers'), Landmark],
+    ['/rang', t('ranking'), Trophy], ...(bms && bms.length ? [['/kladionice', t('bookmakers'), Landmark]] : []),
   ]
   return (
     <div className="shell">

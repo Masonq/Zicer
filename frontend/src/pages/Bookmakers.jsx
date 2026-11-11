@@ -2,11 +2,13 @@ import { ExternalLink, Star } from 'lucide-react'
 import { api } from '../api'
 import { useT } from '../i18n'
 import { usePoll } from '../store'
+import { Navigate } from 'react-router-dom'
 import { Skeleton } from '../components/ui'
 
 export default function Bookmakers() {
   const t = useT()
   const { data } = usePoll(() => api('/bookmakers'), [], 0, false, 'bookmakers')
+  if (data && data.length === 0) return <Navigate to="/" replace />
   return (
     <div>
       <h1 className="h1">{t('bookmakers')}</h1>
