@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useParams, useNavigate, useLocation } from 'react-router-dom'
-import { ChevronLeft, Languages, Sparkles, X } from 'lucide-react'
+import { ChevronLeft, Languages, Sparkles, X, Star } from 'lucide-react'
+import { toggleFav, useFav, showUndo } from '../fav'
 import { buildMarkets, tt } from '../markets'
 import MatchCenter, { periodLabel } from '../components/MatchCenter'
 import { SportIcon } from '../components/Sports'
@@ -28,6 +29,16 @@ function Tablo({ m }) {
         {m.status === 'live' ? <><span className="live-dot" />{m.minute === 'HT' ? t('ht') : /^[A-Z0-9_]+$/.test(m.minute || '') ? periodLabel(m.minute, m.sport, t) : m.minute || t('live')}</> : t('finished')}
       </div>
     </div>
+  )
+}
+
+function FavButton({ id }) {
+  const t = useT()
+  const fav = useFav().includes(id)
+  return (
+    <button className={`fav-btn${fav ? ' on' : ''}`} onClick={() => { const on = toggleFav(id); showUndo(on ? t('favAdded') : t('favRemoved'), () => toggleFav(id)) }}>
+      <Star size={16} fill={fav ? 'currentColor' : 'none'} />{fav ? t('inFav') : t('fav')}
+    </button>
   )
 }
 
@@ -228,7 +239,10 @@ export default function MatchPage() {
   if (!m) return <Empty title={t('error')} />
   return (
     <div>
-      <button className="linkbtn" style={{ marginBottom: 12, fontSize: 14 }} onClick={() => (window.history.length > 1 ? nav(-1) : nav('/mecevi'))}><ChevronLeft size={18} />{t('matches')}</button>
+      <div className="mp-top">
+        <button className="linkbtn" style={{ fontSize: 14 }} onClick={() => (window.history.length > 1 ? nav(-1) : nav('/mecevi'))}><ChevronLeft size={18} />{t('matches')}</button>
+        <FavButton id={m.id} />
+      </div>
       {m.status === 'live' || m.status === 'finished' ? <MatchCenter m={m} fallback={<FeaturedMatch m={m} linkable={false} />} /> : <FeaturedMatch m={m} linkable={false} />}
       {!full && <div style={{ marginTop: 16 }}><Skeleton h={120} n={3} /></div>}
       {full && (

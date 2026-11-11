@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { SlidersHorizontal, X, Radio, Star } from 'lucide-react'
 import { api, tz } from '../api'
 import { useT } from '../i18n'
 import { usePoll } from '../store'
 import { MatchList, Skeleton, Empty } from '../components/ui'
-import { SportSwitcher } from '../components/Sports'
+import { SportSwitcher, SportIcon } from '../components/Sports'
 import { useFav } from '../fav'
 
 const PERIODS = [['morning', 5, 12], ['afternoon', 12, 17], ['evening', 17, 23], ['night', 23, 29]]
@@ -22,22 +22,37 @@ export default function Matches() {
   const { data, loading, stale } = usePoll(() => api(`/matches?day=${day}&sport=${sport}&serbian=${serb}&tz=${tz()}${day === 'fav' ? `&ids=${favKey}` : ''}`),
     [day, sport, serb, favKey], day === 'live' || day === 'today' || day === 'fav' ? 30000 : 0, true, `matches:${day}:${sport}:${serb}:${favKey}`)
   const [sheet, setSheet] = useState(false)
+  const fbtn = useRef(null)
+  const [ptop, setPtop] = useState(0)
   const [f, setF] = useState({ leagues: [], live: false, times: [] })
   const [draft, setDraft] = useState(f)
   const leagues = useMemo(() => {
     const m = new Map()
-    for (const x of data || []) { const k = `${x.league.name}|${x.league.country}`; if (!m.has(k)) m.set(k, { k, league: x.league, n: 0 }); m.get(k).n++ }
+    for (const x of data || []) { const k = `${x.league.name}|${x.league.country}`; if (!m.has(k)) m.set(k, { k, league: x.league, sport: x.sport, n: 0 }); m.get(k).n++ }
     return [...m.values()]
   }, [data])
-  const list = useMemo(() => (data || []).filter((m) => {
-    if (f.live && m.status !== 'live') return false
-    if (f.leagues.length && !f.leagues.includes(`${m.league.name}|${m.league.country}`)) return false
-    if (f.times.length) {
+  const [lq, setLq] = useState('')
+  const pass = (m, ff) => {
+    if (ff.live && m.status !== 'live') return false
+    if (ff.leagues.length && !ff.leagues.includes(`${m.league.name}|${m.league.country}`)) return false
+    if (ff.times.length) {
       let h = new Date(m.start).getHours(); if (h < 5) h += 24
-      if (!f.times.some((p) => { const r = PERIODS.find((x) => x[0] === p); return h >= r[1] && h < r[2] })) return false
+      if (!ff.times.some((p) => { const r = PERIODS.find((x) => x[0] === p); return h >= r[1] && h < r[2] })) return false
     }
     return true
-  }), [data, f])
+  }
+  const list = useMemo(() => (data || []).filter((m) => pass(m, f)), [data, f]) // eslint-disable-line react-hooks/exhaustive-deps
+  const count = (ff) => (data || []).filter((m) => pass(m, ff)).length
+  const groups = useMemo(() => {
+    const q = lq.trim().toLowerCase()
+    const g = new Map()
+    for (const l of leagues) {
+      if (q && !t.league(l.league).toLowerCase().includes(q)) continue
+      if (!g.has(l.sport)) g.set(l.sport, [])
+      g.get(l.sport).push(l)
+    }
+    return [...g.entries()]
+  }, [leagues, lq]) // eslint-disable-line react-hooks/exhaustive-deps
   const nF = f.leagues.length + (f.live ? 1 : 0) + f.times.length + (serb ? 1 : 0)
   const liveN = (data || []).filter((m) => m.status === 'live').length
   const days = [['live', t('live')], ['yesterday', t('yesterday')], ['today', t('today')], ['tomorrow', t('tomorrow')], ['fav', t('favorites')]]
@@ -50,14 +65,14 @@ export default function Matches() {
   }, [])
   const tog = (arr, v) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v])
   return (
-    <div>
+    <div className="mx-page">
       <h1 className="h1">{t('matches')}</h1>
       <div style={{ marginTop: 12 }}><SportSwitcher value={sport} onChange={(v) => set('sport', v)} /></div>
       <div className="mx-bar">
         <div className="chips">
           {days.map(([k, l]) => <button key={k} className={`chip${day === k ? ' on' : ''}`} onClick={() => set('dan', k)}>{k === 'live' && <span className="dot" />}{k === 'fav' && <Star size={13} />}{l}</button>)}
         </div>
-        <button className={`flt-btn${nF ? ' on' : ''}`} onClick={() => { setDraft(f); setSheet(true) }} aria-label={t('filters')}><SlidersHorizontal size={18} />{nF > 0 && <b>{nF}</b>}</button>
+        <button className={`flt-btn${nF ? ' on' : ''}`} ref={fbtn} onClick={() => { setDraft(f); setPtop(fbtn.current ? fbtn.current.getBoundingClientRect().bottom - fbtn.current.closest('.mx-page').getBoundingClientRect().top + 8 : 0); setSheet(true) }} aria-label={t('filters')}><SlidersHorizontal size={18} />{nF > 0 && <b>{nF}</b>}</button>
       </div>
       {day === 'today' && liveN > 0 && scrolled && (
         <div className="to-live-wrap"><button className="to-live" onClick={toLive}><Radio size={14} />{t('toLive')}<b>{liveN}</b></button></div>
@@ -67,21 +82,39 @@ export default function Matches() {
           : <div className="card"><Empty title={day === 'fav' ? t('favorites') : t('noMatches')} text={day === 'fav' ? t('noFav') : t('tryOtherDay')} /></div>}
       </div>
       {sheet && (
-        <div className="sheet-wrap" onClick={() => setSheet(false)}>
-          <div className="sheet" onClick={(e) => e.stopPropagation()}>
+        <div className="flt-wrap" onClick={() => setSheet(false)}>
+          <div className="flt-panel" style={{ '--ptop': `${ptop}px` }} onClick={(e) => e.stopPropagation()} role="dialog" aria-label={t('filters')}>
             <div className="sheet-grip" />
-            <div className="sheet-h"><b>{t('filters')}</b><button onClick={() => setSheet(false)} aria-label="close"><X size={20} /></button></div>
-            <label className="sheet-row"><span><Radio size={16} />{t('onlyLive')}</span><input type="checkbox" checked={draft.live} onChange={(e) => setDraft({ ...draft, live: e.target.checked })} /></label>
-            <label className="sheet-row"><span>{t('serbianOnly')}</span><input type="checkbox" checked={serb} onChange={(e) => set('srb', e.target.checked ? '1' : '0')} /></label>
-            <div className="sheet-t">{t('timeOfDay')}</div>
-            <div className="chips wrap">{PERIODS.map(([k]) => <button key={k} className={`chip${draft.times.includes(k) ? ' on' : ''}`} onClick={() => setDraft({ ...draft, times: tog(draft.times, k) })}>{t(k)}</button>)}</div>
-            {leagues.length > 1 && <>
-              <div className="sheet-t">{t('leagues')}</div>
-              <div className="chips wrap">{leagues.map((l) => <button key={l.k} className={`chip${draft.leagues.includes(l.k) ? ' on' : ''}`} onClick={() => setDraft({ ...draft, leagues: tog(draft.leagues, l.k) })}>{t.league(l.league)}<span className="small" style={{ marginLeft: 6 }}>{l.n}</span></button>)}</div>
-            </>}
-            <div className="sheet-actions">
+            <div className="flt-head"><b>{t('filters')}</b><button onClick={() => setSheet(false)} aria-label="close"><X size={20} /></button></div>
+            <div className="flt-body">
+              <div className="flt-col">
+                <button className="sw-row" onClick={() => setDraft({ ...draft, live: !draft.live })}><span><Radio size={16} />{t('onlyLive')}</span><i className={`sw${draft.live ? ' on' : ''}`} /></button>
+                <button className="sw-row" onClick={() => set('srb', serb ? '0' : '1')}><span>{t('serbianOnly')}</span><i className={`sw${serb ? ' on' : ''}`} /></button>
+                <div className="sheet-t">{t('timeOfDay')}</div>
+                <div className="seg4">{PERIODS.map(([k]) => <button key={k} className={draft.times.includes(k) ? 'on' : ''} onClick={() => setDraft({ ...draft, times: tog(draft.times, k) })}>{t(k)}</button>)}</div>
+              </div>
+              {leagues.length > 1 && (
+                <div className="flt-col flt-leagues">
+                  <div className="sheet-t">{t('leagues')}{draft.leagues.length > 0 && <button className="flt-clear" onClick={() => setDraft({ ...draft, leagues: [] })}>{t('all')}</button>}</div>
+                  <input className="input flt-search" placeholder={t('searchLeague')} value={lq} onChange={(e) => setLq(e.target.value)} />
+                  <div className="lg-list">
+                    {groups.map(([sp, items]) => (
+                      <div key={sp} className="lg-group">
+                        <div className="lg-sport"><SportIcon sport={sp} size={14} />{t(sp)}</div>
+                        {items.map((l) => (
+                          <button key={l.k} className={`lg-row${draft.leagues.includes(l.k) ? ' on' : ''}`} onClick={() => setDraft({ ...draft, leagues: tog(draft.leagues, l.k) })}>
+                            <i className="cbx" /><span className="ellip">{t.league(l.league)}</span><em>{l.n}</em>
+                          </button>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="flt-foot">
               <button className="btn btn-line" onClick={() => { const z = { leagues: [], live: false, times: [] }; setDraft(z); setF(z); set('srb', '0') }}>{t('reset')}</button>
-              <button className="btn btn-gold" onClick={() => { setF(draft); setSheet(false) }}>{t('apply')}</button>
+              <button className="btn btn-gold" onClick={() => { setF(draft); setSheet(false) }}>{t('showN')} {count(draft)}</button>
             </div>
           </div>
         </div>
