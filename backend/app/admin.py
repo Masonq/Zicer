@@ -146,7 +146,7 @@ def feature(mid: int, db: Session = Depends(get_db)):
 
 
 JOBS = {"football": ingest.sync_football, "basketball": ingest.sync_basketball, "odds": ingest.sync_odds,
-        "settle": ingest.settle, "trends": ingest.build_trends, "analysis": ingest.build_analysis, "logos": __import__("app.logos", fromlist=["x"]).sync_logos, "highlights": __import__("app.highlights", fromlist=["x"]).sync_highlights, "other_sports": ingest.sync_other_sports, "x22_line": ingest.sync_x22_line}
+        "settle": ingest.settle, "trends": ingest.build_trends, "analysis": ingest.build_analysis, "logos": __import__("app.logos", fromlist=["x"]).sync_logos, "highlights": __import__("app.highlights", fromlist=["x"]).sync_highlights, "other_sports": ingest.sync_other_sports, "x22_line": ingest.sync_x22_line, "pandascore": __import__("app.pandascore", fromlist=["x"]).sync_pandascore}
 
 
 def _run(name):
@@ -343,3 +343,26 @@ def dashboard(period: str = "week", db: Session = Depends(get_db)):
                     , "highlights": hl_total - hl_blocked, "highlights_blocked": hl_blocked,
                     "logos": round(teams_logo / teams_total * 100) if teams_total else 0, "matches": c(select(func.count()).select_from(Match))},
     }
+
+
+
+class TokenIn(BaseModel):
+    pandascore: str = ""
+
+
+@router.get("/sources")
+def sources_get(db: Session = Depends(get_db)):
+    from .models import Meta
+    r = db.get(Meta, "pandascore_token")
+    v = (r.value or "").strip('"') if r else ""
+    return {"pandascore": ("••••" + v[-4:]) if v else ""}
+
+
+@router.post("/sources")
+def sources_save(body: TokenIn, db: Session = Depends(get_db)):
+    import json as _j
+    from .models import Meta
+    if body.pandascore and not body.pandascore.startswith("••••"):
+        db.merge(Meta(key="pandascore_token", value=_j.dumps(body.pandascore.strip())))
+        db.commit()
+    return {"ok": True}

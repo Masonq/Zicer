@@ -3,7 +3,7 @@ import logging
 import time
 from datetime import datetime
 from .db import SessionLocal, engine, Base
-from . import ingest, logos, highlights, growth
+from . import ingest, logos, highlights, growth, pandascore
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("zicer.worker")
@@ -16,7 +16,8 @@ SCHEDULE = [  # (name, fn, every_seconds)
     ("logos", logos.sync_logos, 600),
     ("highlights", highlights.sync_highlights, 900),
     ("social", growth.social_job, 120),
-    ("x22_line", ingest.sync_x22_line, 900),
+    ("x22_line", ingest.sync_x22_line, 300),
+    ("pandascore", pandascore.sync_pandascore, 900),
     ("football", ingest.sync_football, 900),
     ("basketball", ingest.sync_basketball, 180),
     ("basketball_week", ingest.sync_basketball_week, 1800),
@@ -31,7 +32,7 @@ SCHEDULE = [  # (name, fn, every_seconds)
 ]
 
 
-SLOW = {"names", "basketball_week", "football", "logos", "highlights", "x22_line"}
+SLOW = {"names", "basketball_week", "football", "logos", "highlights", "x22_line", "pandascore"}
 _running: set = set()
 
 

@@ -16,7 +16,22 @@ const ago = (iso) => {
   if (s < 86400) return `${Math.round(s / 3600)} ч назад`
   return new Date(iso).toLocaleString('ru-RU')
 }
-const JOB_RU = { live: 'Лайв MaxBet', xfeed: 'Лайв 22Bet (события)', finish_stale: 'Закрытие завершённых', other_sports: 'Хоккей, теннис, волейбол', other_results: 'Результаты (другие виды)', logos: 'Эмблемы команд', highlights: 'Обзоры YouTube', football_live: 'Футбол лайв', football: 'Футбол (расписание)', basketball: 'Евролига', odds: 'Кэфы MaxBet', settle: 'Расчёт прогнозов', trends: 'Тренды', analysis: 'Разборы матчей', backfill: 'История за 60 дней', basketball_week: 'NBA на неделю', maxbet_results: 'Результаты баскетбола (MaxBet)', names: 'Перевод названий', tg_poll: 'Telegram: привязка', tg_reminders: 'Telegram: напоминания' }
+const JOB_RU = { pandascore: 'Киберспорт (PandaScore)', x22_line: 'Футзал (22Bet)', social: 'Публикации', live: 'Лайв MaxBet', xfeed: 'Лайв 22Bet (события)', finish_stale: 'Закрытие завершённых', other_sports: 'Хоккей, теннис, волейбол', other_results: 'Результаты (другие виды)', logos: 'Эмблемы команд', highlights: 'Обзоры YouTube', football_live: 'Футбол лайв', football: 'Футбол (расписание)', basketball: 'Евролига', odds: 'Кэфы MaxBet', settle: 'Расчёт прогнозов', trends: 'Тренды', analysis: 'Разборы матчей', backfill: 'История за 60 дней', basketball_week: 'NBA на неделю', maxbet_results: 'Результаты баскетбола (MaxBet)', names: 'Перевод названий', tg_poll: 'Telegram: привязка', tg_reminders: 'Telegram: напоминания' }
+
+function Sources() {
+  const { data } = usePoll(() => api('/admin/sources'), [], 0)
+  const [tok, setTok] = useState('')
+  const [msg, setMsg] = useState('')
+  const save = async () => { await api('/admin/sources', { method: 'POST', body: { pandascore: tok } }); setTok(''); setMsg('Сохранено. Киберспорт загрузится в течение минуты.'); try { await api('/admin/jobs/pandascore', { method: 'POST' }) } catch {} }
+  return (
+    <div className="adm-tile" style={{ marginBottom: 14 }}>
+      <div className="tile-h"><b>Киберспорт: PandaScore</b>{data?.pandascore ? <span className="g-on">подключено {data.pandascore}</span> : <span className="small">не подключено</span>}</div>
+      <p className="small" style={{ marginTop: 0 }}>Токен из личного кабинета pandascore.co (раздел «API access»). Даёт расписание и результаты CS2, Dota 2, League of Legends и Valorant.</p>
+      <div className="g-vid"><input className="input" placeholder="Вставь токен" value={tok} onChange={(e) => setTok(e.target.value.trim())} /><button className="btn btn-gold btn-sm" disabled={!tok} onClick={save}>Сохранить</button></div>
+      {msg && <div className="small" style={{ marginTop: 8, color: '#3DD68C' }}>{msg}</div>}
+    </div>
+  )
+}
 
 function Dashboard() {
   const [ver, setVer] = useState(0)
@@ -26,6 +41,7 @@ function Dashboard() {
   const run = async (n) => { await api(`/admin/jobs/${n}`, { method: 'POST' }); setToast(`Запущено: ${JOB_RU[n] || n}`); setTimeout(() => setVer((v) => v + 1), 4000) }
   return (
     <div>
+      <Sources />
       <section>
         <div className="card scroll-x">
           <table className="table">
@@ -36,7 +52,7 @@ function Dashboard() {
                 <td style={{ whiteSpace: 'nowrap' }}>{ago(j.last_ok)}</td>
                 <td className="small">{j.info}</td>
                 <td className="small" style={{ color: j.last_error_at && (!j.last_ok || j.last_error_at > j.last_ok) ? 'var(--loss)' : 'var(--dim)', maxWidth: 260 }}>{j.last_error ? `${ago(j.last_error_at)}: ${j.last_error.split('\n')[0]}` : '—'}</td>
-                <td>{['football', 'basketball', 'odds', 'settle', 'logos', 'highlights', 'other_sports'].includes(j.name) && <button className="btn btn-ghost btn-sm" onClick={() => run(j.name)}>Запустить</button>}</td>
+                <td>{['football', 'basketball', 'odds', 'settle', 'logos', 'highlights', 'other_sports', 'pandascore', 'x22_line'].includes(j.name) && <button className="btn btn-ghost btn-sm" onClick={() => run(j.name)}>Запустить</button>}</td>
               </tr>
             ))}</tbody>
           </table>

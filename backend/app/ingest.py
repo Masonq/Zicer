@@ -268,7 +268,7 @@ def sync_other_sports(db: Session) -> str:
     return f"other sports new {total}"
 
 
-X22_LINE = {"futsal": 14, "esports": 40}
+X22_LINE = {"futsal": 14}  # esports come from PandaScore
 X22_URL = "https://22bet.com/LineFeed/Get1x2_VZip?sports={s}&count=200&lng=en&tf=2200000&mode=4&country=1&getEmpty=true"
 
 
@@ -287,7 +287,14 @@ def sync_x22_line(db: Session) -> str:
                     games = []
                 if games:
                     break
-            fetched[sport] = len(games)
+            live_mode = False
+            if not games:  # the prematch line isn't served to us: take the matches that are being played now
+                try:
+                    games = xfeed._get(c, f"/LiveFeed/Get1x2_VZip?sports={sid}&count=100&lng=en&mode=4&country=1&getEmpty=true").json().get("Value") or []
+                    live_mode = True
+                except Exception:  # noqa
+                    games = []
+            fetched[sport] = f"{len(games)}{' live' if live_mode else ''}"
             for g in games:
                 gid, h, a, lname, st = g.get("I"), g.get("O1"), g.get("O2"), (g.get("L") or "").strip(), g.get("S")
                 if not (gid and h and a and lname and st):
@@ -314,6 +321,13 @@ def sync_x22_line(db: Session) -> str:
                     db.add(m)
                     n += 1
                 m.start = datetime.utcfromtimestamp(st)
+                if live_mode:
+                    fs = (g.get("SC") or {}).get("FS") or {}
+                    m.status = "live"
+                    m.score_home, m.score_away = fs.get("S1", 0) or 0, fs.get("S2", 0) or 0
+                    lv = dict(m.live or {})
+                    lv["x_seen"] = int(datetime.utcnow().timestamp())
+                    m.live = lv
                 odds = {}
                 for e in g.get("E") or []:
                     k = {1: "1", 2: "X", 3: "2"}.get(e.get("T"))
