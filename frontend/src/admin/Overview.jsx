@@ -43,9 +43,9 @@ function Activity3({ d }) {
         {d.labels.map((lb, i) => (
           <div key={i} className="bar-col" title={lb}>
             <div className="bar-stack">
-              {s.map(([k, , c]) => <i key={k} style={{ height: `${(d[k].series[i] / max) * 100}%`, background: c }} />)}
+              {s.map(([k, , c]) => d[k].series[i] > 0 ? <i key={k} style={{ height: `${(d[k].series[i] / max) * 100}%`, background: c }} /> : <i key={k} className="zero" />)}
             </div>
-            {(n <= 10 || i % Math.ceil(n / 8) === 0) && <span>{lb}</span>}
+            <span className={n <= 10 || i % Math.ceil(n / 8) === 0 ? (i % Math.ceil(n / 4) === 0 || n <= 10 ? '' : 'nm') : 'hide'}>{lb}</span>
           </div>
         ))}
       </div>

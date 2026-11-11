@@ -30,7 +30,9 @@ import Onboarding from './pages/Onboarding'
 import TeamPage from './pages/Team'
 import Admin from './admin/Admin'
 import { installHScroll } from './hscroll'
+import { installAutoUpdate } from './autoupdate'
 installHScroll()
+installAutoUpdate()
 
 function LangRoot({ children }) {
   const { user, setUser } = useAuth()

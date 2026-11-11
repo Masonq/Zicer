@@ -162,16 +162,33 @@ export function leagueLabel(m, t) {
   return t.league(m.league)
 }
 
-// adds .stuck to a sticky header while it is pinned to the top
+// marks the sticky league header that is currently pinned at the top (.stuck): only that one shows extra controls
+const stuckSet = new Set()
+let stuckBound = false
+function updateStuck() {
+  let pinned = null
+  for (const el of stuckSet) {
+    if (!el.isConnected) { stuckSet.delete(el); continue }
+    const top = parseFloat(getComputedStyle(el).top) || 0
+    const r = el.getBoundingClientRect()
+    const box = el.parentElement.getBoundingClientRect()
+    if (r.top <= top + 1 && box.bottom > top + r.height) pinned = el
+  }
+  for (const el of stuckSet) el.classList.toggle('stuck', el === pinned)
+}
 function stickRef(el) {
-  if (!el || el.__st) return
-  el.__st = true
-  const io = new IntersectionObserver(([e]) => el.classList.toggle('stuck', e.intersectionRatio < 1 && e.boundingClientRect.top < 120),
-    { threshold: [1], rootMargin: `-${window.innerWidth >= 1024 ? 1 : 57}px 0px 0px 0px` })
-  io.observe(el)
+  if (!el || stuckSet.has(el)) return
+  stuckSet.add(el)
+  if (!stuckBound) {
+    stuckBound = true
+    let raf = 0
+    window.addEventListener('scroll', () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(updateStuck) }, { passive: true })
+    window.addEventListener('resize', updateStuck)
+  }
+  requestAnimationFrame(updateStuck)
 }
 
-export function MatchList({ matches }) {
+export function MatchList({ matches, headExtra = null }) {
   const t = useT()
   const groups = []
   const idx = {}
@@ -182,7 +199,7 @@ export function MatchList({ matches }) {
   }
   return groups.map((g) => (
     <div className="league" key={g.key}>
-      <div className="league-head" ref={stickRef}><span className={`league-sport ls-${g.sample.sport}`} title={t(g.sample.sport)}><SportIcon sport={g.sample.sport} size={14} /></span>{g.league.country && g.league.country !== 'INT' && <span className="flag">{g.league.country === 'EU' ? 'EU' : g.league.country}</span>}<span className="ellip">{leagueLabel(g.sample, t)}</span></div>
+      <div className="league-head" ref={stickRef}><span className={`league-sport ls-${g.sample.sport}`} title={t(g.sample.sport)}><SportIcon sport={g.sample.sport} size={14} /></span>{g.league.country && g.league.country !== 'INT' && <span className="flag">{g.league.country === 'EU' ? 'EU' : g.league.country}</span>}<span className="ellip">{leagueLabel(g.sample, t)}</span>{headExtra}</div>
       <div className="rows">{g.items.map((m) => <MatchRow key={m.id} m={m} />)}</div>
     </div>
   ))

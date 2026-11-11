@@ -74,11 +74,8 @@ export default function Matches() {
         </div>
         <button className={`flt-btn${nF ? ' on' : ''}`} ref={fbtn} onClick={() => { setDraft(f); setPtop(fbtn.current ? fbtn.current.getBoundingClientRect().bottom - fbtn.current.closest('.mx-page').getBoundingClientRect().top + 8 : 0); setSheet(true) }} aria-label={t('filters')}><SlidersHorizontal size={18} />{nF > 0 && <b>{nF}</b>}</button>
       </div>
-      {day === 'today' && liveN > 0 && scrolled && (
-        <div className="to-live-wrap"><button className="to-live" onClick={toLive}><Radio size={14} />{t('toLive')}<b>{liveN}</b></button></div>
-      )}
       <div style={{ marginTop: 16 }} className={stale ? 'is-loading' : ''}>
-        {loading && !data ? <Skeleton /> : list.length ? <MatchList matches={list} />
+        {loading && !data ? <Skeleton /> : list.length ? <MatchList matches={list} headExtra={day === 'today' && liveN > 0 && scrolled ? <button className="to-live" onClick={(e) => { e.stopPropagation(); toLive() }}><Radio size={14} />{t('toLive')}<b>{liveN}</b></button> : null} />
           : <div className="card"><Empty title={day === 'fav' ? t('favorites') : t('noMatches')} text={day === 'fav' ? t('noFav') : t('tryOtherDay')} /></div>}
       </div>
       {sheet && (

@@ -67,7 +67,8 @@ export function FeaturedMatch({ m, label, linkable = true }) {
       {m.away.logo && <img className="bg-crest r" src={m.away.logo} alt="" aria-hidden="true" />}
       <span className="pitch-split" aria-hidden="true" />
       <span className="pitch-glow" aria-hidden="true" />
-      <span className="pitch-ball" aria-hidden="true"><img src={`/balls/${['football', 'basketball', 'tennis', 'hockey', 'volleyball', 'waterpolo'].includes(m.sport) ? m.sport : 'football'}.png`} alt="" width="104" height="104" /></span>
+      <span className="pitch-ball" aria-hidden="true"><img src={`/balls/${['football', 'basketball', 'tennis', 'hockey', 'volleyball', 'waterpolo'].includes(m.sport) ? m.sport : 'football'}.webp`} alt="" width="104" height="104" decoding="async"
+        onError={(e) => { const el = e.currentTarget; if (!el.dataset.r) { el.dataset.r = '1'; el.src = el.src.replace('.webp', '.png') + '?r=' + Date.now() } else el.parentElement.style.display = 'none' }} /></span>
       {inner}
     </div>
   )

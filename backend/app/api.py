@@ -634,7 +634,7 @@ def _hot(db, pool, pc, n):
     soon = [m for m in pool if m.start < n + timedelta(hours=36) and m.odds]
     soon.sort(key=lambda m: (pc.get(m.id, 0), m.is_derby, m.home.is_serbian or m.away.is_serbian, -m.league.priority), reverse=True)
     out = []
-    for m in soon[:8]:
+    for m in sorted(soon[:8], key=lambda x: x.start):  # the most popular eight, shown in kick-off order
         split, tot = _split(db, m.id)
         src = "community"
         if tot < 3:
