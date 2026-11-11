@@ -981,7 +981,8 @@ function travelMs(sport, a, b, kind = 'pass') {
   const dx = ((b.x - a.x) / 100) * c.fw, dy = ((b.y - a.y) / 100) * c.fh
   const d = Math.hypot(dx, dy)
   const [pass, shot] = SPEED[sport] || [9, 14]
-  return Math.max(kind === 'shot' ? MIN_MS[sport] * 0.7 : MIN_MS[sport], (d / (kind === 'shot' ? shot : pass)) * 1000)
+  const min = MIN_MS[sport] ?? 300 // sports added later (table tennis, handball, futsal) had no minimum: NaN froze the ball
+  return Math.max(kind === 'shot' ? min * 0.7 : min, (d / (kind === 'shot' ? shot : pass)) * 1000)
 }
 function useArenaEngine(cfgNow) {
   const ballEl = useRef(null), shadowEl = useRef(null), trailEl = useRef(null), rippleEl = useRef(null), marksEl = useRef(null)
@@ -992,7 +993,6 @@ function useArenaEngine(cfgNow) {
     const s = e.current
     let raf = 0
     const net = () => ['tennis', 'volleyball', 'tabletennis'].includes(cfg.current.sport)
-    if (typeof window !== 'undefined') window.__eng = { s, cfg }
     const place = (p, h = 0) => {
       const b = ballEl.current, sh = shadowEl.current
       if (b) { b.style.left = `${p.x}%`; b.style.top = '50%'; b.style.transform = `translate(-50%, -50%)` }
@@ -1008,25 +1008,20 @@ function useArenaEngine(cfgNow) {
       r.style.left = `${p.x}%`; r.style.top = '50%'; r.classList.remove('go'); void r.offsetWidth; r.classList.add('go')
     }
     const seg = (to, dur, hop) => { s.from = { ...s.pos }; s.to = to; s.t0 = performance.now(); s.dur = dur; s.hop = hop }
+    // three spots on the centre line (left attack, centre, right attack), like bookmaker trackers
+    const SPOT = [20, 50, 80]
+    const SHOT_MS = { tennis: 650, volleyball: 700, tabletennis: 380 }
     const next = () => {
       const c = cfg.current
-      if (net()) { // rally: every shot crosses the net
+      if (net()) { // rally by the rules: every shot crosses the net, from one side's spot to the other's
         s.side = s.side === 0 ? 1 : 0
         s.shot += 1
-        if (s.shot === 1 && c.sport === 'tennis') { // serve into the diagonal service box
-          const to = { x: s.side === 1 ? rnd(54, 72) : rnd(28, 46), y: c.rcvY > 50 ? rnd(54, 84) : rnd(16, 46) }
-          return { to, dur: travelMs('tennis', s.pos, to, 'shot'), hop: 1 }
-        }
-        const deep = c.sport === 'tennis' ? [70, 96] : [58, 92]
-        const to = { x: s.side === 1 ? rnd(deep[0], deep[1]) : rnd(100 - deep[1], 100 - deep[0]), y: rnd(16, 84) }
-        return { to, dur: travelMs(c.sport, s.pos, to), hop: 1 }
+        return { to: { x: s.side === 1 ? SPOT[2] : SPOT[0], y: 50 }, dur: SHOT_MS[c.sport] || 600, hop: 0 }
       }
-      const a = c.att, k = c.intensity
-      if (a === null || a === undefined) { const to = { x: rnd(36, 64), y: Math.max(18, Math.min(82, s.pos.y + rnd(-30, 30))) }; return { to, dur: travelMs(c.sport, s.pos, to) * rnd(1, 1.25), hop: 0 } }
-      const depth = c.sport === 'basketball' ? [62, 90] : [52 + 12 * k, 66 + 26 * k]
-      let x = rnd(depth[0], depth[1]); if (a === 1) x = 100 - x
-      const y = Math.max(18, Math.min(82, s.pos.y + rnd(-(c.sport === 'hockey' ? 46 : 34), c.sport === 'hockey' ? 46 : 34)))
-      return { to: { x, y }, dur: travelMs(c.sport, s.pos, { x, y }) * rnd(1, 1.25) * (c.sport === 'football' ? 1 - 0.15 * k : 1), hop: c.sport === 'basketball' ? 0.25 : 0 }
+      // field sports: centre while nobody presses, the attacking side's spot during an attack / dangerous attack
+      const a = c.att, k = c.intensity || 0
+      const x = a === null || a === undefined || k < 0.6 ? SPOT[1] : a === 0 ? SPOT[2] : SPOT[0]
+      return { to: { x, y: 50 }, dur: Math.max(380, Math.abs(x - (s.pos?.x ?? 50)) * 14), hop: 0 }
     }
     const serveFrom = (side) => { // the ball rolls back to the server along the line, then the serve (no teleport)
       const c = cfg.current
@@ -1034,7 +1029,7 @@ function useArenaEngine(cfgNow) {
       if (s.lastServe && now - s.lastServe < 4000 && s.side === side && !s.stopped) return // same serve asked again by a re-render
       s.lastServe = now
       s.side = side; s.shot = 0
-      const to = { x: c.sport === 'tabletennis' ? (side === 0 ? 4 : 96) : side === 0 ? 1 : 99, y: 50 }
+      const to = { x: side === 0 ? 20 : 80, y: 50 }
       s.trail = []; s.marks = []; if (marksEl.current) marksEl.current.innerHTML = ''
       s.toss = 0; s.toServe = true; seg(to, Math.max(350, Math.abs((s.pos?.x ?? 50) - to.x) * 9), 0)
     }
@@ -1118,8 +1113,7 @@ function bannerTitle(ev, sport, t) {
 
 function strikeSpot(ev, sport) {
   const s = ev.side
-  if (sport === 'tennis') return { x: s === 0 ? rnd(80, 97) : rnd(3, 20), y: rnd(18, 82) }
-  if (sport === 'volleyball' || sport === 'tabletennis') return { x: s === 0 ? rnd(62, 92) : rnd(8, 38), y: rnd(20, 80) }
+  if (sport === 'tennis' || sport === 'volleyball' || sport === 'tabletennis') return { x: s === 0 ? 108 : -8, y: 50 } // past the player who missed
   if (sport === 'basketball') return { x: s === 0 ? 100 - HOOP_X : HOOP_X, y: 50 }
   return { x: s === 0 ? 100.6 : -0.6, y: rnd(46, 54) }
 }

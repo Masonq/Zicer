@@ -1458,7 +1458,7 @@ img { display: block; max-width: 100%; }
 .court > .court-svg { filter: none !important; }
 .court .arena-fx g { display: none; }
 .court .arena-field .atk-call, .court .arena-field .tt-tag { transform: none !important; }
-.court .eng-ball { transition: left .9s cubic-bezier(.35,.1,.25,1); }
+.court .eng-ball { transition: none; }
 /* bookmaker look: brighter lawn with clear mowing stripes, larger ball */
 .court-football .court-svg { filter: saturate(1.25) brightness(1.18) !important; }
 .tex-football { opacity: .35 !important; }
