@@ -95,6 +95,7 @@ systemctl enable zicer-api zicer-worker >/dev/null 2>&1
 systemctl restart zicer-api zicer-worker
 sleep 8
 systemctl is-active zicer-api >/dev/null && ok "zicer-api работает" || bad "zicer-api не запустился"
+for i in 1 2 3 4 5 6; do systemctl is-active zicer-worker >/dev/null && break; sleep 5; done
 systemctl is-active zicer-worker >/dev/null && ok "zicer-worker работает" || bad "zicer-worker не запустился"
 
 step "Автообновление"
