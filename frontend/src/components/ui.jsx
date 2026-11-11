@@ -81,7 +81,7 @@ export function OddsButtons({ m, wide = false }) {
         if (k === 'X' && twoWay) return null
         return (
           <button key={k} type="button" className={`odd${on ? ' on' : ''}${['1', 'X', '2'][fav] === k && b ? ' fav' : ''}`} disabled={!b || !open}
-            style={{ '--p': `${Math.round((inv[['1', 'X', '2'].indexOf(k)] / tot) * 100)}%` }}
+            style={{ '--p': `${Math.round((inv[['1', 'X', '2'].indexOf(k)] / tot) * 100)}%`, '--pn': (inv[['1', 'X', '2'].indexOf(k)] / tot).toFixed(3) }}
             aria-pressed={on} aria-label={`${k} ${b ? fmtOdds(b.odds) : ''}`}
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (b && open) slip.toggle(m, k, b.odds) }}>
             <span className="k">{k}</span>

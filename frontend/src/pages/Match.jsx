@@ -22,7 +22,8 @@ function Tablo({ m }) {
       <div className="tablo">
         <div className="big time">{fmtTime(m.start, t.locale)}</div>
         <div className="lbl">{day.diff === 0 ? t('today') : day.diff === 1 ? t('tomorrow') : day.label}</div>
-        {left > 0 && left < 24 * 3600000 && <div className="tablo-in num">{t('startsIn')} {inH > 0 ? `${inH} ${t('hShort')} ` : ''}{inM} {t('mShort')}</div>}
+        {/* the pill keeps its place even when hidden, so every match-of-the-day card has the same height */}
+        <div className="tablo-in num" style={left > 0 && left < 24 * 3600000 ? undefined : { visibility: 'hidden' }}>{t('startsIn')} {inH > 0 ? `${inH} ${t('hShort')} ` : ''}{inM} {t('mShort')}</div>
       </div>
     )
   }

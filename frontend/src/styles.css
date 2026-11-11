@@ -1279,7 +1279,13 @@ img { display: block; max-width: 100%; }
 .odd.on .k, .odd.on .v { color: #1A1406; } .odd.on::after { background: rgba(26,20,6,.35); }
 .odd:disabled { opacity: .45; } .odd:disabled::after { display: none; }
 .odds.wide .odd { height: 64px; border-radius: 16px; } .odds.wide .odd .k { font-size: 11px; } .odds.wide .odd .v { font-size: 22px; font-family: var(--display); font-weight: 600; letter-spacing: .01em; }
-.odds.wide .odd::after, .hot-card .odd::after { content: ''; height: 3px; }
+/* chance of the outcome: a full-width track with a fill, inset from the edges (reads as a gauge, not a stray line) */
+.odds.wide .odd, .hot-card .odd { padding-bottom: 8px; }
+.odds.wide .odd::before, .hot-card .odd::before { content: ''; position: absolute; left: 12px; right: 12px; bottom: 7px; height: 3px; border-radius: 2px; background: rgba(255,255,255,.08); }
+.odds.wide .odd::after, .hot-card .odd::after { content: ''; left: 12px; bottom: 7px; height: 3px; border-radius: 2px; width: calc((100% - 24px) * var(--pn, 0)); background: rgba(255,255,255,.35); }
+.odds.wide .odd.fav::after, .hot-card .odd.fav::after { background: var(--gold); }
+.odds.wide .odd.on::before, .hot-card .odd.on::before { background: rgba(26,20,6,.18); } .odds.wide .odd.on::after, .hot-card .odd.on::after { background: rgba(26,20,6,.55); }
+.odds.wide .odd:disabled::before, .hot-card .odd:disabled::before { display: none; }
 /* hot matches: clear sport label */
 .hot-sport { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px 0 8px; border-radius: 12px; font-size: 12px; font-weight: 800;
   color: var(--sc, var(--gold)); background: color-mix(in srgb, var(--sc, var(--gold)) 15%, transparent); border: 1px solid color-mix(in srgb, var(--sc, var(--gold)) 40%, transparent); }
