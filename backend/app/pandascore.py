@@ -50,6 +50,7 @@ def _winrate(c, db, game, tid):
 
 def _team(db, game, op):
     ext = f"ps:{op['id']}"
+    db.flush()
     t = db.scalar(select(Team).where(Team.ext == ext))
     if not t:
         t = Team(ext=ext, sport="esports", name=op.get("name") or "?", short_name=op.get("acronym") or op.get("name") or "?", is_serbian=False,
@@ -80,12 +81,18 @@ def sync_pandascore(db: Session) -> str:
                     batches += [(kind, x) for x in r.json() if isinstance(x, dict)]
                 except Exception:  # noqa
                     continue
+            # a match can be in several lists at once (upcoming and running): keep one, newest state wins
+            seen = {}
             for kind, x in batches:
+                if x.get("id") and (x["id"] not in seen or kind in ("running", "past")):
+                    seen[x["id"]] = (kind, x)
+            made = {}
+            for kind, x in seen.values():
                 ops = [o.get("opponent") for o in x.get("opponents") or [] if o.get("opponent")]
                 if len(ops) != 2 or not x.get("begin_at") and not x.get("scheduled_at"):
                     continue
                 ext = f"ps:{x['id']}"
-                m = db.scalar(select(Match).where(Match.ext == ext))
+                m = made.get(ext) or db.scalar(select(Match).where(Match.ext == ext))
                 start = _dt(x.get("begin_at") or x.get("scheduled_at"))
                 if not m:
                     if kind == "past":
@@ -97,6 +104,8 @@ def sync_pandascore(db: Session) -> str:
                     h, a = _team(db, game, ops[0]), _team(db, game, ops[1])
                     m = Match(ext=ext, sport="esports", league_id=league.id, home_id=h.id, away_id=a.id, odds={}, start=start)
                     db.add(m)
+                    db.flush()
+                    made[ext] = m
                     new += 1
                 m.start = start or m.start
                 res = {r_["team_id"]: r_["score"] for r_ in x.get("results") or [] if "team_id" in r_}
@@ -118,5 +127,8 @@ def sync_pandascore(db: Session) -> str:
                     p = min(0.85, max(0.15, p))
                     m.odds = {**(m.odds or {}), "form": {"1": round(max(1.12, 0.94 / p), 2), "2": round(max(1.12, 0.94 / (1 - p)), 2)}}
                 upd += 1
-            db.commit()
+            try:
+                db.commit()
+            except Exception:  # noqa — one bad game list must not stop the others
+                db.rollback()
     return f"pandascore new {new}, updated {upd}, finished {fin}"
