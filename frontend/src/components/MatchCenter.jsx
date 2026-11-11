@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useId } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import confetti from 'canvas-confetti'
+import { LOGO_SRC } from '../logoData'
 import { Link } from 'react-router-dom'
 import { IconShirtFilled, IconHandStop, IconStopwatch, IconFlag, IconTarget, IconRectangleVerticalFilled, IconArrowsExchange, IconBallBasketball, IconBallFootball, IconBallVolleyball, IconPlayerPause, IconBallTennis } from '@tabler/icons-react'
 import { api } from '../api'
@@ -75,16 +76,17 @@ const L = { stroke: 'rgba(255,255,255,0.24)', strokeWidth: 2, fill: 'none' }
 // The SVG is the whole court area; ball positions (0..100%) map to the playing field inside it.
 export const COURT = {
   football: { w: 113, h: 76, fx: 4, fy: 4, fw: 105, fh: 68 },
-  basketball: { w: 31, h: 17, fx: 1.5, fy: 1, fw: 28, fh: 15 },
-  hockey: { w: 62, h: 31, fx: 1, fy: 0.5, fw: 60, fh: 30 },
+  basketball: { w: 32, h: 19, fx: 2, fy: 2, fw: 28, fh: 15 },
+  hockey: { w: 63, h: 35, fx: 1.5, fy: 2.5, fw: 60, fh: 30 },
   tennis: { w: 29.5, h: 14.4, fx: 2.865, fy: 1.715, fw: 23.77, fh: 10.97 },
   volleyball: { w: 22, h: 12, fx: 2, fy: 1.5, fw: 18, fh: 9 },
-  waterpolo: { w: 29, h: 21, fx: 2, fy: 0.5, fw: 25, fh: 20 },
+  waterpolo: { w: 30, h: 24, fx: 2.5, fy: 2, fw: 25, fh: 20 },
 }
 export const fieldStyle = (sport) => { const c = COURT[sport] || COURT.football; return { left: `${(c.fx / c.w) * 100}%`, top: `${(c.fy / c.h) * 100}%`, width: `${(c.fw / c.w) * 100}%`, height: `${(c.fh / c.h) * 100}%` } }
 export const courtAspect = (sport) => { const c = COURT[sport] || COURT.football; return `${c.w} / ${c.h}` }
 const WL = { stroke: '#fff', strokeOpacity: 0.72, fill: 'none', vectorEffect: 'non-scaling-stroke', strokeWidth: 1.6 }
 export function CourtLines({ sport }) {
+  const uid = useId().replace(/[^a-z0-9]/gi, '')
   const c = COURT[sport] || COURT.football
   const { fx: X, fy: Y, fw: W, fh: H } = c
   const vb = `0 0 ${c.w} ${c.h}`
@@ -117,41 +119,57 @@ export function CourtLines({ sport }) {
     )
   }
   if (sport === 'basketball') {
-    const cy = Y + H / 2
+    // FIBA court 28 x 15 m on maple planks, apron, benches, scorer's table, baseline boards, centre logo
+    const cy = Y + H / 2, cx = X + W / 2
+    const paint = '#3B5249'
+    const planks = Array.from({ length: 46 }, (_, i) => i)
     const half = (dir) => {
       const bx = dir === 1 ? X : X + W
       const s = dir
       const hoop = bx + s * 1.575
       return (
         <g key={dir}>
-          <rect x={dir === 1 ? bx : bx - 5.8} y={cy - 2.45} width={5.8} height={4.9} fill="#3B5249" fillOpacity="0.88" />
+          <rect x={dir === 1 ? bx : bx - 5.8} y={cy - 2.45} width={5.8} height={4.9} fill={paint} fillOpacity="0.9" />
           <rect x={dir === 1 ? bx : bx - 5.8} y={cy - 2.45} width={5.8} height={4.9} {...WL} />
           <path d={`M ${bx + s * 5.8} ${cy - 1.8} A 1.8 1.8 0 0 ${dir === 1 ? 1 : 0} ${bx + s * 5.8} ${cy + 1.8}`} {...WL} />
           <path d={`M ${bx} ${cy - 6.6} H ${bx + s * 2.99} A 6.75 6.75 0 0 ${dir === 1 ? 1 : 0} ${bx + s * 2.99} ${cy + 6.6} H ${bx}`} {...WL} />
           <path d={`M ${hoop} ${cy - 1.25} A 1.25 1.25 0 0 ${dir === 1 ? 1 : 0} ${hoop} ${cy + 1.25}`} {...WL} />
-          <line x1={bx + s * 1.2} y1={cy - 0.9} x2={bx + s * 1.2} y2={cy + 0.9} stroke="#fff" strokeWidth="2.2" vectorEffect="non-scaling-stroke" />
-          <circle cx={hoop} cy={cy} r={0.23} fill="none" stroke="#E8833A" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+          <rect x={dir === 1 ? bx + 1.2 - 0.06 : bx - 1.2 - 0.06} y={cy - 0.9} width={0.12} height={1.8} fill="#E8ECEF" />
+          <line x1={bx + s * 1.2} y1={cy} x2={hoop - s * 0.23} y2={cy} stroke="#C8CDD1" strokeWidth="0.06" />
+          <circle cx={hoop} cy={cy} r={0.23} fill="none" stroke="#D0602A" strokeWidth="0.06" />
+          <rect x={dir === 1 ? bx - 1.6 : bx + 0.6} y={cy - 1.4} width={1} height={2.8} rx="0.15" fill="#232B33" />
         </g>
       )
     }
     return (
       <svg viewBox={vb} className="court-svg" aria-hidden="true">
-        <defs><pattern id="planks" width="0.6" height="2.4" patternUnits="userSpaceOnUse"><rect width="0.6" height="2.4" fill="#C49A70" /><rect x="0.59" width="0.01" height="2.4" fill="rgba(90,50,20,0.25)" /></pattern></defs>
-        <rect width={c.w} height={c.h} fill="#2A3B34" />
-        <rect x={X} y={Y} width={W} height={H} fill="url(#planks)" />
+        <defs>
+          <filter id={`${uid}grain`} x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="0.03 1.6" numOctaves="2" seed="7" /><feColorMatrix values="0 0 0 0 0.35  0 0 0 0 0.2  0 0 0 0 0.08  0 0 0 0.16 0" /></filter>
+          <linearGradient id={`${uid}light`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#fff" stopOpacity="0.06" /><stop offset="0.5" stopColor="#fff" stopOpacity="0" /><stop offset="1" stopColor="#000" stopOpacity="0.08" /></linearGradient>
+        </defs>
+        <rect width={c.w} height={c.h} fill="#1A1F24" />
+        <rect x={X - 1.2} y={Y - 1.2} width={W + 2.4} height={H + 2.4} fill="#2E4A40" />
+        {/* scorer's table and benches */}
+        <rect x={cx - 3} y={Y - 1.9} width={6} height={0.6} rx="0.1" fill="#232B33" />
+        <rect x={cx - 11} y={Y + H + 1.35} width={7} height={0.5} rx="0.1" fill="#232B33" />
+        <rect x={cx + 4} y={Y + H + 1.35} width={7} height={0.5} rx="0.1" fill="#232B33" />
+        {/* maple planks with grain */}
+        {planks.map((i) => <rect key={i} x={X} y={Y + (H / planks.length) * i} width={W} height={H / planks.length + 0.01} fill={['#C9A079', '#C29872', '#CDA57E', '#BF946E'][(i * 7) % 4]} />)}
+        <rect x={X} y={Y} width={W} height={H} filter={`url(#${uid}grain)`} />
+        <rect x={X} y={Y} width={W} height={H} fill={`url(#${uid}light)`} />
         <rect x={X} y={Y} width={W} height={H} {...WL} />
-        <line x1={X + W / 2} y1={Y} x2={X + W / 2} y2={Y + H} {...WL} />
-        <circle cx={X + W / 2} cy={cy} r={1.8} fill="#3B5249" fillOpacity="0.88" /><circle cx={X + W / 2} cy={cy} r={1.8} {...WL} />
+        <line x1={cx} y1={Y} x2={cx} y2={Y + H} {...WL} />
+        <circle cx={cx} cy={cy} r={1.8} fill={paint} fillOpacity="0.9" /><circle cx={cx} cy={cy} r={1.8} {...WL} />
+        <image href={LOGO_SRC} x={cx - 1.3} y={cy - 0.65} width={2.6} height={1.3} opacity="0.55" preserveAspectRatio="xMidYMid meet" />
         {[1, -1].map(half)}
       </svg>
     )
   }
   if (sport === 'hockey') {
-    // IIHF / NHL rink 60 x 30 m: corner radius 8.5, goal lines 4 m from the boards, blue lines 22.86 m,
-    // end face-off spots 6 m from the goal line and 7 m off-centre, neutral spots 1.5 m from the blue lines
+    // IIHF / NHL rink 60 x 30 m with arena around it: boards with ad panels, benches, penalty boxes, centre-ice logo
     const cy = Y + H / 2, R = 8.5, cx = X + W / 2
     const red = '#B23A40', blue = '#2D57A3'
-    const clip = `rk${Math.random().toString(36).slice(2, 7)}`
+    const clip = `rk${uid}`
     const endSpot = [[X + 10, cy - 7], [X + 10, cy + 7], [X + W - 10, cy - 7], [X + W - 10, cy + 7]]
     const midSpot = [[X + 24.36, cy - 7], [X + 24.36, cy + 7], [X + W - 24.36, cy - 7], [X + W - 24.36, cy + 7]]
     const goal = (dir) => {
@@ -159,27 +177,39 @@ export function CourtLines({ sport }) {
       const s = dir
       return (
         <g key={dir}>
-          <path d={`M ${gx} ${cy - 1.8} A 1.8 1.8 0 0 ${dir === 1 ? 1 : 0} ${gx} ${cy + 1.8} Z`} fill="#9DB6D3" fillOpacity="0.6" stroke={red} strokeWidth="0.12" />
-          <rect x={dir === 1 ? gx - 1.12 : gx} y={cy - 0.915} width={1.12} height={1.83} rx="0.25" fill="rgba(120,130,140,0.25)" stroke={red} strokeWidth="0.16" />
-          <path d={`M ${gx} ${cy - 3.35} L ${gx - s * 4} ${cy - 4.25} M ${gx} ${cy + 3.35} L ${gx - s * 4} ${cy + 4.25}`} stroke={red} strokeWidth="0.1" fill="none" />
+          <path d={`M ${gx} ${cy - 1.8} A 1.8 1.8 0 0 ${dir === 1 ? 1 : 0} ${gx} ${cy + 1.8} Z`} fill="#9DB6D3" fillOpacity="0.55" stroke={red} strokeWidth="0.1" />
+          <rect x={dir === 1 ? gx - 1.12 : gx} y={cy - 0.915} width={1.12} height={1.83} rx="0.3" fill={`url(#${uid}net)`} stroke={red} strokeWidth="0.14" />
+          <path d={`M ${gx} ${cy - 3.35} L ${gx - s * 4} ${cy - 4.25} M ${gx} ${cy + 3.35} L ${gx - s * 4} ${cy + 4.25}`} stroke={red} strokeWidth="0.08" fill="none" />
         </g>
       )
     }
+    const ads = Array.from({ length: 10 }, (_, i) => i)
     return (
       <svg viewBox={vb} className="court-svg" aria-hidden="true">
         <defs>
           <clipPath id={clip}><rect x={X} y={Y} width={W} height={H} rx={R} /></clipPath>
-          <radialGradient id={clip + 'g'} cx="50%" cy="45%" r="70%"><stop offset="0" stopColor="#EEF2F5" /><stop offset="1" stopColor="#E2E8ED" /></radialGradient>
+          <radialGradient id={`${uid}ice`} cx="50%" cy="40%" r="75%"><stop offset="0" stopColor="#F1F4F6" /><stop offset="0.7" stopColor="#E4E9ED" /><stop offset="1" stopColor="#D6DDE3" /></radialGradient>
+          <pattern id={`${uid}net`} width="0.22" height="0.22" patternUnits="userSpaceOnUse"><rect width="0.22" height="0.22" fill="#E9EDF0" /><path d="M0 0 L0.22 0.22 M0.22 0 L0 0.22" stroke="#9AA4AC" strokeWidth="0.02" /></pattern>
+          <filter id={`${uid}scr`} x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="0.9 0.06" numOctaves="2" seed="4" /><feColorMatrix values="0 0 0 0 0.55  0 0 0 0 0.6  0 0 0 0 0.65  0 0 0 0.10 0" /></filter>
         </defs>
-        <rect width={c.w} height={c.h} fill="#1B2228" />
-        <rect x={X - 0.3} y={Y - 0.3} width={W + 0.6} height={H + 0.6} rx={R + 0.3} fill="#4A5560" />
-        <rect x={X} y={Y} width={W} height={H} rx={R} fill={`url(#${clip}g)`} />
+        <rect width={c.w} height={c.h} fill="#161B20" />
+        {/* benches and penalty boxes */}
+        <rect x={cx - 11} y={Y + H + 0.6} width={8} height={1.2} rx="0.2" fill="#232B33" stroke="#39434C" strokeWidth="0.06" />
+        <rect x={cx + 3} y={Y + H + 0.6} width={8} height={1.2} rx="0.2" fill="#232B33" stroke="#39434C" strokeWidth="0.06" />
+        <rect x={cx - 5} y={Y - 1.8} width={3.6} height={1.2} rx="0.2" fill="#232B33" stroke="#39434C" strokeWidth="0.06" />
+        <rect x={cx + 1.4} y={Y - 1.8} width={3.6} height={1.2} rx="0.2" fill="#232B33" stroke="#39434C" strokeWidth="0.06" />
+        {/* dasher boards with ad panels */}
+        <rect x={X - 0.4} y={Y - 0.4} width={W + 0.8} height={H + 0.8} rx={R + 0.4} fill="#2B333A" />
+        {ads.map((i) => <g key={i}><rect x={X + 9 + i * 4.3} y={Y - 0.36} width={3.9} height={0.32} fill={i % 2 ? '#3A444D' : '#323B43'} /><rect x={X + 9 + i * 4.3} y={Y + H + 0.04} width={3.9} height={0.32} fill={i % 2 ? '#323B43' : '#3A444D'} /></g>)}
+        <rect x={X} y={Y} width={W} height={H} rx={R} fill={`url(#${uid}ice)`} />
         <g clipPath={`url(#${clip})`}>
+          <rect x={X} y={Y} width={W} height={H} filter={`url(#${uid}scr)`} />
           <rect x={X + 4 - 0.05} y={Y} width={0.1} height={H} fill={red} />
           <rect x={X + W - 4 - 0.05} y={Y} width={0.1} height={H} fill={red} />
           <rect x={X + 22.86 - 0.3} y={Y} width={0.6} height={H} fill={blue} />
           <rect x={X + W - 22.86 - 0.3} y={Y} width={0.6} height={H} fill={blue} />
           <rect x={cx - 0.3} y={Y} width={0.6} height={H} fill={red} />
+          <image href={LOGO_SRC} x={cx - 3.2} y={cy - 1.6} width={6.4} height={3.2} opacity="0.22" preserveAspectRatio="xMidYMid meet" />
           <circle cx={cx} cy={cy} r={4.5} fill="none" stroke={blue} strokeWidth="0.1" />
           <circle cx={cx} cy={cy} r={0.3} fill={blue} />
           <path d={`M ${cx - 3} ${Y + H} A 3 3 0 0 1 ${cx + 3} ${Y + H}`} fill="none" stroke={red} strokeWidth="0.1" />
@@ -194,7 +224,7 @@ export function CourtLines({ sport }) {
           {midSpot.map(([x0, y0]) => <circle key={`m${x0}-${y0}`} cx={x0} cy={y0} r={0.3} fill={red} />)}
           {goal(1)}{goal(-1)}
         </g>
-        <rect x={X} y={Y} width={W} height={H} rx={R} fill="none" stroke="#7F8B95" strokeWidth="0.15" />
+        <rect x={X} y={Y} width={W} height={H} rx={R} fill="none" stroke="#151A1F" strokeWidth="0.12" />
       </svg>
     )
   }
@@ -226,16 +256,36 @@ export function CourtLines({ sport }) {
     )
   }
   if (sport === 'waterpolo') {
-    const cy = Y + H / 2
-    const ln = (x, col) => <line key={x + col} x1={x} y1={Y} x2={x} y2={Y + H} stroke={col} strokeWidth="1.8" vectorEffect="non-scaling-stroke" />
+    // World Aquatics field of play 25 x 20 m: no lines on the water; lane ropes mark the field, coloured
+    // markers on the pool side (white goal line and half, red 2 m, yellow 5 m, green 6 m), floating goals
+    const cy = Y + H / 2, cx = X + W / 2
+    const floats = (y) => Array.from({ length: 50 }, (_, i) => <rect key={i} x={X + i * 0.5} y={y - 0.12} width={0.42} height={0.24} rx="0.12" fill={i % 6 < 3 ? '#E8ECEE' : '#C8443F'} />)
+    const marker = (x, col) => <g key={`${x}${col}`}><rect x={x - 0.35} y={Y - 1.25} width={0.7} height={0.5} fill={col} /><rect x={x - 0.35} y={Y + H + 0.75} width={0.7} height={0.5} fill={col} /></g>
+    const goal = (dir) => {
+      const gx = dir === 1 ? X : X + W
+      return (
+        <g key={dir}>
+          <rect x={dir === 1 ? gx - 0.6 : gx} y={cy - 1.5} width={0.6} height={3} fill={`url(#${uid}net)`} />
+          <rect x={dir === 1 ? gx - 0.6 : gx} y={cy - 1.5} width={0.6} height={3} fill="none" stroke="#F2F4F5" strokeWidth="0.12" />
+          <line x1={gx} y1={cy - 1.5} x2={gx} y2={cy + 1.5} stroke="#F2F4F5" strokeWidth="0.16" />
+        </g>
+      )
+    }
     return (
       <svg viewBox={vb} className="court-svg" aria-hidden="true">
-        <rect width={c.w} height={c.h} fill="#1A4C66" />
-        <rect x={X} y={Y} width={W} height={H} fill="#24708F" />
-        {[2, 5, 6].map((d) => [ln(X + d, d === 2 ? '#E04848' : d === 5 ? '#F2C230' : '#4CC38A'), ln(X + W - d, d === 2 ? '#E04848' : d === 5 ? '#F2C230' : '#4CC38A')])}
-        {ln(X + W / 2, '#ffffff')}
-        <rect x={X} y={Y} width={W} height={H} stroke="#fff" strokeOpacity="0.85" fill="none" strokeWidth="1.6" vectorEffect="non-scaling-stroke" />
-        <rect x={X - 0.6} y={cy - 1.5} width={0.6} height={3} fill="#fff" /><rect x={X + W} y={cy - 1.5} width={0.6} height={3} fill="#fff" />
+        <defs>
+          <linearGradient id={`${uid}w`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#2A7FA1" /><stop offset="1" stopColor="#1F6888" /></linearGradient>
+          <filter id={`${uid}caus`} x="0" y="0" width="100%" height="100%"><feTurbulence type="turbulence" baseFrequency="0.35" numOctaves="2" seed="3"><animate attributeName="seed" values="3;4;5;6;3" dur="16s" repeatCount="indefinite" /></feTurbulence><feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.10 -0.02" /></filter>
+          <pattern id={`${uid}net`} width="0.25" height="0.25" patternUnits="userSpaceOnUse"><rect width="0.25" height="0.25" fill="#1B5671" /><path d="M0 0 L0.25 0.25 M0.25 0 L0 0.25" stroke="#CFD8DC" strokeWidth="0.025" /></pattern>
+        </defs>
+        <rect width={c.w} height={c.h} fill="#1A1F24" />
+        <rect x={X - 2} y={Y - 1.5} width={W + 4} height={H + 3} fill="#9AA3A6" />
+        <rect x={X - 1.6} y={Y - 0.6} width={W + 3.2} height={H + 1.2} fill={`url(#${uid}w)`} />
+        <rect x={X - 1.6} y={Y - 0.6} width={W + 3.2} height={H + 1.2} filter={`url(#${uid}caus)`} />
+        {floats(Y)}{floats(Y + H)}
+        {[[0, '#F2F4F5'], [2, '#C8443F'], [5, '#D9B53A'], [6, '#3E9A62']].map(([d, col]) => [marker(X + d, col), marker(X + W - d, col)])}
+        {marker(cx, '#F2F4F5')}
+        {goal(1)}{goal(-1)}
       </svg>
     )
   }
