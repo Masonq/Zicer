@@ -46,11 +46,14 @@ STATE = {"host": 0, "last": ""}
 
 
 def _get(client: httpx.Client, path: str):
+    import time as _t
+    if STATE.get("down_until", 0) > _t.time():
+        raise RuntimeError(f"cooldown: {STATE['last']}")
     err = None
     for k in range(len(HOSTS)):
         host = HOSTS[(STATE["host"] + k) % len(HOSTS)]
         try:
-            r = client.get(host + path, headers={"User-Agent": UA, "Accept": "application/json"}, timeout=15)
+            r = client.get(host + path, headers={"User-Agent": UA, "Accept": "application/json"}, timeout=6)
             if r.status_code == 200 and r.headers.get("content-type", "").startswith("application/json"):
                 STATE["host"] = (STATE["host"] + k) % len(HOSTS)
                 STATE["last"] = f"{host.split('//')[1]} ok"
@@ -59,6 +62,7 @@ def _get(client: httpx.Client, path: str):
         except Exception as e:  # noqa
             err = f"{host.split('//')[1]} {type(e).__name__}"
     STATE["last"] = err or "no host"
+    STATE["down_until"] = _t.time() + 120  # all mirrors refuse: wait 2 minutes instead of hammering
     raise RuntimeError(STATE["last"])
 EXTRA = {"handball", "tabletennis", "futsal", "esports"}
 
