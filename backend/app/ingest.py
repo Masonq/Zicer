@@ -1250,7 +1250,7 @@ def finish_stale(db: Session) -> str:
     when a live match disappears from both live feeds, it is over. Settlement waits for official results."""
     now_ts = int(datetime.utcnow().timestamp())
     n = 0
-    for m in db.scalars(select(Match).where(Match.status == "live", or_(Match.ext.like("mbb:%"), Match.ext.like("mbo:%")))).all():
+    for m in db.scalars(select(Match).where(Match.status == "live", or_(Match.ext.like("mbb:%"), Match.ext.like("mbo:%"), Match.ext.like("x22:%")))).all():
         lv = dict(m.live or {})
         seen = max(lv.get("mb_seen") or 0, lv.get("x_seen") or 0)
         if m.start > datetime.utcnow() - timedelta(minutes=25):

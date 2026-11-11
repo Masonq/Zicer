@@ -60,6 +60,7 @@ def main():
         ingest.job(db, "backfill", ingest.backfill_football)
         ingest.job(db, "logos", logos.sync_logos)
         ingest.job(db, "highlights", highlights.sync_highlights)
+        ingest.job(db, "x22_line", ingest.sync_x22_line)
         for n in ("odds", "settle"):
             ingest.job(db, n, dict((a, b) for a, b, _ in SCHEDULE)[n])
     t0 = time.time()

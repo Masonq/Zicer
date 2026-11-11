@@ -39,9 +39,17 @@ def _num(v):
         return 0.0
 
 
+_ROUND = {"n": 0}
+EXTRA = {"handball", "tabletennis", "futsal", "esports"}
+
+
 def fetch_all(client: httpx.Client) -> list[dict]:
+    """Main sports every run; the newer ones every third run (keeps the request rate the feed tolerates)."""
     out = []
+    _ROUND["n"] += 1
     for sport, sid in SPORTS.items():
+        if sport in EXTRA and _ROUND["n"] % 3:
+            continue
         try:
             r = client.get(URL.format(s=sid), headers={"User-Agent": UA, "Accept": "application/json"}, timeout=15)
             r.raise_for_status()
