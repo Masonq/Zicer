@@ -899,7 +899,8 @@ function useArenaEngine(cfgNow) {
         s.toss = 0; const n = next(); seg(n.to, n.dur, n.hop)
       }
       const tt = Math.min(1, (now - s.t0) / s.dur)
-      const ease = s.hop ? tt : (tt < 0.5 ? 2 * tt * tt : 1 - Math.pow(-2 * tt + 2, 2) / 2)
+      // a puck slides: fast off the stick, slowing on the ice; balls ease in and out
+      const ease = s.hop ? tt : cfg.current.sport === 'hockey' ? 1 - Math.pow(1 - tt, 3) : (tt < 0.5 ? 2 * tt * tt : 1 - Math.pow(-2 * tt + 2, 2) / 2)
       const p = { x: s.from.x + (s.to.x - s.from.x) * ease, y: s.from.y + (s.to.y - s.from.y) * ease }
       const h = s.hop ? 4 * tt * (1 - tt) * s.hop : 0
       s.pos = p; place(p, h)
@@ -914,7 +915,7 @@ function useArenaEngine(cfgNow) {
         s.strike = null; s.stopped = true; ripple(s.to); st.cb && st.cb(); return
       }
       if (st) { st.launched = true; seg(st.spot, st.dur, st.hop); return }
-      if (s.poke) { const pk = s.poke; s.poke = null; seg(pk, 600, 0.2); return }
+      if (s.poke) { const pk = s.poke; s.poke = null; seg(pk, 600, cfg.current.sport === 'hockey' ? 0 : 0.2); return }
       const n = next(); seg(n.to, n.dur, n.hop)
     }
     api.current = {
@@ -1208,7 +1209,7 @@ function Arena({ m, data, t }) {
         }, 2300)
       }, 450)
     }
-    eng.api.current.strike(strikeSpot(ev, sport), sport === 'basketball' ? 1 : net ? 1 : 0.15, land)
+    eng.api.current.strike(strikeSpot(ev, sport), sport === 'basketball' ? 1 : net ? 1 : sport === 'hockey' ? 0 : 0.15, land)
     const guard = setTimeout(land, 4500) // never get stuck (e.g. hidden tab)
     return () => clearTimeout(guard)
   }, [phase.kind, queue.current.length, live]) // eslint-disable-line react-hooks/exhaustive-deps

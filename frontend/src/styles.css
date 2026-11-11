@@ -735,3 +735,10 @@ img { display: block; max-width: 100%; }
 .arena-banner { box-shadow: 0 8px 22px rgba(0,0,0,0.35); }
 .ab-score .hl { text-shadow: none; }
 .tn-srv { box-shadow: none; }
+
+/* hockey puck: a flat black disc that stays on the ice (top-down view), no lift, no floating shadow */
+.eng-ball.ball-hockey { width: 8px !important; height: 8px !important; border-radius: 50% !important;
+  background: radial-gradient(circle at 40% 35%, #3B3F43 0%, #141618 55%, #0A0B0C 100%) !important;
+  box-shadow: 0 0 0 0.5px rgba(0,0,0,0.6), 0 0.5px 1px rgba(0,0,0,0.4) !important; }
+.court-hockey .eng-shadow { display: none; }
+.court-hockey .arena-fx polyline { stroke: rgba(40, 55, 70, 0.35) !important; stroke-dasharray: none; }
