@@ -55,8 +55,22 @@ def migrate():
 @app.on_event("startup")
 def startup():
     migrate()
+    try:
+        _seed_bookmakers()
+    except Exception:  # noqa — two API workers start at once; the second one just skips
+        pass
+
+
+def _seed_bookmakers():
     with SessionLocal() as db:
-        if not db.scalar(select(Bookmaker)):
+        # seed the default bookmakers only once in the site's life: what the admin deletes stays deleted
+        from .models import Meta
+        seeded = db.get(Meta, "bm_seeded")
+        if not seeded and db.scalar(select(Bookmaker)):
+            db.add(Meta(key="bm_seeded", value="1"))
+            db.commit()
+        elif not seeded:
+            db.add(Meta(key="bm_seeded", value="1"))
             for i, (n, url, col) in enumerate(SEED_BMS):
                 db.add(Bookmaker(name=n, url=url, color=col, sort=i, rating=round(4.8 - i * 0.1, 1),
                                  bonus_sr="Bonus dobrodošlice za nove igrače. Uslove proveri na sajtu priređivača.",
