@@ -1426,3 +1426,23 @@ img { display: block; max-width: 100%; }
   background: linear-gradient(180deg, #2a3330, #0d1311); }
 .court > .court-svg { filter: drop-shadow(0 18px 18px rgba(0,0,0,.55)); }
 .court-depth::after { content: ''; position: absolute; left: 4%; right: 4%; bottom: -5%; height: 10%; background: radial-gradient(50% 50% at 50% 50%, rgba(0,0,0,.55), transparent 70%); transform: translateZ(-2px); }
+
+/* 3D broadcast view */
+.stage3d { position: absolute; inset: 0; z-index: 0; }
+.stage3d canvas { width: 100% !important; height: 100% !important; display: block; }
+.court.is3d { background: #0b1512 !important; perspective: none; }
+.court.is3d > .court-svg, .court.is3d > .court-tex, .court.is3d > .court-light, .court.is3d > .court-depth, .court.is3d::after { display: none !important; }
+.court.is3d .eng-ball, .court.is3d .eng-shadow, .court.is3d .arena-fx, .court.is3d .ripple, .court.is3d .atk-zone, .court.is3d .atk-call, .court.is3d .tt-tag, .court.is3d .terr { opacity: 0 !important; visibility: hidden; }
+.court.is3d > .arena-field { transform: none !important; }
+.lmt-card { position: absolute; left: 0; bottom: 8%; z-index: 4; display: flex; align-items: stretch; min-width: 46%; max-width: 70%; height: 54px;
+  background: linear-gradient(90deg, rgba(10,16,14,.92) 0%, rgba(10,16,14,.78) 70%, transparent 100%); animation: lmtIn .35s cubic-bezier(.2,.9,.25,1); }
+.lmt-card i { width: 5px; background: #F2C230; } .lmt-card.s0 i { background: #3D8EF0; } .lmt-card.s1 i { background: #8BD12F; }
+.lmt-card > div { display: grid; align-content: center; padding: 0 14px; min-width: 0; }
+.lmt-card b { font-family: var(--display); font-style: italic; font-size: 20px; letter-spacing: .01em; color: #fff; line-height: 1.05; }
+.lmt-card span { font-style: italic; color: #b9c8c0; font-size: 13px; font-weight: 600; }
+.lmt-card em { width: 46px; background: repeating-linear-gradient(115deg, transparent 0 8px, rgba(242,194,48,.35) 8px 12px); clip-path: polygon(0 0, 60% 0, 100% 50%, 60% 100%, 0 100%, 40% 50%); }
+@keyframes lmtIn { from { transform: translateX(-30px); opacity: 0; } }
+.lmt-name { position: absolute; z-index: 4; display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 8px; background: rgba(10,16,14,.78); color: #fff; font-weight: 800; font-size: 13px; max-width: 45%; }
+.lmt-name.near { left: 10px; bottom: 10px; border-left: 3px solid #3D8EF0; } .lmt-name.far { right: 10px; top: 10px; border-right: 3px solid #8BD12F; }
+.lmt-name b { color: #F2C230; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+@media (max-width: 560px) { .lmt-card { height: 46px; min-width: 60%; } .lmt-card b { font-size: 16px; } }

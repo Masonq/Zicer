@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState, useId } from 'react'
+import { useEffect, useRef, useState, useId, lazy, Suspense } from 'react'
+const Stage3D = lazy(() => import('../three/Stage3D'))
+const webgl = (() => { try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')) } catch { return false } })()
 import { motion, AnimatePresence } from 'motion/react'
 import confetti from 'canvas-confetti'
 import { LOGO_SRC } from '../logoData'
@@ -1318,6 +1320,8 @@ function Arena({ m, data, t }) {
   const brkTitle = t('pause') // one simple word for every kind of break
   const brkLabel = brkUntil ? (brkUntil > Date.now() ? `${brkTitle} ${fmtLeft(brkUntil)}` : `${brkTitle}, ${t('resumeSoon')}`) : brkTitle
   const eng = useArenaEngine({ live, sport, att, intensity, server, srvY, rcvY })
+  // 3D broadcast view (LMT-style) where it is ready; everything else stays 2D. ?2d in the address forces the flat view
+  const use3d = webgl && (sport === 'football' || sport === 'tennis') && !/[?&]2d\b/.test(window.location.search)
   const [, tick] = useState(0)
   const [pp, setPp] = useState(null) // hockey power play: { side, until }
   useEffect(() => { if (!pp) return; const id = setInterval(() => { tick((v) => v + 1); if (Date.now() > pp.until) setPp(null) }, 1000); return () => clearInterval(id) }, [pp])
@@ -1504,7 +1508,17 @@ function Arena({ m, data, t }) {
           ) : <motion.div key="none" className="trk-st muted-st" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>{live ? t('live') : t('finished')}</motion.div>}
         </AnimatePresence>
       </div>
-      <div className={`court court-${sport} tt-court`} style={{ aspectRatio: courtAspect(sport) }}>
+      <div className={`court court-${sport} tt-court${use3d ? ' is3d' : ''}`} style={{ aspectRatio: use3d ? (sport === 'tennis' ? '16 / 9' : '16 / 9') : courtAspect(sport) }}>
+        {use3d && <Suspense fallback={null}><Stage3D sport={sport} eng={eng} att={live && !isBreak && !net ? att : null} level={intensity >= 0.9 ? 2 : intensity >= 0.6 ? 1 : 0} /></Suspense>}
+        {use3d && live && !isBreak && att !== null && !net && intensity >= 0.6 && phase.kind === 'idle' && (
+          <div className={`lmt-card s${att}`}><i /><div><b>{intensity >= 0.9 ? t('dangerAttack') : t('attack')}</b><span className="ellip">{names[att]}</span></div><em /></div>
+        )}
+        {use3d && sport === 'tennis' && (
+          <>
+            <div className="lmt-name near"><span className="ellip">{names[0]}</span>{live && server === 0 && <b>{t('serve')}</b>}</div>
+            <div className="lmt-name far"><span className="ellip">{names[1]}</span>{live && server === 1 && <b>{t('serve')}</b>}</div>
+          </>
+        )}
         <CourtLines sport={sport} />
         <span className={`court-tex tex-${sport}`} aria-hidden="true" /><span className="court-light" aria-hidden="true" /><span className="court-depth" aria-hidden="true"><i className="cd-boards" /><i className="cd-front" /></span>
         <div className="arena-field" style={fieldStyle(sport)}>
