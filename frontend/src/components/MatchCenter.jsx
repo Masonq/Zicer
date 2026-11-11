@@ -993,10 +993,11 @@ function useArenaEngine(cfgNow) {
     const s = e.current
     let raf = 0
     const net = () => ['tennis', 'volleyball', 'tabletennis'].includes(cfg.current.sport)
+    const diag = () => ['tennis', 'tabletennis'].includes(cfg.current.sport) // cross-court play: shots go along the diagonals
     const place = (p, h = 0) => {
       const b = ballEl.current, sh = shadowEl.current
-      if (b) { b.style.left = `${p.x}%`; b.style.top = '50%'; b.style.transform = `translate(-50%, -50%)` }
-      if (sh) { sh.style.left = `${p.x}%`; sh.style.top = '50%'; sh.style.opacity = '0.45' }
+      if (b) { b.style.left = `${p.x}%`; b.style.top = `${diag() ? p.y : 50}%`; b.style.transform = `translate(-50%, -50%)` }
+      if (sh) { sh.style.left = `${p.x}%`; sh.style.top = `${diag() ? p.y : 50}%`; sh.style.opacity = '0.45' }
     }
     const mark = (p) => {
       if (!net()) return
@@ -1005,18 +1006,20 @@ function useArenaEngine(cfgNow) {
     }
     const ripple = (p) => {
       const r = rippleEl.current; if (!r) return
-      r.style.left = `${p.x}%`; r.style.top = '50%'; r.classList.remove('go'); void r.offsetWidth; r.classList.add('go')
+      r.style.left = `${p.x}%`; r.style.top = `${diag() ? p.y : 50}%`; r.classList.remove('go'); void r.offsetWidth; r.classList.add('go')
     }
     const seg = (to, dur, hop) => { s.from = { ...s.pos }; s.to = to; s.t0 = performance.now(); s.dur = dur; s.hop = hop }
     // three spots on the centre line (left attack, centre, right attack), like bookmaker trackers
     const SPOT = [20, 50, 80]
-    const SHOT_MS = { tennis: 650, volleyball: 700, tabletennis: 380 }
+    const SHOT_MS = { tennis: 1150, volleyball: 800, tabletennis: 750 }
     const next = () => {
       const c = cfg.current
       if (net()) { // rally by the rules: every shot crosses the net, from one side's spot to the other's
         s.side = s.side === 0 ? 1 : 0
         s.shot += 1
-        return { to: { x: s.side === 1 ? SPOT[2] : SPOT[0], y: 50 }, dur: SHOT_MS[c.sport] || 600, hop: 0 }
+        // tennis / table tennis: cross-court — every shot goes to the opposite corner of the other half
+        const y = diag() ? (s.pos && s.pos.y < 50 ? 70 : 30) : 50
+        return { to: { x: s.side === 1 ? SPOT[2] : SPOT[0], y }, dur: SHOT_MS[c.sport] || 700, hop: 0 }
       }
       // field sports: centre while nobody presses, the attacking side's spot during an attack / dangerous attack
       const a = c.att, k = c.intensity || 0
@@ -1031,7 +1034,7 @@ function useArenaEngine(cfgNow) {
       if (s.lastServe && now - s.lastServe < 4000 && s.side === side && !s.stopped) return // same serve asked again by a re-render
       s.lastServe = now
       s.side = side; s.shot = 0
-      const to = { x: side === 0 ? 20 : 80, y: 50 }
+      const to = { x: side === 0 ? 20 : 80, y: diag() ? (side === 0 ? 70 : 30) : 50 }
       s.trail = []; s.marks = []; if (marksEl.current) marksEl.current.innerHTML = ''
       s.toss = 0; s.toServe = true; seg(to, Math.max(350, Math.abs((s.pos?.x ?? 50) - to.x) * 9), 0)
     }
@@ -1058,7 +1061,7 @@ function useArenaEngine(cfgNow) {
       s.pos = p; place(p, h)
       if (now - s.lastTrail > 60) {
         s.lastTrail = now; s.trail.push(p); if (s.trail.length > (net() ? 40 : 22)) s.trail.shift()
-        if (trailEl.current) trailEl.current.setAttribute('points', s.trail.map((q) => `${q.x.toFixed(2)},50`).join(' '))
+        if (trailEl.current) trailEl.current.setAttribute('points', s.trail.map((q) => `${q.x.toFixed(2)},${diag() ? q.y.toFixed(2) : 50}`).join(' '))
       }
       if (tt < 1) return
       if (s.toServe) { s.toServe = false; s.toss = performance.now() + 700; return } // arrived at the server: short pause, then serve
@@ -1115,7 +1118,8 @@ function bannerTitle(ev, sport, t) {
 
 function strikeSpot(ev, sport) {
   const s = ev.side
-  if (sport === 'tennis' || sport === 'volleyball' || sport === 'tabletennis') return { x: s === 0 ? 108 : -8, y: 50 } // past the player who missed
+  if (sport === 'tennis' || sport === 'tabletennis') return { x: s === 0 ? 108 : -8, y: s === 0 ? 82 : 18, diag: true } // past the player who missed, along the diagonal
+  if (sport === 'volleyball') return { x: s === 0 ? 108 : -8, y: 50 }
   if (sport === 'basketball') return { x: s === 0 ? 100 - HOOP_X : HOOP_X, y: 50 }
   return { x: s === 0 ? 100.6 : -0.6, y: rnd(46, 54) }
 }
