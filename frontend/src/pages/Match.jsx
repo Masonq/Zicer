@@ -15,10 +15,13 @@ function Tablo({ m }) {
   const t = useT()
   if (m.status === 'scheduled' || !m.score) {
     const day = fmtDay(m.start, t.locale)
+    const left = new Date(m.start) - Date.now()
+    const inH = Math.floor(left / 3600000), inM = Math.floor((left % 3600000) / 60000)
     return (
       <div className="tablo">
         <div className="big time">{fmtTime(m.start, t.locale)}</div>
         <div className="lbl">{day.diff === 0 ? t('today') : day.diff === 1 ? t('tomorrow') : day.label}</div>
+        {left > 0 && left < 24 * 3600000 && <div className="tablo-in num">{t('startsIn')} {inH > 0 ? `${inH} ${t('hShort')} ` : ''}{inM} {t('mShort')}</div>}
       </div>
     )
   }

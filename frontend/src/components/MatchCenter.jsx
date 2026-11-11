@@ -50,8 +50,13 @@ function Momentum({ data, colors }) {
   )
 }
 
+const BALL_SPORTS = ['football', 'basketball', 'tennis', 'hockey', 'volleyball', 'waterpolo']
+export function GoalIcon({ sport = 'football', own = false }) {
+  return <span className={`ev-ico ball${own ? ' own' : ''}`}><img src={`/balls/${BALL_SPORTS.includes(sport) ? sport : 'football'}.webp`} alt="" width="22" height="22" /></span>
+}
+
 function EvIcon({ e }) {
-  if (e.type === 'Goal') return <span className="ev-ico goal">●</span>
+  if (e.type === 'Goal') return <GoalIcon own={e.own} />
   if (e.type === 'Card') return <span className={`ev-card ${e.card === 'Red' || e.card === 'YellowRed' ? 'red' : 'yellow'}`} />
   if (e.type === 'Substitution') return <span className="ev-ico sub">⇄</span>
   return <span className="ev-ico">•</span>
@@ -1484,7 +1489,7 @@ function Events({ m, data, t }) {
     <div className="ev-list">{[...xev].reverse().slice(0, 30).map((e, i) => (
       <div key={i} className="ev">
         <span className="ev-min num">{e.ts ? `${Math.floor(e.ts / 60) + 1}'` : ''}</span>
-        <span className={`ev-ico${['score', 'shot_on', 'p3'].includes(e.t) ? ' goal' : ''}`}>{e.t === 'score' ? '●' : e.t === 'corner' ? '⚑' : e.t === 'yellow' ? '▮' : '•'}</span>
+        {e.t === 'score' ? <GoalIcon sport={m.sport} /> : <span className={`ev-ico${['shot_on', 'p3'].includes(e.t) ? ' goal' : ''}`}>{e.t === 'corner' ? '⚑' : e.t === 'yellow' ? '▮' : '•'}</span>}
         <div className="ev-body"><div className="ev-player ellip">{xevLabel(e, m.sport, t)}</div><div className="small ellip">{e.side === 0 ? H : A}</div></div>
       </div>))}
     </div>

@@ -141,17 +141,17 @@ export function MatchRow({ m }) {
         <span className={`ru-fav${dx > 70 ? ' go' : ''}`}><Star size={18} fill={fav ? 'currentColor' : 'none'} />{fav ? t('unfav') : t('fav')}</span>
         <span className={`ru-add${dx < -70 ? ' go' : ''}`}><Plus size={18} />{t('ticket')}</span>
       </div>
-      <Link to={`/mec/${m.id}`} state={{ m }} className="row" style={dx ? { transform: `translateX(${dx}px)`, transition: 'none' } : undefined}
+      <Link to={`/mec/${m.id}`} state={{ m }} className={`row${fav ? ' is-fav' : ''}`} style={dx ? { transform: `translateX(${dx}px)`, transition: 'none' } : undefined}
         onTouchStart={onStart} onTouchMove={onMove} onTouchEnd={onEnd} onClick={(e) => { if (Math.abs(dx) > 6) e.preventDefault() }}>
         <StatusTime m={m} />
         <div className="row-teams">
-          <button type="button" className={`row-fav${fav ? ' on' : ''}`} aria-label={fav ? t('unfav') : t('fav')} title={fav ? t('unfav') : t('fav')}
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); const on = toggleFav(m.id); showUndo(on ? t('favAdded') : t('favRemoved'), () => toggleFav(m.id)) }}>
-            <Star size={15} fill={fav ? 'currentColor' : 'none'} />
-          </button>
           <div className={`row-team${fin && aw ? ' lose' : ''}`}><Crest team={m.home} size={20} /><span className="name">{t.team(m.home)}</span>{sc && <span className="sc"><RollNum value={sc[0]} /></span>}</div>
           <div className={`row-team${fin && hw ? ' lose' : ''}`}><Crest team={m.away} size={20} /><span className="name">{t.team(m.away)}</span>{sc && <span className="sc"><RollNum value={sc[1]} /></span>}</div>
         </div>
+        <button type="button" className={`row-fav${fav ? ' on' : ''}`} aria-label={fav ? t('unfav') : t('fav')} title={fav ? t('unfav') : t('fav')}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); const on = toggleFav(m.id); showUndo(on ? t('favAdded') : t('favRemoved'), () => toggleFav(m.id)) }}>
+          <Star size={15} fill={fav ? 'currentColor' : 'none'} />
+        </button>
         {m.status !== 'finished' ? <OddsButtons m={m} /> : <span />}
       </Link>
     </div>
