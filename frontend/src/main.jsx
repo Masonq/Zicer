@@ -52,6 +52,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <LangRoot>
           <SlipProvider>
             <Routes>
+              <Route path="/admin/*" element={<Admin />} />
               <Route element={<Layout />}>
                 <Route path="/" element={<Home />} />
                 <Route path="/mecevi" element={<Matches />} />
@@ -69,7 +70,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                 <Route path="/prijava" element={<Login />} />
                 <Route path="/registracija" element={<Register />} />
                 <Route path="/izbor-kluba" element={<Onboarding />} />
-                <Route path="/admin/*" element={<Admin />} />
                 <Route path="*" element={<Home />} />
               </Route>
             </Routes>

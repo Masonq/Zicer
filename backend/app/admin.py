@@ -146,7 +146,7 @@ def feature(mid: int, db: Session = Depends(get_db)):
 
 
 JOBS = {"football": ingest.sync_football, "basketball": ingest.sync_basketball, "odds": ingest.sync_odds,
-        "settle": ingest.settle, "trends": ingest.build_trends, "analysis": ingest.build_analysis}
+        "settle": ingest.settle, "trends": ingest.build_trends, "analysis": ingest.build_analysis, "logos": __import__("app.logos", fromlist=["x"]).sync_logos, "highlights": __import__("app.highlights", fromlist=["x"]).sync_highlights, "other_sports": ingest.sync_other_sports}
 
 
 def _run(name):
@@ -267,3 +267,79 @@ def unfeature(mid: int, db: Session = Depends(get_db)):
         m.featured = False
         db.commit()
     return {"ok": True}
+
+
+# ---------------- dashboard (bento overview) ----------------
+JOB_EVERY = {"live": 20, "xfeed": 9, "football_live": 40, "odds": 180, "settle": 60, "maxbet_results": 180, "other_results": 180,
+             "football": 900, "basketball": 180, "basketball_week": 1800, "other_sports": 300, "names": 300, "logos": 600, "highlights": 900,
+             "finish_stale": 60}
+
+
+@router.get("/dashboard")
+def dashboard(period: str = "week", db: Session = Depends(get_db)):
+    from .models import Highlight
+    n = datetime.utcnow()
+    if period == "day":
+        span, step, buckets = timedelta(days=1), timedelta(hours=1), 24
+    elif period == "month":
+        span, step, buckets = timedelta(days=30), timedelta(days=1), 30
+    else:
+        period, span, step, buckets = "week", timedelta(days=7), timedelta(days=1), 7
+    start = n - span
+    c = lambda q: db.scalar(q) or 0  # noqa
+
+    def series(model, col):
+        rows = db.scalars(select(col).where(col > start)).all()
+        out = [0] * buckets
+        for t in rows:
+            i = int((t - start) / step)
+            if 0 <= i < buckets:
+                out[i] += 1
+        return out
+
+    def count(model, col, a, b):
+        return c(select(func.count()).select_from(model).where(col > a, col <= b))
+
+    def kpi(model, col):
+        cur, prev = count(model, col, start, n), count(model, col, start - span, start)
+        return {"value": cur, "prev": prev, "delta": (round((cur - prev) / prev * 100) if prev else (100 if cur else 0)), "series": series(model, col)}
+
+    labels = [(start + step * (i + 1)).strftime("%H:00" if period == "day" else "%d.%m") for i in range(buckets)]
+    soon = db.scalars(select(Match).where(Match.start > n, Match.start < n + timedelta(days=2))).all()
+    jobs = db.scalars(select(JobStatus).order_by(JobStatus.name)).all()
+    health = []
+    for j in jobs:
+        every = JOB_EVERY.get(j.name)
+        late = bool(every and j.last_ok and (n - j.last_ok).total_seconds() > every * 4 + 120)
+        err = bool(j.last_error_at and (not j.last_ok or j.last_error_at > j.last_ok))
+        health.append({"name": j.name, "ok": not late and not err, "late": late, "err": err, "last_ok": iso(j.last_ok), "info": j.info[:120]})
+    top = db.execute(select(Prediction.user_id, func.count()).where(Prediction.created_at > start).group_by(Prediction.user_id)
+                     .order_by(func.count().desc()).limit(6)).all()
+    top_users = []
+    for uid, cnt in top:
+        u = db.get(User, uid)
+        if u:
+            won = c(select(func.count()).select_from(Prediction).where(Prediction.user_id == uid, Prediction.created_at > start, Prediction.status == "won"))
+            settled = c(select(func.count()).select_from(Prediction).where(Prediction.user_id == uid, Prediction.created_at > start, Prediction.status.in_(["won", "lost"])))
+            top_users.append({**user_short(u), "count": cnt, "hit": round(won / settled * 100) if settled else None})
+    tickets = [{"id": t.id, "user": user_short(t.user), "odds": round(t.total_odds, 2), "items": len(t.items), "status": t.status, "created": iso(t.created_at)}
+               for t in db.scalars(select(Ticket).order_by(Ticket.created_at.desc()).limit(6)).all()]
+    live = [match_out(m) for m in db.scalars(select(Match).where(Match.status == "live").order_by(Match.start).limit(6)).all()]
+    teams_total = c(select(func.count()).select_from(Team))
+    teams_logo = c(select(func.count()).select_from(Team).where(Team.logo != ""))
+    hl_total = c(select(func.count()).select_from(Highlight))
+    hl_blocked = c(select(func.count()).select_from(Highlight).where(Highlight.status == "blocked"))
+    return {
+        "period": period, "labels": labels,
+        "users_total": c(select(func.count()).select_from(User)),
+        "users": kpi(User, User.created_at), "predictions": kpi(Prediction, Prediction.created_at), "tickets": kpi(Ticket, Ticket.created_at),
+        "live_count": c(select(func.count()).select_from(Match).where(Match.status == "live")),
+        "odds_cover": {"with": sum(1 for m in soon if m.odds), "total": len(soon)},
+        "health": health, "top_users": top_users, "tickets_recent": tickets, "live": live,
+        "new_users": [{**user_short(u), "created": iso(u.created_at), "club": (u.club.short_name if getattr(u, "club", None) else "")}
+                      for u in db.scalars(select(User).order_by(User.created_at.desc()).limit(6)).all()],
+        "content": {"banners": c(select(func.count()).select_from(Banner).where(Banner.active == True)),  # noqa
+                    "pinned": c(select(func.count()).select_from(Match).where(Match.featured == True, Match.start > n - timedelta(hours=3)))  # noqa
+                    , "highlights": hl_total - hl_blocked, "highlights_blocked": hl_blocked,
+                    "logos": round(teams_logo / teams_total * 100) if teams_total else 0, "matches": c(select(func.count()).select_from(Match))},
+    }

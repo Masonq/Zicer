@@ -1,5 +1,8 @@
 import { useState } from 'react'
-import { Navigate, NavLink, Routes, Route, Link } from 'react-router-dom'
+import { Navigate, NavLink, Routes, Route, Link, useLocation } from 'react-router-dom'
+import { LayoutDashboard, Users as UsersIcon, MessageSquare, CalendarDays, Image as ImageIcon, Landmark, Cpu, ArrowLeft, Menu } from 'lucide-react'
+import Overview from './Overview'
+import { LOGO_SRC } from '../logoData'
 import { api } from '../api'
 import { useAuth, usePoll } from '../store'
 import { Crest, Avatar, fmtNum, fmtOdds, Skeleton, Toast } from '../components/ui'
@@ -12,7 +15,7 @@ const ago = (iso) => {
   if (s < 86400) return `${Math.round(s / 3600)} ч назад`
   return new Date(iso).toLocaleString('ru-RU')
 }
-const JOB_RU = { football_live: 'Футбол лайв', football: 'Футбол (расписание)', basketball: 'Евролига', odds: 'Кэфы MaxBet', settle: 'Расчёт прогнозов', trends: 'Тренды', analysis: 'Разборы матчей', backfill: 'История за 60 дней', basketball_week: 'NBA на неделю', maxbet_results: 'Результаты баскетбола (MaxBet)', names: 'Перевод названий', tg_poll: 'Telegram: привязка', tg_reminders: 'Telegram: напоминания' }
+const JOB_RU = { live: 'Лайв MaxBet', xfeed: 'Лайв 22Bet (события)', finish_stale: 'Закрытие завершённых', other_sports: 'Хоккей, теннис, волейбол', other_results: 'Результаты (другие виды)', logos: 'Эмблемы команд', highlights: 'Обзоры YouTube', football_live: 'Футбол лайв', football: 'Футбол (расписание)', basketball: 'Евролига', odds: 'Кэфы MaxBet', settle: 'Расчёт прогнозов', trends: 'Тренды', analysis: 'Разборы матчей', backfill: 'История за 60 дней', basketball_week: 'NBA на неделю', maxbet_results: 'Результаты баскетбола (MaxBet)', names: 'Перевод названий', tg_poll: 'Telegram: привязка', tg_reminders: 'Telegram: напоминания' }
 
 function Dashboard() {
   const [ver, setVer] = useState(0)
@@ -20,24 +23,19 @@ function Dashboard() {
   const { data } = usePoll(() => api('/admin/stats'), [ver], 20000)
   if (!data) return <Skeleton h={80} n={4} />
   const run = async (n) => { await api(`/admin/jobs/${n}`, { method: 'POST' }); setToast(`Запущено: ${JOB_RU[n] || n}`); setTimeout(() => setVer((v) => v + 1), 4000) }
-  const cards = [['Пользователи', data.users], ['Новые за 24 ч', data.users_24h], ['Новые за 7 дней', data.users_7d], ['Прогнозы', data.predictions], ['Прогнозы за 24 ч', data.predictions_24h], ['Тикеты', data.tickets], ['Матчи в базе', data.matches_total], ['Матчи 48 ч / с кэфами', `${data.matches_48h} / ${data.matches_with_odds_48h}`], ['Сейчас лайв', data.live]]
   return (
     <div>
-      <div className="grid-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))' }}>
-        {cards.map(([l, v]) => <div key={l} className="card pad"><div className="small">{l}</div><div className="num" style={{ fontSize: 26 }}>{typeof v === 'number' ? fmtNum(v) : v}</div></div>)}
-      </div>
-      <section className="section">
-        <div className="section-head"><h2 className="h2">Сбор данных</h2></div>
+      <section>
         <div className="card scroll-x">
           <table className="table">
             <thead><tr><th>Задача</th><th>Последний успех</th><th>Итог</th><th>Ошибка</th><th /></tr></thead>
             <tbody>{data.jobs.map((j) => (
               <tr key={j.name}>
-                <td style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>{JOB_RU[j.name] || j.name}</td>
+                <td style={{ fontWeight: 700, whiteSpace: 'nowrap' }}><i className={`jdot ${j.last_error_at && (!j.last_ok || j.last_error_at > j.last_ok) ? 'err' : 'ok'}`} />{JOB_RU[j.name] || j.name}</td>
                 <td style={{ whiteSpace: 'nowrap' }}>{ago(j.last_ok)}</td>
                 <td className="small">{j.info}</td>
                 <td className="small" style={{ color: j.last_error_at && (!j.last_ok || j.last_error_at > j.last_ok) ? 'var(--loss)' : 'var(--dim)', maxWidth: 260 }}>{j.last_error ? `${ago(j.last_error_at)}: ${j.last_error.split('\n')[0]}` : '—'}</td>
-                <td>{['football', 'basketball', 'odds', 'settle'].includes(j.name) && <button className="btn btn-ghost btn-sm" onClick={() => run(j.name)}>Запустить</button>}</td>
+                <td>{['football', 'basketball', 'odds', 'settle', 'logos', 'highlights', 'other_sports'].includes(j.name) && <button className="btn btn-ghost btn-sm" onClick={() => run(j.name)}>Запустить</button>}</td>
               </tr>
             ))}</tbody>
           </table>
@@ -233,25 +231,56 @@ function Banners() {
   )
 }
 
+const NAV = [
+  ['ГЛАВНОЕ', [['', 'Обзор', LayoutDashboard]]],
+  ['ЛЮДИ', [['users', 'Пользователи', UsersIcon], ['comments', 'Комментарии', MessageSquare]]],
+  ['КОНТЕНТ', [['matches', 'Матчи', CalendarDays], ['banners', 'Баннеры', ImageIcon], ['bookmakers', 'Букмекеры', Landmark]]],
+  ['СИСТЕМА', [['system', 'Сбор данных', Cpu]]],
+]
+const TITLES = { '': 'Обзор', users: 'Пользователи', comments: 'Комментарии', matches: 'Матчи', banners: 'Баннеры', bookmakers: 'Букмекеры', system: 'Сбор данных' }
+
 export default function Admin() {
   const { user, ready } = useAuth()
+  const [open, setOpen] = useState(false)
+  const loc = useLocation()
   if (!ready) return <Skeleton />
   if (!user?.is_admin) return <Navigate to="/" replace />
-  const tabs = [['', 'Обзор'], ['users', 'Пользователи'], ['comments', 'Комментарии'], ['matches', 'Матчи'], ['banners', 'Баннеры'], ['bookmakers', 'Букмекеры']]
+  const cur = loc.pathname.replace(/^\/admin\/?/, '').split('/')[0]
   return (
-    <div>
-      <h1 className="h1">Админка</h1>
-      <div className="chips" style={{ margin: '12px 0 16px' }}>
-        {tabs.map(([k, l]) => <NavLink key={k} end to={`/admin${k ? `/${k}` : ''}`} className={({ isActive }) => `chip${isActive ? ' on' : ''}`}>{l}</NavLink>)}
-      </div>
-      <Routes>
-        <Route index element={<Dashboard />} />
-        <Route path="users" element={<Users />} />
-        <Route path="comments" element={<Comments />} />
-        <Route path="matches" element={<Matches />} />
-        <Route path="banners" element={<Banners />} />
-        <Route path="bookmakers" element={<Bookmakers />} />
-      </Routes>
+    <div className="adm">
+      <div className="adm-bg" aria-hidden="true" />
+      <aside className={`adm-side${open ? ' open' : ''}`}>
+        <Link to="/" className="adm-brand"><img src={LOGO_SRC} alt="" /><b>Winly</b><span>admin</span></Link>
+        <div className="adm-me"><Avatar user={user} size={34} /><div><b>{user.name || user.username}</b><small>администратор</small></div></div>
+        {NAV.map(([sec, items]) => (
+          <div key={sec} className="adm-sec">
+            <div className="adm-sec-t">{sec}</div>
+            {items.map(([k, l, I]) => (
+              <NavLink key={k} end to={`/admin${k ? `/${k}` : ''}`} onClick={() => setOpen(false)} className={({ isActive }) => `adm-link${isActive ? ' on' : ''}`}><I size={18} />{l}</NavLink>
+            ))}
+          </div>
+        ))}
+        <Link to="/" className="adm-link back"><ArrowLeft size={18} />На сайт</Link>
+      </aside>
+      {open && <div className="adm-scrim" onClick={() => setOpen(false)} />}
+      <main className="adm-main">
+        <div className="adm-top">
+          <button className="adm-burger" onClick={() => setOpen(true)} aria-label="Меню"><Menu size={20} /></button>
+          <b>{TITLES[cur] ?? 'Админка'}</b>
+        </div>
+        <div className={cur ? 'adm-panel' : ''}>
+          {cur && <h2 className="adm-h2">{TITLES[cur]}</h2>}
+          <Routes>
+            <Route index element={<Overview />} />
+            <Route path="users" element={<Users />} />
+            <Route path="comments" element={<Comments />} />
+            <Route path="matches" element={<Matches />} />
+            <Route path="banners" element={<Banners />} />
+            <Route path="bookmakers" element={<Bookmakers />} />
+            <Route path="system" element={<Dashboard />} />
+          </Routes>
+        </div>
+      </main>
     </div>
   )
 }
