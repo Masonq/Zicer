@@ -1384,3 +1384,23 @@ img { display: block; max-width: 100%; }
 .eng-ball.ball-handball { background: transparent url(/balls/handball.webp) center / contain no-repeat !important; }
 .eng-ball.ball-futsal { background: transparent url(/balls/futsal.webp) center / contain no-repeat !important; }
 .eng-ball.ball-tabletennis { background: transparent url(/balls/tabletennis.webp) center / contain no-repeat !important; width: 10px !important; height: 10px !important; }
+
+/* match-centre surfaces: real material textures over the exact vector markings, plus arena lighting */
+.court { position: relative; overflow: hidden; }
+.court-tex, .court-light { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+.court-tex { mix-blend-mode: overlay; opacity: .55; background-size: cover; background-position: center; }
+.tex-football { background-image: url(/tex/grass.webp); opacity: .7; }
+.tex-basketball, .tex-handball, .tex-futsal { background-image: url(/tex/wood.webp); opacity: .5; }
+.tex-futsal { opacity: .35; }
+.tex-hockey { background-image: url(/tex/ice.webp); mix-blend-mode: soft-light; opacity: .8; }
+.tex-waterpolo { background-image: url(/tex/water.webp); background-size: 60% auto; opacity: .55; animation: water 14s linear infinite; }
+@keyframes water { from { background-position: 0 0; } to { background-position: 220px 120px; } }
+.tex-tennis, .tex-volleyball { background-image: url(/tex/acrylic.webp); opacity: .45; }
+.tex-tabletennis { background-image: url(/tex/matte.webp); opacity: .35; }
+.court-light { background: radial-gradient(120% 90% at 50% 0%, rgba(255,255,255,.14), transparent 55%), radial-gradient(140% 120% at 50% 50%, transparent 55%, rgba(0,0,0,.38) 100%); mix-blend-mode: normal; }
+.court .arena-field { z-index: 2; }
+
+/* no leftover outlines from the old dot-balls (they made a square around the puck) */
+.eng-ball[class*="ball-"] { box-shadow: none !important; outline: none !important; }
+/* water: calmer, larger caustics */
+.tex-waterpolo { opacity: .28 !important; background-size: 140% auto !important; filter: blur(.4px); }
