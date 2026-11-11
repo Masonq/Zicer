@@ -68,6 +68,10 @@ export function StatusTime({ m }) {
 export function OddsButtons({ m, wide = false }) {
   const slip = useSlip()
   const open = m.status === 'scheduled' && new Date(m.start) > new Date()
+  // chance of each outcome (margin removed): a thin bar at the bottom of every price
+  const inv = ['1', 'X', '2'].map((k) => (m.best?.[k]?.odds ? 1 / m.best[k].odds : 0))
+  const tot = inv.reduce((a, b) => a + b, 0) || 1
+  const fav = inv.indexOf(Math.max(...inv))
   return (
     <div className={`odds${wide ? ' wide' : ''}`}>
       {['1', 'X', '2'].map((k) => {
@@ -75,7 +79,8 @@ export function OddsButtons({ m, wide = false }) {
         const on = slip.has(m.id, k)
         if (k === 'X' && (m.sport === 'tennis' || m.sport === 'volleyball')) return <span key={k} aria-hidden="true" />
         return (
-          <button key={k} type="button" className={`odd${on ? ' on' : ''}`} disabled={!b || !open}
+          <button key={k} type="button" className={`odd${on ? ' on' : ''}${['1', 'X', '2'][fav] === k && b ? ' fav' : ''}`} disabled={!b || !open}
+            style={{ '--p': `${Math.round((inv[['1', 'X', '2'].indexOf(k)] / tot) * 100)}%` }}
             aria-pressed={on} aria-label={`${k} ${b ? fmtOdds(b.odds) : ''}`}
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (b && open) slip.toggle(m, k, b.odds) }}>
             <span className="k">{k}</span>

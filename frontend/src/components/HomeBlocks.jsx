@@ -3,6 +3,7 @@ import { Flame, TrendingDown } from 'lucide-react'
 import { useT } from '../i18n'
 import { Crest, StatusTime, OddsButtons, fmtOdds } from './ui'
 import HScroll from './HScroll'
+import { SportIcon } from './Sports'
 
 // Big cards of the matches people bet on the most, with the split of picks (community or, until there are enough picks, the odds' chances)
 export function HotMatches({ list = [] }) {
@@ -16,7 +17,11 @@ export function HotMatches({ list = [] }) {
           const keys = ['1', 'X', '2'].filter((k) => split[k] != null && !(k === 'X' && (m.sport === 'tennis' || m.sport === 'volleyball')))
           return (
             <Link key={m.id} to={`/mec/${m.id}`} state={{ m }} className={`hot-card sc-${m.sport}`}>
-              <div className="hot-top"><span className="ellip">{t.league(m.league)}</span><StatusTime m={m} /></div>
+              <div className="hot-top">
+                <span className="hot-sport"><SportIcon sport={m.sport} size={14} />{t(m.sport)}</span>
+                <StatusTime m={m} />
+              </div>
+              <div className="hot-league ellip">{t.league(m.league)}</div>
               <div className="hot-teams">
                 <span><Crest team={m.home} size={34} /><b className="ellip">{t.team(m.home)}</b></span>
                 <span><Crest team={m.away} size={34} /><b className="ellip">{t.team(m.away)}</b></span>

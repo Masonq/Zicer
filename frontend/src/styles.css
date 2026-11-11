@@ -1262,3 +1262,25 @@ img { display: block; max-width: 100%; }
 .bar-col span.hide { visibility: hidden; }
 @media (max-width: 560px) { .bar-col span.nm { visibility: hidden; } .bars { gap: 3px; } .bar-col span { font-size: 9px; } .adm-h2 { display: none; } }
 @media (hover: none), (pointer: coarse) { .row:not(.is-fav) { grid-template-columns: 50px minmax(0, 1fr) auto; } }
+
+/* odds buttons, modern: glass tile, crisp tabular numbers, chance bar, gold selection */
+.odds { gap: 4px; grid-template-columns: repeat(3, 47px); }
+@media (min-width: 760px) { .odds { gap: 6px; grid-template-columns: repeat(3, 56px); } }
+.odd { position: relative; overflow: hidden; height: 48px; border-radius: 12px; gap: 2px;
+  background: linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.025)); border: 1px solid rgba(255,255,255,.08);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06); transition: transform .3s cubic-bezier(.3,1.5,.5,1), background .2s, border-color .2s, box-shadow .2s; }
+.odd .k { font-family: var(--body, inherit); font-size: 10px; font-weight: 800; letter-spacing: .04em; color: var(--dim); }
+.odd .v { font-family: inherit; font-size: 14.5px; font-weight: 800; letter-spacing: -.01em; font-variant-numeric: tabular-nums; color: var(--chalk); }
+.odd::after { content: none; position: absolute; left: 0; bottom: 0; height: 2px; width: var(--p, 0%); border-radius: 0 2px 2px 0; background: rgba(255,255,255,.18); transition: width .4s; }
+.odd.fav::after { background: rgba(242,194,48,.65); }
+@media (hover: hover) and (pointer: fine) { .odd:not(:disabled):hover { border-color: rgba(242,194,48,.55); background: linear-gradient(180deg, rgba(242,194,48,.14), rgba(242,194,48,.04)); } }
+.odd.on { background: linear-gradient(180deg, #FFD65A, #F2C230 60%, #D9A91F) !important; border-color: #FFE08A !important; box-shadow: 0 6px 16px rgba(242,194,48,.35), inset 0 1px 0 rgba(255,255,255,.5); }
+.odd.on .k, .odd.on .v { color: #1A1406; } .odd.on::after { background: rgba(26,20,6,.35); }
+.odd:disabled { opacity: .45; } .odd:disabled::after { display: none; }
+.odds.wide .odd { height: 64px; border-radius: 16px; } .odds.wide .odd .k { font-size: 11px; } .odds.wide .odd .v { font-size: 22px; font-family: var(--display); font-weight: 600; letter-spacing: .01em; }
+.odds.wide .odd::after, .hot-card .odd::after { content: ''; height: 3px; }
+/* hot matches: clear sport label */
+.hot-sport { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px 0 8px; border-radius: 12px; font-size: 12px; font-weight: 800;
+  color: var(--sc, var(--gold)); background: color-mix(in srgb, var(--sc, var(--gold)) 15%, transparent); border: 1px solid color-mix(in srgb, var(--sc, var(--gold)) 40%, transparent); }
+.hot-league { margin-top: -4px; font-size: 12px; color: var(--muted); font-weight: 600; }
+.hot-card::before { content: ''; position: absolute; left: 0; top: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--sc, var(--gold)), transparent 80%); }
