@@ -1081,7 +1081,7 @@ img { display: block; max-width: 100%; }
 /* "to live" pill: lives inside the pinned league bar (right end), so it never covers a match row */
 .to-live { display: none; margin-left: auto; flex: none; align-items: center; gap: 6px; height: 28px; padding: 0 5px 0 11px; border-radius: 14px; font-size: 12.5px;
   background: rgba(229,84,75,.16); border: 1px solid rgba(229,84,75,.45); color: #FF8A82; font-weight: 800; }
-.league-head.stuck .to-live { display: inline-flex; animation: undoIn .3s; }
+.league-head.stuck .to-live, .league-head.lead .to-live { display: inline-flex; animation: undoIn .3s; }
 .to-live:hover { background: rgba(229,84,75,.28); color: #fff; }
 .to-live b { min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; display: grid; place-items: center; background: #E5544B; color: #fff; font-size: 11px; }
 @media (min-width: 1024px) { .league-head { top: 0; border-radius: 0 0 12px 12px; } }
@@ -1286,3 +1286,6 @@ img { display: block; max-width: 100%; }
 .hot-league { margin-top: -4px; font-size: 12px; color: var(--muted); font-weight: 600; }
 .hot-card::before { content: ''; position: absolute; left: 0; top: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--sc, var(--gold)), transparent 80%); }
 .hot-card .odds.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.hot-card .odds.two { width: 100%; }
+.row-swipe.flash .row, .row.flash { animation: rowFlash 1.4s ease-out 1; }
+@keyframes rowFlash { 0%, 30% { box-shadow: inset 0 0 0 2px rgba(229,84,75,.7); background: rgba(229,84,75,.08); } 100% { box-shadow: inset 0 0 0 2px transparent; } }

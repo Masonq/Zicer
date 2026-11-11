@@ -180,7 +180,13 @@ function updateStuck() {
     const box = el.parentElement.getBoundingClientRect()
     if (r.top <= top + 1 && box.bottom > top + r.height) pinned = el
   }
-  for (const el of stuckSet) el.classList.toggle('stuck', el === pinned)
+  // nothing pinned yet (top of the list): the first header on screen carries the controls instead
+  let lead = null
+  if (!pinned) {
+    let best = Infinity
+    for (const el of stuckSet) { const tp = el.getBoundingClientRect().top; if (tp >= 0 && tp < window.innerHeight && tp < best) { best = tp; lead = el } }
+  }
+  for (const el of stuckSet) { el.classList.toggle('stuck', el === pinned); el.classList.toggle('lead', el === lead) }
 }
 function stickRef(el) {
   if (!el || stuckSet.has(el)) return

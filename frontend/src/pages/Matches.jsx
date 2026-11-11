@@ -23,6 +23,7 @@ export default function Matches() {
     [day, sport, serb, favKey], day === 'live' || day === 'today' || day === 'fav' ? 30000 : 0, true, `matches:${day}:${sport}:${serb}:${favKey}`)
   const [sheet, setSheet] = useState(false)
   const fbtn = useRef(null)
+  const liveIdx = useRef(null)
   const [ptop, setPtop] = useState(0)
   const [f, setF] = useState({ leagues: [], live: false, times: [] })
   const [draft, setDraft] = useState(f)
@@ -56,19 +57,26 @@ export default function Matches() {
   const nF = f.leagues.length + (f.live ? 1 : 0) + f.times.length + (serb ? 1 : 0)
   const liveN = (data || []).filter((m) => m.status === 'live').length
   const days = [['live', t('live')], ['yesterday', t('yesterday')], ['today', t('today')], ['tomorrow', t('tomorrow')], ['fav', t('favorites')]]
-  // scroll so the first live match sits just below the top bar and the pinned league bar (not hidden under them)
+  // each tap goes to the NEXT live match below the screen top (then wraps to the first), placed just under the top bars
   const toLive = () => {
-    const row = document.querySelector('.row .row-time.live')?.closest('.row-swipe') || document.querySelector('.row .row-time.live')?.closest('.row')
-    if (!row) return
+    const rows = [...document.querySelectorAll('.row .row-time.live')].map((el) => el.closest('.row-swipe') || el.closest('.row'))
+    if (!rows.length) return
     const top = document.querySelector('.topbar')
     const topH = top && getComputedStyle(top).display !== 'none' ? top.getBoundingClientRect().height : 0
-    const head = row.closest('.league')?.querySelector('.league-head')
-    const headH = head ? head.getBoundingClientRect().height : 0
+    const headH = document.querySelector('.league-head')?.getBoundingClientRect().height || 0
+    const line = topH + headH + 16
+    // continue from the match we jumped to last time; the first tap starts from what is below the screen top
+    let i = liveIdx.current != null && liveIdx.current < rows.length ? (liveIdx.current + 1) % rows.length : rows.findIndex((r) => r.getBoundingClientRect().top > line + 8)
+    if (i < 0) i = 0
+    liveIdx.current = i
+    const row = rows[i]
     window.scrollTo({ top: row.getBoundingClientRect().top + window.scrollY - topH - headH - 12, behavior: 'smooth' })
+    row.classList.remove('flash'); void row.offsetWidth; row.classList.add('flash')
   }
+
   const [scrolled, setScrolled] = useState(false)
   useEffect(() => {
-    const on = () => setScrolled(window.scrollY > 320)
+    const on = () => setScrolled(window.scrollY > 60)
     on(); window.addEventListener('scroll', on, { passive: true })
     return () => window.removeEventListener('scroll', on)
   }, [])
@@ -84,7 +92,7 @@ export default function Matches() {
         <button className={`flt-btn${nF ? ' on' : ''}`} ref={fbtn} onClick={() => { setDraft(f); setPtop(fbtn.current ? fbtn.current.getBoundingClientRect().bottom - fbtn.current.closest('.mx-page').getBoundingClientRect().top + 8 : 0); setSheet(true) }} aria-label={t('filters')}><SlidersHorizontal size={18} />{nF > 0 && <b>{nF}</b>}</button>
       </div>
       <div style={{ marginTop: 16 }} className={stale ? 'is-loading' : ''}>
-        {loading && !data ? <Skeleton /> : list.length ? <MatchList matches={list} headExtra={day === 'today' && liveN > 0 && scrolled ? <button className="to-live" onClick={(e) => { e.stopPropagation(); toLive() }}><Radio size={14} />{t('toLive')}<b>{liveN}</b></button> : null} />
+        {loading && !data ? <Skeleton /> : list.length ? <MatchList matches={list} headExtra={day === 'today' && liveN > 0 && scrolled ? <button className="to-live" onClick={(e) => { e.stopPropagation(); toLive() }}><Radio size={14} />{t('toLive')}<b>{liveIdx.current != null ? `${liveIdx.current + 1}/${liveN}` : liveN}</b></button> : null} />
           : <div className="card"><Empty title={day === 'fav' ? t('favorites') : t('noMatches')} text={day === 'fav' ? t('noFav') : t('tryOtherDay')} /></div>}
       </div>
       {sheet && (
