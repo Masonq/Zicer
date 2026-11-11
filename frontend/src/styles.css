@@ -1064,9 +1064,9 @@ img { display: block; max-width: 100%; }
 .flt-btn b { position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px; background: var(--gold); color: var(--gold-ink); font-size: 11px; display: grid; place-items: center; }
 .chips.wrap { flex-wrap: wrap; overflow: visible; }
 .sheet-wrap { position: fixed; inset: 0; z-index: 80; background: rgba(0,0,0,.5); display: flex; align-items: flex-end; justify-content: center; animation: fadeIn .2s; }
-.sheet { width: min(560px, 100%); max-height: 82vh; overflow-y: auto; padding: 8px 18px calc(18px + var(--safe-b)); border-radius: 24px 24px 0 0;
+.sheet-wrap .sheet { position: static; width: min(560px, 100%); max-height: 82vh; overflow-y: auto; padding: 8px 18px calc(18px + var(--safe-b)); border-radius: 24px 24px 0 0;
   background: rgba(16,38,31,.96); border: 1px solid rgba(255,255,255,.1); backdrop-filter: blur(24px); animation: sheetUp .38s cubic-bezier(.2,.9,.25,1); }
-@media (min-width: 1024px) { .sheet-wrap { align-items: center; } .sheet { border-radius: 24px; } }
+@media (min-width: 1024px) { .sheet-wrap { align-items: center; } .sheet-wrap .sheet { border-radius: 24px; } }
 .sheet-grip { width: 40px; height: 5px; border-radius: 3px; background: rgba(255,255,255,.2); margin: 4px auto 10px; }
 .sheet-h { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-family: var(--display); font-size: 22px; }
 .sheet-h button { color: var(--muted); }
@@ -1489,3 +1489,4 @@ img { display: block; max-width: 100%; }
 .verify-strip b { flex: none; padding: 6px 12px; border-radius: 10px; background: var(--gold); color: var(--gold-ink); font-size: 13px; }
 .code-card .code-ico, .code-card .code-resend { justify-self: center; margin-left: auto; margin-right: auto; display: grid; }
 .code-card .code-resend { display: block; text-align: center; }
+.undo-toast { max-width: calc(100vw - 24px); } .undo-toast span { min-width: 0; overflow-wrap: anywhere; }
