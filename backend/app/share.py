@@ -1,4 +1,5 @@
 import io
+from datetime import timedelta
 import os
 from functools import lru_cache
 from fastapi import APIRouter, Depends, HTTPException
@@ -90,6 +91,51 @@ def _paste_logo(im, x, cap_top, cap_h):
         return 0
 
 
+@lru_cache(maxsize=512)
+def _remote_img(url: str, size: int):
+    try:
+        if url.startswith("/media/"):
+            path = os.path.join(config.MEDIA_DIR, url[len("/media/"):])
+            im = Image.open(path)
+        else:
+            import httpx
+            r = httpx.get(url, timeout=2.5, headers={"User-Agent": "Mozilla/5.0 Winly"})
+            r.raise_for_status()
+            im = Image.open(io.BytesIO(r.content))
+        im = im.convert("RGBA")
+        im.thumbnail((size, size), Image.LANCZOS)
+        return im
+    except Exception:  # noqa
+        return None
+
+
+def _circle(im, img, x, y, size, ring=(22, 56, 45, 255)):
+    """Paste an image into a white circle (crest) at x, y."""
+    disc = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    ImageDraw.Draw(disc).ellipse([0, 0, size - 1, size - 1], fill=(244, 246, 242, 255), outline=ring, width=2)
+    if img is not None:
+        pad = int(size * 0.16)
+        cp = img.copy()
+        cp.thumbnail((size - pad * 2, size - pad * 2), Image.LANCZOS)
+        disc.alpha_composite(cp, ((size - cp.width) // 2, (size - cp.height) // 2))
+    im.paste(disc, (int(x), int(y)), disc)
+
+
+def _avatar(im, d, user, x, y, size):
+    av = getattr(user, "avatar", "") or ""
+    img = _remote_img(f"/media/avatars/{av}", size * 2) if av else None
+    mask = Image.new("L", (size, size), 0)
+    ImageDraw.Draw(mask).ellipse([0, 0, size - 1, size - 1], fill=255)
+    if img is not None:
+        sq = img.resize((size, size), Image.LANCZOS)
+        im.paste(sq, (int(x), int(y)), mask)
+    else:
+        disc = Image.new("RGBA", (size, size), (76, 195, 138, 255))
+        im.paste(disc, (int(x), int(y)), mask)
+        letter = (user.username or "?")[:1].upper()
+        text_at(d, letter, font("Manrope.ttf", int(size * 0.5), "Bold"), "#0F2A22", cx=x + size / 2, cy=y + size / 2)
+
+
 def ink(d, text, f):
     """Real ink box of a text (left, top, right, bottom) relative to the draw origin."""
     return d.textbbox((0, 0), text, font=f)
@@ -119,16 +165,16 @@ def _status(t, L):
     return {"won": (L["won"], WIN), "lost": (L["lost"], LOSS), "void": (L["void"], MUTED)}.get(t.status, (L["open"], CHALK))
 
 
-def _rows(d, items, lang, x0, x1, top, bottom, story, L, center=True):
+def _rows(im, d, items, lang, x0, x1, top, bottom, story, L, center=True):
     maxn = 8 if story else 5
     show = items[:maxn]
     gap = 20 if story else 12
-    row_h = min(104 if story else 76, int((bottom - top - gap * (len(show) - 1)) / max(1, len(show))))
+    row_h = min(132 if story else 76, int((bottom - top - gap * (len(show) - 1)) / max(1, len(show))))
     used = row_h * len(show) + gap * (len(show) - 1)
     y = top + ((bottom - top - used) / 2 if center else 0)
-    tf = font("Manrope.ttf", 34 if story else 25, "Bold")
-    sf = font("Manrope.ttf", 24 if story else 17, "SemiBold")
-    pf = font("Oswald.ttf", 40 if story else 29, "SemiBold")
+    tf = font("Manrope.ttf", 38 if story else 25, "Bold")
+    sf = font("Manrope.ttf", 27 if story else 17, "SemiBold")
+    pf = font("Oswald.ttf", 46 if story else 29, "SemiBold")
     pad = 30 if story else 24
     for it in show:
         m = it.match
@@ -142,11 +188,20 @@ def _rows(d, items, lang, x0, x1, top, bottom, story, L, center=True):
         pw = ink(d, pk, pf)[2] - ink(d, pk, pf)[0]
         text_at(d, odds, pf, CHALK, right=x1 - pad, cy=cy)
         text_at(d, pk, pf, GOLD, right=x1 - pad - ow - 22, cy=cy)
-        name_w = x1 - x0 - pad * 2 - ow - pw - 50
+        # two crests, the away one slightly overlapping
+        cs = int(row_h * (0.5 if story else 0.52))
+        cx0 = x0 + pad
+        _circle(im, _remote_img(m.home.logo, cs * 2) if m.home.logo else None, cx0, cy - cs / 2 - cs * 0.18, cs)
+        _circle(im, _remote_img(m.away.logo, cs * 2) if m.away.logo else None, cx0 + cs * 0.55, cy - cs / 2 + cs * 0.18, cs)
+        text_x = cx0 + cs * 1.55 + (16 if story else 12)
+        name_w = x1 - text_x - pad - ow - pw - 40
         name = fit(d, f"{team_name(m.home, lang)} – {team_name(m.away, lang)}", tf, name_w)
         lg = league_name(m.league, lang) if m.league else ""
         if m.score_home is not None and m.status != "scheduled":
-            lg = f"{lg}  {m.score_home}:{m.score_away}"
+            lg = f"{lg}, {m.score_home}:{m.score_away}"
+        elif m.start:
+            loc = m.start + timedelta(hours=1)  # Belgrade time
+            lg = f"{lg}, {loc:%d.%m %H:%M}"
         lg = fit(d, lg, sf, name_w)
         # name + league as one block, centred in the row by their ink
         nh = ink(d, "Ag", tf)[3] - ink(d, "Ag", tf)[1]
@@ -155,8 +210,8 @@ def _rows(d, items, lang, x0, x1, top, bottom, story, L, center=True):
         block = nh + inner + lh
         bt = cy - block / 2
         n_top = bt - (ink(d, "Ag", tf)[1] - ink(d, name, tf)[1]) if False else bt
-        text_at(d, name, tf, CHALK, left=x0 + pad, top=n_top + (ink(d, name, tf)[1] - ink(d, "Ag", tf)[1]))
-        text_at(d, lg, sf, MUTED, left=x0 + pad, top=bt + nh + inner + (ink(d, lg, sf)[1] - ink(d, "Ag", sf)[1]))
+        text_at(d, name, tf, CHALK, left=text_x, top=n_top + (ink(d, name, tf)[1] - ink(d, "Ag", tf)[1]))
+        text_at(d, lg, sf, MUTED, left=text_x, top=bt + nh + inner + (ink(d, lg, sf)[1] - ink(d, "Ag", sf)[1]))
         y += row_h + gap
     if len(items) > maxn:
         text_at(d, L["more"].format(n=len(items) - maxn), sf, MUTED, left=x0 + pad, top=y)
@@ -193,8 +248,9 @@ def render_ticket(t: Ticket, lang: str = "sr", fmt: str = "wide") -> bytes:
         pill_h = sh + 34
         d.rounded_rectangle([pcx - sw / 2 - 28, head_top, pcx + sw / 2 + 28, head_top + pill_h], radius=18, outline=st_col, width=3)
         text_at(d, st_txt, sf, st_col, cx=pcx, cy=head_top + pill_h / 2)
-        user_f = font("Manrope.ttf", 23, "SemiBold")
-        text_at(d, f"{L['ticket']} @{t.user.username}", user_f, MUTED, left=TX, top=head_top + cap + 16)
+        user_f = font("Manrope.ttf", 22, "SemiBold")
+        _avatar(im, d, t.user, TX, head_top + cap + 14, 30)
+        text_at(d, f"@{t.user.username}", user_f, MUTED, left=TX + 40, cy=head_top + cap + 29)
         # odds / win: two equal blocks under the pill, label and value centred by ink
         lab = font("Manrope.ttf", 21, "SemiBold")
         big = font("Oswald.ttf", 66, "SemiBold")
@@ -210,20 +266,13 @@ def render_ticket(t: Ticket, lang: str = "sr", fmt: str = "wide") -> bytes:
             text_at(d, val, big, colr, cx=pcx, top=top + lh + gap + (ink(d, val, big)[1] - ink(d, "0", big)[1]))
         if blk:
             d.line([px0 + 40, area_top + blk, px1 - 40, area_top + blk], fill=LINE, width=2)
-        # footer, its last line on the panel's inner bottom
-        ff, uf = font("Manrope.ttf", 22, "SemiBold"), font("Manrope.ttf", 18, "Regular")
-        url = f"{host}/t/{t.id}"
-        uh = ink(d, url, uf)[3] - ink(d, url, uf)[1]
-        fh = ink(d, L["cta"], ff)[3] - ink(d, L["cta"], ff)[1]
-        url_top = H - M - 32 - uh
-        text_at(d, url, uf, MUTED, left=TX, top=url_top)
-        text_at(d, L["cta"], ff, CHALK, left=TX, top=url_top - 10 - fh)
-        _rows(d, items, lang, M, px0 - 28, head_top + cap + 64, url_top - fh - 34, False, L)
+        _rows(im, d, items, lang, M, px0 - 28, head_top + cap + 78, H - M, False, L)
     else:
         X0, X1 = 80, W - 80
         TX = X0 + 30
         cap = _wordmark(im, d, TX, 110, 74)
-        text_at(d, f"{L['ticket']} @{t.user.username}", font("Manrope.ttf", 34, "SemiBold"), MUTED, left=TX, top=110 + cap + 22)
+        _avatar(im, d, t.user, TX, 110 + cap + 22, 46)
+        text_at(d, f"@{t.user.username}", font("Manrope.ttf", 34, "SemiBold"), MUTED, left=TX + 62, cy=110 + cap + 45)
         sf = font("Oswald.ttf", 120, "Bold")
         text_at(d, st_txt, sf, st_col, left=TX, top=300)
         box_top, box_h = 470, 230
@@ -239,10 +288,7 @@ def render_ticket(t: Ticket, lang: str = "sr", fmt: str = "wide") -> bytes:
             text_at(d, label, lab, MUTED, cx=cx, top=top)
             text_at(d, val, big, colr, cx=cx, top=top + lh + 22 + (ink(d, val, big)[1] - ink(d, "0", big)[1]))
         d.line([X0 + half, box_top + 36, X0 + half, box_top + box_h - 36], fill=LINE, width=3)
-        _rows(d, items, lang, X0, X1, box_top + box_h + 60, H - 300, True, L, center=False)
-        ff, uf = font("Manrope.ttf", 40, "Bold"), font("Manrope.ttf", 28, "Regular")
-        text_at(d, L["cta"], ff, CHALK, left=TX, top=H - 200)
-        text_at(d, f"{host}/t/{t.id}", uf, MUTED, left=TX, top=H - 140)
+        _rows(im, d, items, lang, X0, X1, box_top + box_h + 60, H - 140, True, L, center=True)
     buf = io.BytesIO()
     im.save(buf, "PNG", optimize=True)
     return buf.getvalue()
