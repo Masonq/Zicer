@@ -773,7 +773,6 @@ def home(tz: int = 60, sport: str = "all", u: User | None = Depends(current_user
         "featured": match_detail(feat.id, u, db) if feat else None,
         "featured_list": [match_detail(m.id, u, db) for m in picked[:5]],
         "hot": _hot(db, pool, pc, n),
-        "line_moves": _line_trends(db, n, sport),
         "highlights": _latest_highlights(db, sport),
         "banners": [banner_out(b) for b in banners],
         "live": _list(db, live),

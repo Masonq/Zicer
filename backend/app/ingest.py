@@ -434,10 +434,6 @@ def sync_odds(db: Session) -> str:
                     m.odds_updated = now()
                     matched += 1
             db.commit()
-    try:
-        snap_odds(db)
-    except Exception:  # noqa
-        db.rollback()
     return f"odds matched {matched}"
 
 

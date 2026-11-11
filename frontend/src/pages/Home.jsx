@@ -8,7 +8,7 @@ import { MatchList, SectionHead, Skeleton, Crest, Avatar, fmtNum, fmtOdds, Count
 import HeroCarousel from '../components/HeroCarousel'
 import Safe from '../components/Safe'
 import { HighlightsStrip } from '../components/Highlights'
-import { HotMatches, LineTrends } from '../components/HomeBlocks'
+import { HotMatches } from '../components/HomeBlocks'
 import { FeaturedMatch } from './Match'
 
 
@@ -79,7 +79,6 @@ export default function Home() {
       {switcher}
       <Safe><HotMatches list={d.hot || []} /></Safe>
       <Safe><HighlightsStrip list={d.highlights || []} /></Safe>
-      <Safe><LineTrends list={d.line_moves || []} /></Safe>
 
       {user && d.my_club.length > 0 && (
         <section className="section">
