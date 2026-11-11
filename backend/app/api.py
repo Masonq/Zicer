@@ -279,6 +279,9 @@ def match_detail(mid: int, u: User | None = Depends(current_user_opt), db: Sessi
     }, full=True)
     if m.is_derby:
         out["score_picks"] = _score_summary(db, m, u)
+    if m.status == "finished":
+        from .highlights import for_match
+        out["highlights"] = for_match(db, m.id)
     return out
 
 
@@ -505,6 +508,26 @@ def sports(tz: int = 60, db: Session = Depends(get_db)):
             if s in ("football", "basketball") or soon.get(s) or live.get(s)]
 
 
+def _latest_highlights(db, sport):
+    from .models import Highlight
+    from .highlights import out as h_out
+    q = select(Highlight, Match).join(Match, Match.id == Highlight.match_id).order_by(Highlight.published.desc()).limit(40)
+    if sport and sport != "all":
+        q = q.where(Match.sport == sport)
+    res, seen = [], set()
+    for h, m in db.execute(q).all():
+        if m.id in seen:
+            continue
+        o = h_out(h)
+        if not o["main"]:
+            continue
+        seen.add(m.id)
+        res.append({**o, "match": match_out(m)})
+        if len(res) == 8:
+            break
+    return res
+
+
 def banner_out(b):
     return {"id": b.id, "kind": b.kind, "title": {"sr": b.title_sr, "ru": b.title_ru}, "text": {"sr": b.text_sr, "ru": b.text_ru},
             "cta": {"sr": b.cta_sr, "ru": b.cta_ru}, "link": b.link, "image": f"/media/banners/{b.image}" if b.image else "", "position": b.position}
@@ -559,6 +582,7 @@ def home(tz: int = 60, sport: str = "all", u: User | None = Depends(current_user
     return {
         "featured": match_detail(feat.id, u, db) if feat else None,
         "featured_list": [match_detail(m.id, u, db) for m in picked[:5]],
+        "highlights": _latest_highlights(db, sport),
         "banners": [banner_out(b) for b in banners],
         "live": _list(db, live),
         "upcoming": _list(db, upcoming[:24]),

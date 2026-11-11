@@ -6,6 +6,7 @@ import { useT } from '../i18n'
 import { useAuth, usePoll } from '../store'
 import { MatchList, SectionHead, Skeleton, Crest, Avatar, fmtNum, fmtOdds, Countdown, pickLabel, Empty } from '../components/ui'
 import HeroCarousel from '../components/HeroCarousel'
+import { HighlightsStrip } from '../components/Highlights'
 import { FeaturedMatch } from './Match'
 
 
@@ -74,6 +75,7 @@ export default function Home() {
         ? <HeroCarousel matches={d.featured_list && d.featured_list.length ? d.featured_list : d.featured ? [d.featured] : []} banners={d.banners || []} label={t('matchOfDay')} />
         : d.featured && <FeaturedMatch m={d.featured} label={t('matchOfDay')} />}
       {switcher}
+      <HighlightsStrip list={d.highlights || []} />
 
       {user && d.my_club.length > 0 && (
         <section className="section">

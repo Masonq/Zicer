@@ -226,3 +226,15 @@ class Banner(Base):
     position: Mapped[int] = mapped_column(Integer, default=0)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=now)
+
+
+
+class Highlight(Base):
+    """Official highlight videos (league YouTube channels) matched to finished matches."""
+    __tablename__ = "highlights"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    match_id: Mapped[int] = mapped_column(ForeignKey("matches.id", ondelete="CASCADE"), index=True)
+    video_id: Mapped[str] = mapped_column(String(32), unique=True)
+    title: Mapped[str] = mapped_column(String(300), default="")
+    channel: Mapped[str] = mapped_column(String(80), default="")
+    published: Mapped[datetime] = mapped_column(DateTime, default=now)

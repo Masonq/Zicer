@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useParams, useNavigate, useLocation } from 'react-router-dom'
 import { ChevronLeft, Languages, Sparkles, X } from 'lucide-react'
 import { buildMarkets, tt } from '../markets'
 import MatchCenter, { periodLabel } from '../components/MatchCenter'
 import { SportIcon } from '../components/Sports'
 import SportBall from '../components/SportBall'
+import { MatchHighlights } from '../components/Highlights'
 import { api } from '../api'
 import { useT } from '../i18n'
 import { useAuth, usePoll, useSlip } from '../store'
@@ -217,6 +218,9 @@ export default function MatchPage() {
   const { data: full, loading } = usePoll(() => api(`/matches/${id}`), [id, ver], 30000, true, `match:${id}`)
   const placeholder = loc.state?.m && String(loc.state.m.id) === String(id) ? loc.state.m : null
   const m = full || placeholder
+  useEffect(() => {
+    if (full && loc.hash === '#highlights') setTimeout(() => document.getElementById('highlights')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150)
+  }, [!!full, loc.hash]) // eslint-disable-line react-hooks/exhaustive-deps
   if (loading && !m) return <div><div className="skeleton" style={{ height: 22, width: 90, borderRadius: 8, marginBottom: 12 }} /><div className="skeleton" style={{ height: 300, borderRadius: 22 }} /><Skeleton h={120} n={2} /></div>
   if (!m) return <Empty title={t('error')} />
   return (
@@ -226,6 +230,7 @@ export default function MatchPage() {
       {!full && <div style={{ marginTop: 16 }}><Skeleton h={120} n={3} /></div>}
       {full && (
         <>
+          <MatchHighlights list={m.highlights || []} />
 
       {m.mine ? (
         <div className="card pad" style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 12 }}>

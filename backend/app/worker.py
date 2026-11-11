@@ -3,7 +3,7 @@ import logging
 import time
 from datetime import datetime
 from .db import SessionLocal, engine, Base
-from . import ingest, logos
+from . import ingest, logos, highlights
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("zicer.worker")
@@ -14,6 +14,7 @@ SCHEDULE = [  # (name, fn, every_seconds)
     ("xfeed", ingest.sync_xfeed, 9),
     ("finish_stale", ingest.finish_stale, 60),
     ("logos", logos.sync_logos, 600),
+    ("highlights", highlights.sync_highlights, 900),
     ("football", ingest.sync_football, 900),
     ("basketball", ingest.sync_basketball, 180),
     ("basketball_week", ingest.sync_basketball_week, 1800),
@@ -28,7 +29,7 @@ SCHEDULE = [  # (name, fn, every_seconds)
 ]
 
 
-SLOW = {"names", "basketball_week", "football", "logos"}
+SLOW = {"names", "basketball_week", "football", "logos", "highlights"}
 _running: set = set()
 
 
@@ -56,6 +57,7 @@ def main():
         ingest.job(db, "other_sports", ingest.sync_other_sports)
         ingest.job(db, "backfill", ingest.backfill_football)
         ingest.job(db, "logos", logos.sync_logos)
+        ingest.job(db, "highlights", highlights.sync_highlights)
         for n in ("odds", "settle"):
             ingest.job(db, n, dict((a, b) for a, b, _ in SCHEDULE)[n])
     t0 = time.time()
