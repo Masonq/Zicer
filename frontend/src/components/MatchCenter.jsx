@@ -55,6 +55,39 @@ export function GoalIcon({ sport = 'football', own = false }) {
   return <span className={`ev-ico ball${own ? ' own' : ''}`}><img src={`/balls/${BALL_SPORTS.includes(sport) ? sport : 'football'}.webp`} alt="" width="22" height="22" /></span>
 }
 
+// match clock that keeps ticking between data updates (74' -> 74:41), like bookmakers' trackers
+function useTicker(minute, live) {
+  const [, force] = useState(0)
+  const base = useRef({ min: null, at: 0 })
+  const m = parseInt(minute, 10)
+  if (!Number.isNaN(m) && base.current.min !== m) base.current = { min: m, at: Date.now() }
+  useEffect(() => { if (!live) return; const id = setInterval(() => force((x) => x + 1), 1000); return () => clearInterval(id) }, [live])
+  if (!live || Number.isNaN(m) || /\+/.test(String(minute))) return minute
+  const sec = Math.min(59, Math.floor((Date.now() - base.current.at) / 1000))
+  return `${Math.max(0, m - 1)}:${String(sec).padStart(2, '0')}`
+}
+
+// bookmaker-style attack zone: a band from midfield toward the goal ending in a chevron; deeper and warmer when dangerous
+function AttackZone({ side, level }) {
+  const depth = [70, 82, 93][level]
+  const pts = `50,0 ${depth - 6},0 ${depth},50 ${depth - 6},100 50,100`
+  const id = `az${side}${level}`
+  const col = level === 2 ? ['#FFB547', '#E5544B'] : side === 0 ? ['#3D8EF0', '#3D8EF0'] : ['#8BD12F', '#8BD12F']
+  return (
+    <svg className={`atk-zone s${side}`} viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <linearGradient id={id} x1="50" x2={depth} y1="0" y2="0" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor={col[0]} stopOpacity="0" /><stop offset=".55" stopColor={col[0]} stopOpacity={0.14 + level * 0.06} /><stop offset="1" stopColor={col[1]} stopOpacity={0.3 + level * 0.12} />
+        </linearGradient>
+        <pattern id={`${id}p`} width="6" height="100" patternUnits="userSpaceOnUse"><path d="M0 0 L3 50 L0 100" fill="none" stroke="#fff" strokeOpacity=".09" strokeWidth=".8" vectorEffect="non-scaling-stroke" /></pattern>
+      </defs>
+      <polygon points={pts} fill={`url(#${id})`} />
+      <polygon points={pts} fill={`url(#${id}p)`} className="atk-flow" />
+      <polyline points={`${depth - 6},0 ${depth},50 ${depth - 6},100`} fill="none" stroke={col[1]} strokeOpacity={0.55 + level * 0.15} strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+    </svg>
+  )
+}
+
 function EvIcon({ e }) {
   if (e.type === 'Goal') return <GoalIcon own={e.own} />
   if (e.type === 'Card') return <span className={`ev-card ${e.card === 'Red' || e.card === 'YellowRed' ? 'red' : 'yellow'}`} />
@@ -1309,7 +1342,8 @@ function Arena({ m, data, t }) {
     if (phase.kind === 'idle') setPhase({ kind: 'stats', ev: null, until: Date.now() + (/nba/i.test((m.league && m.league.name) || '') ? 75 : 60) * 1000, title: `${t('ev_timeout')} ${names[lastTout.home ? 0 : 1]}` })
   }, [toutKey, data.now]) // eslint-disable-line react-hooks/exhaustive-deps
   // ---------- texts ----------
-  const periodTxt = !live ? t('finished') : sport === 'football' ? (m.minute === 'HT' ? t('ht') : m.minute || '') : periodLabel(lv.p, sport, t) || (/^[A-Z0-9_]+$/.test(m.minute || '') ? periodLabel(m.minute, sport, t) : m.minute)
+  const fbClock = useTicker(m.minute, live && sport === 'football' && m.minute !== 'HT')
+  const periodTxt = !live ? t('finished') : sport === 'football' ? (m.minute === 'HT' ? t('ht') : fbClock || '') : periodLabel(lv.p, sport, t) || (/^[A-Z0-9_]+$/.test(m.minute || '') ? periodLabel(m.minute, sport, t) : m.minute)
   const perTxt = shown.per.map((p) => `${p[0] ?? 0}-${p[1] ?? 0}`).join(', ')
   const fouls = data.fouls, clock = data.clock
   const bonusDots = (n) => <span className="bonus"><b>BONUS</b>{[0, 1, 2, 3, 4].map((i) => <i key={i} className={i < Math.min(5, n) ? 'on' : ''} />)}</span>
@@ -1388,7 +1422,10 @@ function Arena({ m, data, t }) {
       <div className={`court court-${sport} tt-court`} style={{ aspectRatio: courtAspect(sport) }}>
         <CourtLines sport={sport} />
         <div className="arena-field" style={fieldStyle(sport)}>
-          {live && att !== null && !net && !isBreak && <div className={`terr t${att}`} style={{ opacity: 0.45 + 0.55 * intensity }} aria-hidden="true" />}
+          {live && att !== null && !net && !isBreak && <AttackZone side={att} level={intensity >= 0.9 ? 2 : intensity >= 0.6 ? 1 : 0} />}
+          {live && att !== null && !net && !isBreak && phase.kind === 'idle' && sport !== 'basketball' && intensity >= 0.6 && (
+            <div className={`atk-call s${att}`} key={`${att}${intensity}`}><span className="ellip">{names[att]}</span><b className={intensity >= 0.9 ? 'hot' : ''}>{intensity >= 0.9 ? t('dangerAttack') : t('attack')}</b></div>
+          )}
           <svg className="arena-fx" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
             <polyline ref={eng.trailEl} points="" fill="none" stroke={sport === 'tennis' ? 'rgba(215,242,90,0.55)' : 'rgba(255,255,255,0.4)'} strokeWidth="1.4" strokeDasharray="3 4" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
             <g ref={eng.marksEl} fill="none" stroke="rgba(255,255,255,0.75)" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />

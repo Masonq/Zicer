@@ -13,6 +13,13 @@ def to_cyr(s: str) -> str:
 
 
 ALIASES = {
+    # national teams: different feeds name them differently
+    "chinese taipei": "taiwan", "korea republic": "south korea", "republic of korea": "south korea", "korea rep": "south korea",
+    "korea dpr": "north korea", "dpr korea": "north korea", "cote d ivoire": "ivory coast", "czechia": "czech republic",
+    "turkiye": "turkey", "usa": "united states", "united states of america": "united states", "bosnia herzegovina": "bosnia and herzegovina",
+    "bosnia hercegovina": "bosnia and herzegovina", "republic of ireland": "ireland", "cabo verde": "cape verde", "dr congo": "congo dr",
+    "ir iran": "iran", "fyr macedonia": "north macedonia", "macedonia": "north macedonia", "kyrgyz republic": "kyrgyzstan",
+    "hong kong china": "hong kong", "eswatini": "swaziland", "uae": "united arab emirates", "great britain": "united kingdom",
     "c zvezda": "crvena zvezda", "crvena zvezda": "crvena zvezda", "red star belgrade": "crvena zvezda",
     "red star": "crvena zvezda", "zvezda": "crvena zvezda", "fk crvena zvezda": "crvena zvezda",
     "psg": "paris saint germain", "paris sg": "paris saint germain", "man utd": "manchester united",
