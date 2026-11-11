@@ -108,7 +108,7 @@ export default function Overview() {
           <div className="tile-h"><b>Последние тикеты</b></div>
           {d.tickets_recent.length === 0 && <div className="small">Тикетов пока нет.</div>}
           {d.tickets_recent.map((t) => (
-            <Link key={t.id} to={`/tiket/${t.id}`} className="lrow"><Avatar user={t.user} size={28} /><span className="ellip">@{t.user.username}<small> {t.items} соб.</small></span><b className="num gold">{t.odds.toFixed(2)}</b><em className={t.status}>{{ won: 'зашёл', lost: 'мимо', void: 'возврат' }[t.status] || 'в игре'}</em></Link>
+            <Link key={t.id} to={`/tiket/${t.id}`} className="lrow tk"><Avatar user={t.user} size={28} /><span className="ellip">@{t.user.username}<small> {t.items} соб.</small></span><b className="num gold">{t.odds.toFixed(2)}</b><em className={t.status}>{{ won: 'зашёл', lost: 'мимо', void: 'возврат' }[t.status] || 'в игре'}</em></Link>
           ))}
         </div>
         <div className="adm-tile">
