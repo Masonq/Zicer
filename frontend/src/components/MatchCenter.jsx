@@ -90,6 +90,25 @@ function AttackZone({ side, level }) {
   )
 }
 
+// game clock from the live feed (22Bet "TS" = seconds played), ticking locally between updates.
+// Shown the way each sport counts it: football / handball / futsal count up, hockey / basketball / water polo count down the period.
+const CLOCK = { football: { up: true }, handball: { up: true }, futsal: { up: true, per: 1200 }, hockey: { per: 1200 }, basketball: { per: 600 }, waterpolo: { per: 480 } }
+function useGameClock(sport, ts, seen, now, league, running) {
+  const [, force] = useState(0)
+  const fetched = useRef({ now: null, at: 0 })
+  if (now !== fetched.current.now) fetched.current = { now, at: Date.now() / 1000 }
+  useEffect(() => { if (!running || ts == null) return; const id = setInterval(() => force((v) => v + 1), 1000); return () => clearInterval(id) }, [running, ts])
+  const cfg = CLOCK[sport]
+  if (!cfg || ts == null || ts === '' || Number.isNaN(Number(ts))) return null
+  const drift = running ? Math.min(120, Math.max(0, (now || 0) - (seen || now || 0)) + (Date.now() / 1000 - fetched.current.at)) : 0
+  let e = Math.max(0, Number(ts) + drift)
+  const per = sport === 'basketball' && /nba/i.test(league?.name || '') ? 720 : cfg.per
+  const mmss = (v) => `${Math.floor(v / 60)}:${String(Math.floor(v % 60)).padStart(2, '0')}`
+  if (cfg.up) return mmss(per ? e % per : e)
+  const left = per - (e % per)
+  return mmss(left >= per ? 0 : left)
+}
+
 function EvIcon({ e }) {
   if (e.type === 'Goal') return <GoalIcon own={e.own} />
   if (e.type === 'Card') return <span className={`ev-card ${e.card === 'Red' || e.card === 'YellowRed' ? 'red' : 'yellow'}`} />
@@ -1437,8 +1456,11 @@ function Arena({ m, data, t }) {
     if (phase.kind === 'idle') setPhase({ kind: 'stats', ev: null, until: Date.now() + (/nba/i.test((m.league && m.league.name) || '') ? 75 : 60) * 1000, title: `${t('ev_timeout')} ${names[lastTout.home ? 0 : 1]}` })
   }, [toutKey, data.now]) // eslint-disable-line react-hooks/exhaustive-deps
   // ---------- texts ----------
-  const fbClock = useTicker(m.minute, live && sport === 'football' && m.minute !== 'HT')
+  const gClock = useGameClock(sport, x.ts, lv.x_seen, data.now, m.league, live && !/PAUSE|BREAK|HALF_TIME|HT/.test(`${lv.p || ''} ${m.minute || ''}`))
+  const fbTick = useTicker(m.minute, live && sport === 'football' && m.minute !== 'HT')
+  const fbClock = sport === 'football' && gClock ? gClock : fbTick
   const periodTxt = !live ? t('finished') : sport === 'football' ? (m.minute === 'HT' ? t('ht') : fbClock || '') : periodLabel(lv.p, sport, t) || (/^[A-Z0-9_]+$/.test(m.minute || '') ? periodLabel(m.minute, sport, t) : m.minute)
+  const periodClock = live && gClock && sport !== 'football' && !/PAUSE|BREAK/.test(`${lv.p || ''} ${m.minute || ''}`) ? `${periodTxt ? `${periodTxt} · ` : ''}${gClock}` : periodTxt
   const perTxt = shown.per.map((p) => `${p[0] ?? 0}-${p[1] ?? 0}`).join(', ')
   const fouls = data.fouls, clock = data.clock
   const bonusDots = (n) => <span className="bonus"><b>BONUS</b>{[0, 1, 2, 3, 4].map((i) => <i key={i} className={i < Math.min(5, n) ? 'on' : ''} />)}</span>
@@ -1494,13 +1516,13 @@ function Arena({ m, data, t }) {
       </div>
       )}
       {sport === 'basketball' && fouls && live ? (
-        <div className="tt-sets num bb-sub">{bonusDots(fouls[0])}<span>{clock && /^\d{1,2}:\d{2}$/.test(String(clock.t).trim()) ? `Q${clock.q} ${String(clock.t).trim()}` : periodTxt}</span>{bonusDots(fouls[1])}</div>
+        <div className="tt-sets num bb-sub">{bonusDots(fouls[0])}<span>{clock && /^\d{1,2}:\d{2}$/.test(String(clock.t).trim()) ? `Q${clock.q} ${String(clock.t).trim()}` : periodClock}</span>{bonusDots(fouls[1])}</div>
       ) : (
         sport === 'tennis' ? (
           <div className="tt-sets num tn-sets">
             {shown.per.map((p, i) => <span key={i} className={i === shown.per.length - 1 && live ? 'cur' : ''}>{p[0] ?? 0}-{p[1] ?? 0}</span>)}
           </div>
-        ) : <div className="tt-sets num">{[periodTxt, sport === 'football' ? '' : perTxt].filter(Boolean).join('   ') || '\u00a0'}</div>
+        ) : <div className="tt-sets num">{[periodClock, sport === 'football' ? '' : perTxt].filter(Boolean).join('   ') || '\u00a0'}</div>
       )}
       <div className="trk-status">
         <AnimatePresence mode="wait" initial={false}>
