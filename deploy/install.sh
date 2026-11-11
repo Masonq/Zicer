@@ -184,7 +184,13 @@ step "HTTPS"
 if [ ! -d /etc/letsencrypt/live/$DOMAIN ]; then
   certbot --nginx -d $DOMAIN $([ -n "$WWW" ] && [ "$DOMAIN" = "$NEWDOM" ] && echo "-d $WWW") --non-interactive --agree-tos -m $EMAIL --redirect && ok "сертификат выпущен" || bad "certbot"
 else
-  grep -q "listen 443" /etc/nginx/sites-available/zicer.conf || certbot --nginx -d $DOMAIN --non-interactive --reinstall --redirect >/dev/null 2>&1
+  DOMS="-d $DOMAIN"; [ "$DOMAIN" = "$NEWDOM" ] && [ -n "$WWW" ] && DOMS="$DOMS -d $WWW"
+  # www joins the same certificate once it points here (expand), and both names get the HTTPS server block
+  if [ "$DOMAIN" = "$NEWDOM" ] && [ -n "$WWW" ] && ! openssl x509 -in /etc/letsencrypt/live/$DOMAIN/fullchain.pem -noout -text 2>/dev/null | grep -q "DNS:$WWW"; then
+    certbot --nginx $DOMS --cert-name $DOMAIN --expand --non-interactive --agree-tos -m $EMAIL --redirect && ok "сертификат расширен на $WWW" || bad "certbot expand"
+  else
+    grep -q "listen 443" /etc/nginx/sites-available/zicer.conf || certbot --nginx $DOMS --cert-name $DOMAIN --non-interactive --reinstall --redirect >/dev/null 2>&1
+  fi
   ok "сертификат уже есть"
 fi
 systemctl reload nginx
