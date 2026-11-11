@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { CourtLines, COURT } from '../components/MatchCenter'
 
 // Broadcast-style 3D view (football: side camera, tennis: camera behind the baseline), like Sportradar LMT.
 // The 2D engine keeps doing all the logic; every frame we read its ball / trail and draw them in 3D.
@@ -158,6 +160,86 @@ function addNetTennis(scene) {
   for (const z of [-W / 2, W / 2]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, H, 12), pm); p.position.set(0, H / 2, z); p.castShadow = true; scene.add(p) }
 }
 
+function svgTexture(sport, crop) {
+  const c = COURT[sport]
+  // React ids look like :r1: — not valid inside url(#...) of a standalone SVG image, so make them plain
+  let svg = renderToStaticMarkup(<CourtLines sport={sport} />).replace(/:([rR][0-9a-zA-Z]+):/g, '$1').replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ')
+  if (crop) svg = svg.replace(/viewBox="[^"]*"/, `viewBox="${c.fx} ${c.fy} ${c.fw} ${c.fh}"`)
+  const wM = crop ? c.fw : c.w, hM = crop ? c.fh : c.h
+  const ppm = Math.min(4096 / wM, 2048 / hM)
+  const cv = document.createElement('canvas'); cv.width = Math.round(wM * ppm); cv.height = Math.round(hM * ppm)
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8
+  const img = new Image()
+  img.onload = () => { const g = cv.getContext('2d'); g.drawImage(img, 0, 0, cv.width, cv.height); tex.needsUpdate = true }
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg.replace('<svg ', `<svg width="${cv.width}" height="${cv.height}" preserveAspectRatio="none" `))
+  return tex
+}
+
+function netMat(w, h, dark) {
+  const nc = document.createElement('canvas'); nc.width = nc.height = 64
+  const g = nc.getContext('2d'); g.strokeStyle = dark ? 'rgba(20,20,20,.85)' : 'rgba(255,255,255,.8)'; g.lineWidth = 2
+  for (let i = 0; i <= 64; i += 8) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i, 64); g.moveTo(0, i); g.lineTo(64, i); g.stroke() }
+  const t = new THREE.CanvasTexture(nc); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(w * 5, h * 5)
+  return new THREE.MeshBasicMaterial({ map: t, transparent: true, side: THREE.DoubleSide, depthWrite: false })
+}
+
+function goalFrame(scene, x, dir, W, H, D, color = 0xffffff, y0 = 0) {
+  const m = new THREE.MeshStandardMaterial({ color, roughness: 0.4 }), R = Math.max(0.03, W * 0.012)
+  for (const z of [-W / 2, W / 2]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(R, R, H, 10), m); p.position.set(x, y0 + H / 2, z); p.castShadow = true; scene.add(p) }
+  const bar = new THREE.Mesh(new THREE.CylinderGeometry(R, R, W, 10), m); bar.rotation.x = Math.PI / 2; bar.position.set(x, y0 + H, 0); bar.castShadow = true; scene.add(bar)
+  const back = new THREE.Mesh(new THREE.PlaneGeometry(W, H), netMat(W, H)); back.rotation.y = Math.PI / 2; back.position.set(x + dir * D, y0 + H / 2, 0); scene.add(back)
+  const top = new THREE.Mesh(new THREE.PlaneGeometry(D, W), netMat(D, W)); top.rotation.x = -Math.PI / 2; top.position.set(x + dir * D / 2, y0 + H, 0); scene.add(top)
+  for (const z of [-W / 2, W / 2]) { const sd = new THREE.Mesh(new THREE.PlaneGeometry(D, H), netMat(D, H)); sd.position.set(x + dir * D / 2, y0 + H / 2, z); scene.add(sd) }
+}
+
+function buildGeneric(scene, sport) {
+  const c = COURT[sport]
+  const isTT = sport === 'tabletennis'
+  const top = isTT ? 0.76 : 0
+  const surf = new THREE.Mesh(new THREE.PlaneGeometry(isTT ? c.fw : c.w, isTT ? c.fh : c.h), new THREE.MeshStandardMaterial({ map: svgTexture(sport, isTT), roughness: sport === 'hockey' ? 0.35 : 0.85, metalness: sport === 'hockey' ? 0.05 : 0 }))
+  surf.rotation.x = -Math.PI / 2; surf.position.y = top + 0.001; surf.receiveShadow = true; scene.add(surf)
+  // world position of the field centre inside the surround
+  const ox = isTT ? 0 : c.fx + c.fw / 2 - c.w / 2, oz = isTT ? 0 : c.fy + c.fh / 2 - c.h / 2
+  const L = c.fw, Wd = c.fh
+  if (isTT) {
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 30), new THREE.MeshStandardMaterial({ color: 0x6e2a2a, roughness: 1 })); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor)
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(L, 0.03, Wd), new THREE.MeshStandardMaterial({ color: 0x173f6e })); slab.position.y = top - 0.016; slab.castShadow = true; scene.add(slab)
+    const legM = new THREE.MeshStandardMaterial({ color: 0x222222 })
+    for (const lx of [-L / 2 + 0.25, L / 2 - 0.25]) for (const lz of [-Wd / 2 + 0.2, Wd / 2 - 0.2]) { const lg = new THREE.Mesh(new THREE.BoxGeometry(0.05, top, 0.05), legM); lg.position.set(lx, top / 2, lz); lg.castShadow = true; scene.add(lg) }
+    const nw = 1.83, nh = 0.1525
+    const net = new THREE.Mesh(new THREE.PlaneGeometry(nw, nh), netMat(nw, nh, true)); net.rotation.y = Math.PI / 2; net.position.set(0, top + nh / 2, 0); scene.add(net)
+    const tape = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.012, nw), new THREE.MeshStandardMaterial({ color: 0xffffff })); tape.position.set(0, top + nh, 0); scene.add(tape)
+  } else {
+    const apron = new THREE.Mesh(new THREE.PlaneGeometry(c.w * 6, c.h * 6), new THREE.MeshStandardMaterial({ color: 0x0f1d18, roughness: 1 })); apron.rotation.x = -Math.PI / 2; apron.position.y = -0.02; scene.add(apron)
+  }
+  if (sport === 'handball' || sport === 'futsal') { goalFrame(scene, ox - L / 2, -1, 3, 2, 1, sport === 'handball' ? 0xe5544b : 0xffffff); goalFrame(scene, ox + L / 2, 1, 3, 2, 1, sport === 'handball' ? 0xe5544b : 0xffffff) }
+  if (sport === 'hockey') {
+    goalFrame(scene, ox - L / 2 + 4, -1, 1.83, 1.22, 1.0, 0xd8322e); goalFrame(scene, ox + L / 2 - 4, 1, 1.83, 1.22, 1.0, 0xd8322e)
+    const bm = new THREE.MeshStandardMaterial({ color: 0xf4f6f8, roughness: 0.5 }), yb = new THREE.MeshStandardMaterial({ color: 0xf2c230 })
+    for (const z of [-Wd / 2, Wd / 2]) { const b = new THREE.Mesh(new THREE.BoxGeometry(L - 16, 1.07, 0.15), bm); b.position.set(ox, 0.535, oz + z); scene.add(b); const k = new THREE.Mesh(new THREE.BoxGeometry(L - 16, 0.15, 0.17), yb); k.position.set(ox, 0.08, oz + z); scene.add(k) }
+    for (const x of [-L / 2, L / 2]) { const b = new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.07, Wd - 16), bm); b.position.set(ox + x, 0.535, oz); scene.add(b) }
+  }
+  if (sport === 'waterpolo') { goalFrame(scene, ox - L / 2, -1, 3, 0.9, 0.5, 0xffffff, 0.02); goalFrame(scene, ox + L / 2, 1, 3, 0.9, 0.5, 0xffffff, 0.02) }
+  if (sport === 'basketball') {
+    const wm = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, roughness: 0.1 }), om = new THREE.MeshStandardMaterial({ color: 0xe8662a, roughness: 0.4 }), dm = new THREE.MeshStandardMaterial({ color: 0x1b2328 })
+    for (const s of [-1, 1]) {
+      const bx = ox + s * (L / 2 - 1.2)
+      const board = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.05, 1.8), wm); board.position.set(bx, 2.9 + 0.525, oz); scene.add(board)
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.225, 0.02, 8, 24), om); ring.rotation.x = Math.PI / 2; ring.position.set(ox + s * (L / 2 - 1.575), 3.05, oz); scene.add(ring)
+      const pole = new THREE.Mesh(new THREE.BoxGeometry(0.2, 3.4, 0.2), dm); pole.position.set(bx + s * 1.2, 1.7, oz); pole.castShadow = true; scene.add(pole)
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.15, 0.15), dm); arm.position.set(bx + s * 0.6, 3.3, oz); scene.add(arm)
+    }
+  }
+  if (sport === 'volleyball') {
+    const nw = Wd + 1.0
+    const net = new THREE.Mesh(new THREE.PlaneGeometry(nw, 1), netMat(nw, 1, true)); net.rotation.y = Math.PI / 2; net.position.set(ox, 2.43 - 0.5, oz); scene.add(net)
+    const tape = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.07, nw), new THREE.MeshStandardMaterial({ color: 0xffffff })); tape.position.set(ox, 2.43, oz); scene.add(tape)
+    const pm = new THREE.MeshStandardMaterial({ color: 0x1f4fa8 })
+    for (const z of [-nw / 2, nw / 2]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.6, 12), pm); p.position.set(ox, 1.3, oz + z); p.castShadow = true; scene.add(p) }
+  }
+  return { L, Wd, ox, oz, top, size: Math.max(c.w, c.h) }
+}
+
 export default function Stage3D({ sport, eng, att = null, level = 0 }) {
   const host = useRef(null)
   const live = useRef({ att, level })
@@ -174,46 +256,56 @@ export default function Stage3D({ sport, eng, att = null, level = 0 }) {
     el.appendChild(renderer.domElement)
     const ANISO = renderer.capabilities.getMaxAnisotropy()
     const sharpen = (o) => o.traverse((m) => { const mats = Array.isArray(m.material) ? m.material : m.material ? [m.material] : []; mats.forEach((mt) => ['map', 'emissiveMap'].forEach((k) => { if (mt[k]) { mt[k].anisotropy = ANISO; mt[k].needsUpdate = true } })) })
-    const football = sport !== 'tennis'
+    const football = sport === 'football'
+    const tennis = sport === 'tennis'
+    const generic = !football && !tennis
+    const REAR = ['tennis', 'volleyball', 'tabletennis'].includes(sport) // camera behind the baseline, like LMT tennis
     const scene = new THREE.Scene()
-    scene.background = new THREE.Color(football ? 0x0b1512 : 0x1d4d39)
-    scene.fog = football ? new THREE.Fog(0x0b1512, 300, 600) : new THREE.Fog(0x1d4d39, 38, 85) // tennis: the surround melts into the background, no visible edge
-    const len = football ? 105 : 23.77, wid = football ? 68 : 10.97
-    // ground with markings
-    const pw = football ? len + 12 : len + 44, ph = football ? wid + 12 : wid + 32
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(pw, ph), new THREE.MeshStandardMaterial({ map: football ? pitchTexture() : tennisTexture(), roughness: 0.95 }))
-    ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground)
-    const apron = new THREE.Mesh(new THREE.PlaneGeometry(pw + 400, ph + 400), new THREE.MeshStandardMaterial({ color: football ? 0x1f4d2a : 0x245c45, roughness: 1 }))
-    apron.rotation.x = -Math.PI / 2; apron.position.y = -0.02; apron.receiveShadow = true; scene.add(apron)
-    if (football) { addBackdrop(scene, pw, ph); addBoards(scene, pw, ph, 0.9) }
-    if (football) { addGoal(scene, -len / 2, -1); addGoal(scene, len / 2, 1); addFlags(scene, len, wid) } else addNetTennis(scene)
+    const bg = tennis ? 0x1d4d39 : 0x0b1512
+    scene.background = new THREE.Color(bg)
+    let len, wid, ox = 0, oz = 0, top = 0, size
+    if (generic) {
+      const g = buildGeneric(scene, sport); len = g.L; wid = g.Wd; ox = g.ox; oz = g.oz; top = g.top; size = g.size
+      if (!REAR) { const c = COURT[sport]; addBackdrop(scene, c.w, c.h) } // our branded LED wall behind the far side
+    } else {
+      len = football ? 105 : 23.77; wid = football ? 68 : 10.97; size = len
+      const pw = football ? len + 12 : len + 44, ph = football ? wid + 12 : wid + 32
+      const ground = new THREE.Mesh(new THREE.PlaneGeometry(pw, ph), new THREE.MeshStandardMaterial({ map: football ? pitchTexture() : tennisTexture(), roughness: 0.95 }))
+      ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground)
+      const apron = new THREE.Mesh(new THREE.PlaneGeometry(pw + 400, ph + 400), new THREE.MeshStandardMaterial({ color: football ? 0x1f4d2a : 0x245c45, roughness: 1 }))
+      apron.rotation.x = -Math.PI / 2; apron.position.y = -0.02; apron.receiveShadow = true; scene.add(apron)
+      if (football) { addBackdrop(scene, pw, ph); addBoards(scene, pw, ph, 0.9); addGoal(scene, -len / 2, -1); addGoal(scene, len / 2, 1); addFlags(scene, len, wid) } else addNetTennis(scene)
+    }
+    scene.fog = tennis ? new THREE.Fog(bg, 38, 85) : new THREE.Fog(bg, size * 3, size * 6)
     // lights: soft sky + four floodlights
     scene.add(new THREE.HemisphereLight(0xdfeee6, 0x1b2a22, 1.0))
-    const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(football ? -30 : -8, football ? 60 : 20, football ? 25 : 8); sun.castShadow = true
-    sun.shadow.mapSize.set(2048, 2048); const sc = football ? 70 : 20
-    Object.assign(sun.shadow.camera, { left: -sc, right: sc, top: sc, bottom: -sc, near: 1, far: 200 }); scene.add(sun)
+    const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(-size * 0.3, size * 0.6, size * 0.25); sun.castShadow = true
+    sun.shadow.mapSize.set(2048, 2048); const sc = size * 0.7
+    Object.assign(sun.shadow.camera, { left: -sc, right: sc, top: sc, bottom: -sc, near: 0.1, far: size * 3 }); scene.add(sun)
     // attack zone: translucent band towards the goal
     const zoneMat = new THREE.MeshBasicMaterial({ color: 0x3d8ef0, transparent: true, opacity: 0, depthWrite: false })
-    const zone = new THREE.Mesh(new THREE.PlaneGeometry(1, wid), zoneMat); zone.rotation.x = -Math.PI / 2; zone.position.y = 0.03; scene.add(zone)
+    const zone = new THREE.Mesh(new THREE.PlaneGeometry(1, wid), zoneMat); zone.rotation.x = -Math.PI / 2; zone.position.set(ox, top + 0.03, oz); scene.add(zone)
     // ball: billboard sprite of our rendered ball + blob shadow
-    const ballMap = loadTex(`/balls/${football ? 'football' : 'tennis'}.png`)
+    const ballMap = loadTex(`/balls/${sport === 'esports' ? 'football' : sport}.png`)
     const ball = new THREE.Sprite(new THREE.SpriteMaterial({ map: ballMap, depthTest: true }))
-    const br = football ? 2.1 : 0.55 // a bit larger than life so it reads from the broadcast camera, like LMT
+    const br = { football: 2.1, tennis: 0.55, tabletennis: 0.12, basketball: 0.75, hockey: 0.55, volleyball: 0.6, handball: 0.7, futsal: 0.75, waterpolo: 0.7 }[sport] || size * 0.02 // larger than life so it reads from the broadcast camera, like LMT
     ball.scale.set(br, br, 1); scene.add(ball)
     const sh = new THREE.Mesh(new THREE.CircleGeometry(br * 0.45, 24), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.35, depthWrite: false }))
     sh.rotation.x = -Math.PI / 2; sh.position.y = 0.02; scene.add(sh)
     // trail
-    const trailMat = new THREE.MeshBasicMaterial({ color: football ? 0xffffff : 0xf2d84a, transparent: true, opacity: 0.85 })
+    const trailMat = new THREE.MeshBasicMaterial({ color: REAR ? 0xf2d84a : sport === 'hockey' ? 0x22303a : 0xffffff, transparent: true, opacity: 0.85 })
     let trail = null
     const hist = []
     let frame = 0
     // camera
-    const cam = new THREE.PerspectiveCamera(football ? 33 : 36, 1, 0.5, 500)
-    if (football) { cam.position.set(0, 62, 112); cam.lookAt(0, 0, -6) } else { cam.position.set(-22, 11.5, 0); cam.lookAt(4.5, 0, 0) }
+    const cam = new THREE.PerspectiveCamera(football ? 33 : REAR ? 38 : 34, 1, size * 0.004, size * 8)
+    if (football) { cam.position.set(0, 62, 112); cam.lookAt(0, 0, -6) }
+    else if (tennis) { cam.position.set(-29, 14.5, 0); cam.lookAt(3, 0, 0) } // further back: the near baseline stays inside the frame
+    else if (REAR) { cam.position.set(ox - len * 0.82, top + len * 0.5, oz); cam.lookAt(ox + len * 0.14, top, oz) }
+    else { cam.position.set(ox, top + len * 0.54, oz + len * 0.9); cam.lookAt(ox, top, oz - len * 0.06) }
     const toWorld = (xp, yp) => {
       // engine coordinates are % of the playing area (x along the length, y across)
-      const x = (xp / 100 - 0.5) * len, z = (yp / 100 - 0.5) * wid
-      return football ? new THREE.Vector3(x, 0, z) : new THREE.Vector3(x, 0, z)
+      return new THREE.Vector3(ox + (xp / 100 - 0.5) * len, top, oz + (yp / 100 - 0.5) * wid)
     }
     const resize = () => {
       const w = el.clientWidth, h = el.clientHeight
@@ -232,8 +324,8 @@ export default function Stage3D({ sport, eng, att = null, level = 0 }) {
         const p = toWorld(parseFloat(be.style.left), parseFloat(be.style.top))
         const m = /calc\(-50% - ([\d.]+)px\)/.exec(be.style.transform || '')
         const hop = m ? parseFloat(m[1]) / 24 : 0
-        const hgt = (football ? 6 : 2.6) * hop + br / 2
-        ball.position.set(p.x, hgt, p.z); sh.position.set(p.x, 0.02, p.z)
+        const hgt = top + ({ football: 6, tennis: 2.6, tabletennis: 0.35, volleyball: 4, basketball: 3 }[sport] || size * 0.06) * hop + br / 2
+        ball.position.set(p.x, hgt, p.z); sh.position.set(p.x, top + 0.02, p.z)
         sh.material.opacity = 0.35 - Math.min(0.25, hop * 0.2)
         ball.visible = sh.visible = be.style.opacity !== '0'
       }
@@ -242,15 +334,15 @@ export default function Stage3D({ sport, eng, att = null, level = 0 }) {
         const last = hist[hist.length - 1]
         // only travel along the ground counts (a serve toss straight up is not a trail)
         const moved = last ? Math.hypot(last.x - ball.position.x, last.z - ball.position.z) : 1
-        if (moved > (football ? 0.15 : 0.05)) hist.push(ball.position.clone())
-        if (hist.length > (football ? 14 : 11)) hist.shift()
-        if (last && last.distanceTo(ball.position) > (football ? 18 : 6)) hist.splice(0, hist.length - 1) // teleport (new serve / restart): start over
+        if (moved > size * 0.0015) hist.push(ball.position.clone())
+        if (hist.length > (REAR ? 11 : 14)) hist.shift()
+        if (last && last.distanceTo(ball.position) > size * 0.2) hist.splice(0, hist.length - 1) // teleport (new serve / restart): start over
       }
       if (++frame % 2 === 0) {
         if (trail) { scene.remove(trail); trail.geometry.dispose(); trail = null }
         if (hist.length >= 3) {
-          const pts = hist.map((p) => new THREE.Vector3(p.x, football ? 0.1 : Math.max(0.03, p.y), p.z))
-          trail = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), pts.length * 3, football ? 0.2 : 0.035, 6, false), trailMat)
+          const pts = hist.map((p) => new THREE.Vector3(p.x, REAR ? Math.max(top + 0.03, p.y) : top + size * 0.001, p.z))
+          trail = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), pts.length * 3, football ? 0.2 : size * 0.0016, 6, false), trailMat)
           scene.add(trail)
         }
       }
@@ -258,7 +350,7 @@ export default function Stage3D({ sport, eng, att = null, level = 0 }) {
       if (a === null || a === undefined) zoneMat.opacity = Math.max(0, zoneMat.opacity - 0.03)
       else {
         const depth = [0.2, 0.32, 0.43][lv] * len
-        zone.scale.x = depth; zone.position.x = a === 0 ? depth / 2 : -depth / 2
+        zone.scale.x = depth; zone.position.x = ox + (a === 0 ? depth / 2 : -depth / 2)
         zoneMat.color.set(lv === 2 ? 0xffa33a : a === 0 ? 0x3d8ef0 : 0x8bd12f)
         zoneMat.opacity += ((0.16 + lv * 0.07) - zoneMat.opacity) * 0.08
       }

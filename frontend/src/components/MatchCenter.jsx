@@ -1321,7 +1321,7 @@ function Arena({ m, data, t }) {
   const brkLabel = brkUntil ? (brkUntil > Date.now() ? `${brkTitle} ${fmtLeft(brkUntil)}` : `${brkTitle}, ${t('resumeSoon')}`) : brkTitle
   const eng = useArenaEngine({ live, sport, att, intensity, server, srvY, rcvY })
   // 3D broadcast view (LMT-style) where it is ready; everything else stays 2D. ?2d in the address forces the flat view
-  const use3d = webgl && (sport === 'football' || sport === 'tennis') && !/[?&]2d\b/.test(window.location.search)
+  const use3d = webgl && ['football', 'tennis', 'basketball', 'hockey', 'volleyball', 'handball', 'futsal', 'waterpolo', 'tabletennis'].includes(sport) && !/[?&]2d\b/.test(window.location.search)
   const [, tick] = useState(0)
   const [pp, setPp] = useState(null) // hockey power play: { side, until }
   useEffect(() => { if (!pp) return; const id = setInterval(() => { tick((v) => v + 1); if (Date.now() > pp.until) setPp(null) }, 1000); return () => clearInterval(id) }, [pp])
@@ -1513,8 +1513,7 @@ function Arena({ m, data, t }) {
         {use3d && live && !isBreak && att !== null && !net && intensity >= 0.6 && phase.kind === 'idle' && (
           <div className={`lmt-card s${att}`}><i /><div><b>{intensity >= 0.9 ? t('dangerAttack') : t('attack')}</b><span className="ellip">{names[att]}</span></div><em /></div>
         )}
-        {use3d && <div className="lmt-pill num">{periodTxt}{sport === 'tennis' && live && dataSS && (dataSS[0] || dataSS[1]) ? <b>{dataSS[0]}–{dataSS[1]}</b> : null}</div>}
-        {use3d && sport === 'tennis' && (
+        {use3d && net && (
           <>
             <div className="lmt-name near"><span className="ellip">{names[0]}</span>{live && server === 0 && <b>{t('serve')}</b>}</div>
             <div className="lmt-name far"><span className="ellip">{names[1]}</span>{live && server === 1 && <b>{t('serve')}</b>}</div>
