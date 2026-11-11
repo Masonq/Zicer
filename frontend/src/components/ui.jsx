@@ -53,7 +53,7 @@ export function StatusTime({ m }) {
   const t = useT()
   if (m.status === 'live') {
     const lbl = m.minute === 'HT' ? t('ht') : /^[A-Z0-9_]+$/.test(m.minute || '') ? periodLabel(m.minute, m.sport, t, true) : m.minute
-    return <div className="row-time live"><span style={{ fontSize: lbl && lbl.length > 4 ? 12 : 15 }}>{lbl || <span className="live-dot" />}</span><small style={{ color: 'var(--live)' }}>{t('live')}</small></div>
+    return <div className="row-time live">{lbl && <span className="lt-main" style={{ fontSize: lbl.length > 5 ? 12 : 15 }}>{lbl}</span>}<small className="lt-sub"><i className="lt-dot" />{t('live')}</small></div>
   }
   if (m.status === 'finished') return <div className="row-time"><span style={{ fontSize: 13 }}>{t('finished')}</span></div>
   const day = fmtDay(m.start, t.locale)
@@ -147,7 +147,7 @@ export function MatchRow({ m }) {
         <span className={`ru-fav${dx > 70 ? ' go' : ''}`}><Star size={18} fill={fav ? 'currentColor' : 'none'} />{fav ? t('unfav') : t('fav')}</span>
         <span className={`ru-add${dx < -70 ? ' go' : ''}`}><Plus size={18} />{t('ticket')}</span>
       </div>
-      <Link to={`/mec/${m.id}`} state={{ m }} className={`row${fav ? ' is-fav' : ''}`} style={dx ? { transform: `translateX(${dx}px)`, transition: 'none' } : undefined}
+      <Link to={`/mec/${m.id}`} state={{ m }} className={`row${fav ? ' is-fav' : ''}${m.status === 'live' ? ' is-live' : ''}`} style={dx ? { transform: `translateX(${dx}px)`, transition: 'none' } : undefined}
         onTouchStart={onStart} onTouchMove={onMove} onTouchEnd={onEnd} onClick={(e) => { if (Math.abs(dx) > 6) e.preventDefault() }}>
         <button type="button" className={`row-fav${fav ? ' on' : ''}`} aria-label={fav ? t('unfav') : t('fav')} title={fav ? t('unfav') : t('fav')}
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); const on = toggleFav(m.id); showUndo(on ? t('favAdded') : t('favRemoved'), () => toggleFav(m.id)) }}>
