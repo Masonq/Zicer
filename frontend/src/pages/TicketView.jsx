@@ -42,31 +42,49 @@ export default function TicketView() {
   return (
     <div>
       {sp.get('novi') && <div className="card pad" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, borderColor: 'var(--win)' }}><CheckCircle2 color="var(--win)" /><b>{t('ticketPlaced')}</b></div>}
-      <div className="pitch">
-        <div className="pitch-top"><Link to={`/u/${tk.user.username}`} style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--chalk)' }}><Avatar user={tk.user} size={26} />{tk.user.name || tk.user.username}</Link><span>#{tk.id}</span></div>
-        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, margin: '18px 0 6px' }}>
-          <div className="tablo" style={{ textAlign: 'left' }}><div className="big" style={{ fontSize: 40 }}>{fmtOdds(tk.total_odds)}</div><div className="lbl" style={{ justifyContent: 'flex-start' }}>{t('totalOdds')}</div></div>
-          <div className="right"><div className="h1" style={{ color, margin: 0 }}>{t(`status_${tk.status}`)}</div><div className="small">{tk.status === 'won' ? t('win') : t('potentialWin')}: <b className="num" style={{ color: 'var(--chalk)', fontSize: 16 }}>{fmtNum(tk.potential)}</b></div></div>
+      {/* the slip itself */}
+      <div className={`tslip st-${tk.status}`}>
+        <div className="tslip-head">
+          <Link to={`/u/${tk.user.username}`} className="tslip-user"><Avatar user={tk.user} size={30} /><span className="ellip">{tk.user.name || tk.user.username}</span></Link>
+          <span className="tslip-id num">#{tk.id}</span>
+        </div>
+        <div className="tslip-status">
+          <span className={`tslip-chip ${tk.status}`}>{t(`status_${tk.status}`)}</span>
+          <span className="small">{new Date(tk.created).toLocaleString(t.locale, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+        </div>
+        <div className="tslip-progress" aria-hidden="true">{tk.items.map((i) => <i key={i.match.id} className={i.status} />)}</div>
+        <div className="small" style={{ marginTop: 6 }}>{t('itemsProgress').replace('{won}', tk.items.filter((i) => i.status === 'won').length).replace('{all}', tk.items.length)}</div>
+        <div className="tslip-nums">
+          <div><span>{t('totalOdds')}</span><b className="num gold">{fmtOdds(tk.total_odds)}</b></div>
+          <div><span>{t('stake')}</span><b className="num">{fmtNum(tk.stake)}</b></div>
+          <div><span>{tk.status === 'won' ? t('win') : t('potentialWin')}</span><b className="num">{fmtNum(tk.potential)}</b></div>
         </div>
       </div>
-      <div className="rows" style={{ marginTop: 14 }}>
-        {tk.items.map((i) => (
-          <Link key={i.match.id} to={`/mec/${i.match.id}`} className="row" style={{ gridTemplateColumns: '50px minmax(0,1fr) auto' }}>
-            <StatusTime m={i.match} />
-            <div className="row-teams">
-              <div className="row-team"><Crest team={i.match.home} size={20} /><span className="name">{t.team(i.match.home)}</span>{i.match.score && <span className="sc">{i.match.score[0]}</span>}</div>
-              <div className="row-team"><Crest team={i.match.away} size={20} /><span className="name">{t.team(i.match.away)}</span>{i.match.score && <span className="sc">{i.match.score[1]}</span>}</div>
-            </div>
-            <div className="right" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-              <span className="badge gold">{pickLabel(t, i.match, i.pick)} {fmtOdds(i.odds)}</span>
-              {i.status !== 'open' && <span className={`badge ${i.status}`}>{t(`pred_${i.status}`)}</span>}
-            </div>
-          </Link>
-        ))}
-      </div>
-      <div className="card pad" style={{ marginTop: 14 }}>
-        <div className="slip-sum"><span>{t('stake')}</span><b>{fmtNum(tk.stake)}</b></div>
-        <div className="slip-sum"><span>{tk.status === 'won' ? t('win') : t('potentialWin')}</span><b style={{ color: 'var(--gold)' }}>{fmtNum(tk.potential)}</b></div>
+      <div className="tsel-list">
+        {tk.items.map((i) => {
+          const m = i.match
+          return (
+            <Link key={m.id} to={`/mec/${m.id}`} className={`tsel ${i.status}`}>
+              <div className="tsel-top">
+                <span className="tsel-lg">
+                  <span className="ellip">{t.league(m.league)}</span>
+                  {i.status !== 'open' && <span className={`tsel-res ${i.status}`}>{t(`pred_${i.status}`)}</span>}
+                </span>
+                <StatusTime m={m} />
+              </div>
+              <div className="tsel-main">
+                <div className="tsel-teams">
+                  <div className="row-team"><Crest team={m.home} size={20} /><span className="name">{t.team(m.home)}</span>{m.score && <span className="sc">{m.score[0]}</span>}</div>
+                  <div className="row-team"><Crest team={m.away} size={20} /><span className="name">{t.team(m.away)}</span>{m.score && <span className="sc">{m.score[1]}</span>}</div>
+                </div>
+                <div className="tsel-pick">
+                  <span className="tsel-label">{pickLabel(t, m, i.pick)}</span>
+                  <b className="num">{fmtOdds(i.odds)}</b>
+                </div>
+              </div>
+            </Link>
+          )
+        })}
       </div>
       <section className="section">
         <div className="section-head"><h2 className="h2">{t('shareTicket')}</h2></div>
@@ -74,7 +92,11 @@ export default function TicketView() {
           <button className={fmt === 'wide' ? 'on' : ''} onClick={() => setFmt('wide')}>{t('fmtPost')}</button>
           <button className={fmt === 'story' ? 'on' : ''} onClick={() => setFmt('story')}>{t('fmtStory')}</button>
         </div>
-        <div className={`share-prev ${fmt}`}><img src={img} alt="" /></div>
+        <div className={`share-prev ${fmt}`}>
+          {['wide', 'story'].map((f) => (
+            <img key={f} src={`/api/share/ticket/${tk.id}.png?s=${tk.status}&lang=${lang}&f=${f}`} alt="" className={`sp-${f}`} style={{ display: f === fmt ? 'block' : 'none' }} />
+          ))}
+        </div>
         <button className="btn btn-gold btn-block" style={{ marginTop: 12, height: 48 }} onClick={share} disabled={busy}><Share2 size={18} />{t('shareImage')}</button>
         <div className="share-apps">
           {apps.map(([name, href, I]) => <a key={name} className="btn btn-ghost btn-sm" href={href} target="_blank" rel="noopener"><I size={16} />{name}</a>)}
