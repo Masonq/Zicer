@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from sqlalchemy import select
 from .db import engine, Base, SessionLocal
 from .models import Bookmaker
-from . import api, admin, share, center, growth
+from . import api, admin, share, center, growth, emailauth
 
 logging.basicConfig(level=logging.INFO)
 app = FastAPI(title="Winly", docs_url=None, redoc_url=None)
@@ -40,6 +40,7 @@ MIGRATIONS = [
     "CREATE INDEX IF NOT EXISTS ix_matches_x_id ON matches (x_id)",
     "ALTER TABLE highlights ADD COLUMN IF NOT EXISTS status VARCHAR(8) DEFAULT ''",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS ref_by INTEGER",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT TRUE",  # accounts made before email codes count as verified
 ]
 
 
@@ -92,3 +93,5 @@ app.include_router(share.router)
 app.include_router(center.router)
 app.include_router(growth.router)
 app.include_router(growth.adm)
+app.include_router(emailauth.router)
+app.include_router(emailauth.adm)

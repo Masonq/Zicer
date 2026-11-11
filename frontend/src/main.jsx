@@ -32,6 +32,7 @@ import Admin from './admin/Admin'
 import { installHScroll } from './hscroll'
 import { installAutoUpdate } from './autoupdate'
 import League from './pages/League'
+import { VerifyEmail, ResetPassword } from './pages/EmailCode'
 installHScroll()
 installAutoUpdate()
 
@@ -82,6 +83,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                 <Route path="/profil/uredi" element={<EditProfile />} />
                 <Route path="/prijava" element={<Login />} />
                 <Route path="/registracija" element={<Register />} />
+                <Route path="/potvrda" element={<VerifyEmail />} />
+                <Route path="/zaboravljena-lozinka" element={<ResetPassword />} />
                 <Route path="/izbor-kluba" element={<Onboarding />} />
                 <Route path="*" element={<Home />} />
               </Route>

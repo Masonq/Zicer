@@ -102,6 +102,9 @@ export default function Layout() {
           </div>
         </header>
         <main className="main">
+          {user && user.email_verified === false && loc.pathname !== '/potvrda' && (
+            <Link to={`/potvrda?next=${encodeURIComponent(loc.pathname)}`} className="verify-strip"><span>{t('verifyBanner')}</span><b>{t('verifyNow')}</b></Link>
+          )}
           <div className="page-body"><ErrorBoundary resetKey={loc.pathname + loc.search}><Outlet /></ErrorBoundary></div>
           <div className="foot">{t('responsible')}</div>
         </main>

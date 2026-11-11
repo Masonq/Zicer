@@ -29,6 +29,7 @@ export function Login() {
       <form className="card pad stack" style={{ marginTop: 14 }} onSubmit={submit}>
         <div className="field"><label htmlFor="l">{t('loginOrEmail')}</label><input id="l" className="input" autoComplete="username" value={f.login} onChange={(e) => setF({ ...f, login: e.target.value })} required /></div>
         <div className="field"><label htmlFor="p">{t('password')}</label><input id="p" className="input" type="password" autoComplete="current-password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} required /></div>
+        <div style={{ textAlign: 'right', marginTop: -4 }}><Link to="/zaboravljena-lozinka" className="small" style={{ color: 'var(--gold)', fontWeight: 700 }}>{t('forgotPassword')}</Link></div>
         {err && <div className="form-error">{err}</div>}
         <button className="btn btn-gold btn-block" disabled={busy}>{t('signIn')}</button>
         <div className="small" style={{ textAlign: 'center' }}>{t('noAccount')} <Link to={`/registracija${next !== '/' ? `?next=${encodeURIComponent(next)}` : ''}`} style={{ color: 'var(--gold)', fontWeight: 700 }}>{t('createAccount')}</Link></div>
@@ -46,7 +47,7 @@ export function Register() {
   const [busy, setBusy] = useState(false)
   const submit = async (e) => {
     e.preventDefault(); setErr(''); setBusy(true)
-    try { const r = await api('/auth/register', { method: 'POST', body: { ...f, lang: t.lang, ref: (() => { try { return localStorage.getItem('winly_ref') || '' } catch { return '' } })() } }); login(r.token, r.user); nav('/izbor-kluba?novi=1', { replace: true }) }
+    try { const r = await api('/auth/register', { method: 'POST', body: { ...f, lang: t.lang, ref: (() => { try { return localStorage.getItem('winly_ref') || '' } catch { return '' } })() } }); login(r.token, r.user); nav(r.verify ? `/potvrda?sent=1&next=${encodeURIComponent('/izbor-kluba?novi=1')}` : '/izbor-kluba?novi=1', { replace: true }) }
     catch (ex) { const k = `err_${ex.code}`; setErr(t(k) !== k ? t(k) : t('error')) } finally { setBusy(false) }
   }
   return (

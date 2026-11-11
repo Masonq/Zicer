@@ -52,7 +52,7 @@ def register(body: RegisterIn, db: Session = Depends(get_db)):
     if db.scalar(select(User).where(User.email == email)):
         raise HTTPException(400, "email_taken")
     u = User(username=uname, email=email, pw_hash=hash_pw(body.password), lang=body.lang if body.lang in ("sr", "sr-cyr", "ru") else "sr",
-             bank=config.START_BANK, color=random.choice(COLORS), tg_code=secrets.token_hex(8))
+             bank=config.START_BANK, color=random.choice(COLORS), tg_code=secrets.token_hex(8), email_verified=False)
     db.add(u)
     db.commit()
     try:
@@ -60,7 +60,17 @@ def register(body: RegisterIn, db: Session = Depends(get_db)):
         apply_referral(db, u, body.ref.strip())
     except Exception:  # noqa
         db.rollback()
-    return {"token": make_token(u.id), "user": user_me(u)}
+    from .emailauth import mail_on, issue_code
+    mail = mail_on(db)
+    if mail:
+        try:
+            issue_code(db, u.email, "verify", u.lang)
+        except Exception:  # noqa
+            db.rollback()
+    else:  # email not switched on yet: nothing to confirm
+        u.email_verified = True
+        db.commit()
+    return {"token": make_token(u.id), "user": user_me(u), "verify": mail}
 
 
 @router.post("/auth/login")
@@ -358,6 +368,8 @@ class PredictIn(BaseModel):
 @router.post("/matches/{mid}/predict")
 def predict(mid: int, body: PredictIn, u: User = Depends(current_user), db: Session = Depends(get_db)):
     u = db.merge(u)
+    from .emailauth import require_verified
+    require_verified(db, u)
     m = db.get(Match, mid)
     if not m or m.status != "scheduled" or m.start <= utcnow():
         raise HTTPException(400, "closed")
@@ -387,6 +399,8 @@ class ScoreIn(BaseModel):
 
 @router.post("/matches/{mid}/score")
 def score_pick(mid: int, body: ScoreIn, u: User = Depends(current_user), db: Session = Depends(get_db)):
+    from .emailauth import require_verified
+    require_verified(db, u)
     m = db.get(Match, mid)
     if not m or not m.is_derby or m.status != "scheduled" or m.start <= utcnow():
         raise HTTPException(400, "closed")
@@ -419,6 +433,8 @@ def ticket_out(t: Ticket) -> dict:
 @router.post("/tickets")
 def create_ticket(body: TicketIn, u: User = Depends(current_user), db: Session = Depends(get_db)):
     u = db.merge(u)
+    from .emailauth import require_verified
+    require_verified(db, u)
     ids = [i.match_id for i in body.items]
     if len(ids) < 2 or len(ids) > 12 or len(set(ids)) != len(ids):
         raise HTTPException(400, "ticket_size")

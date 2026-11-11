@@ -89,6 +89,7 @@ class User(Base):
     bio: Mapped[str] = mapped_column(Text, default="")
     avatar: Mapped[str] = mapped_column(String(256), default="")
     ref_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
 
     fav_football = relationship("Team", foreign_keys=[fav_football_id], lazy="joined")
     fav_basket = relationship("Team", foreign_keys=[fav_basket_id], lazy="joined")
@@ -301,3 +302,17 @@ class FbGroup(Base):
     last_posted: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     posts: Mapped[int] = mapped_column(Integer, default=0)
     note: Mapped[str] = mapped_column(String(300), default="")
+
+
+
+class EmailCode(Base):
+    """One-time 6-digit codes sent by email (verify the address, reset the password)."""
+    __tablename__ = "email_codes"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    email: Mapped[str] = mapped_column(String(160), index=True)
+    purpose: Mapped[str] = mapped_column(String(12), default="verify")
+    code_hash: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    used: Mapped[bool] = mapped_column(Boolean, default=False)

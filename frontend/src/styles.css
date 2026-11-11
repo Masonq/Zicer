@@ -1475,3 +1475,17 @@ img { display: block; max-width: 100%; }
 .inv-link { min-width: 0; max-width: 100%; }
 .inv-link span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 480px) { .invite { flex-direction: column; } .inv-ico { width: 40px; height: 40px; } }
+
+/* email codes */
+.code-card { max-width: 420px; margin: 0 auto; align-items: stretch; }
+.code-ico { align-self: center; width: 56px; height: 56px; border-radius: 18px; display: grid; place-items: center; background: rgba(242,194,48,.14); color: var(--gold); }
+.code-boxes { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin: 6px 0; }
+.code-box { height: 56px; border-radius: 14px; border: 1px solid var(--line); background: rgba(0,0,0,.22); color: var(--chalk); text-align: center; font-size: 24px; font-weight: 800; outline: none; min-width: 0; padding: 0; }
+.code-box:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(242,194,48,.18); }
+.code-resend { align-self: center; color: var(--gold); font-weight: 700; } .code-resend:disabled { color: var(--muted); }
+.ellip-email { word-break: break-all; color: var(--chalk); }
+.verify-strip { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 12px; padding: 10px 14px; border-radius: 14px;
+  background: rgba(242,194,48,.12); border: 1px solid rgba(242,194,48,.35); color: #ece2bf; font-size: 13.5px; font-weight: 600; }
+.verify-strip b { flex: none; padding: 6px 12px; border-radius: 10px; background: var(--gold); color: var(--gold-ink); font-size: 13px; }
+.code-card .code-ico, .code-card .code-resend { justify-self: center; margin-left: auto; margin-right: auto; display: grid; }
+.code-card .code-resend { display: block; text-align: center; }

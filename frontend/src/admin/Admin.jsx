@@ -33,6 +33,31 @@ function Sources() {
   )
 }
 
+function MailSettings() {
+  const [ver, setVer] = useState(0)
+  const { data } = usePoll(() => api('/admin/mail'), [ver], 0)
+  const [key, setKey] = useState('')
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
+  const [msg, setMsg] = useState('')
+  const save = async () => { await api('/admin/mail', { method: 'POST', body: { key, sender: from } }); setKey(''); setMsg('Сохранено'); setVer((v) => v + 1) }
+  const test = async () => { setMsg(''); try { await api('/admin/mail/test', { method: 'POST', body: { to } }); setMsg(`Письмо отправлено на ${to}`) } catch { setMsg('Не отправилось: проверь ключ и подтверждение домена в Brevo') } }
+  return (
+    <div className="adm-tile" style={{ marginBottom: 14 }}>
+      <div className="tile-h"><b>Почта: Brevo</b>{data?.on ? <span className="g-on">подключено {data.key}</span> : <span className="small">не подключено</span>}</div>
+      <p className="small" style={{ marginTop: 0 }}>Коды подтверждения почты и смены пароля. Ключ: Brevo → SMTP &amp; API → API Keys. Пока ключа нет, регистрация работает без подтверждения.</p>
+      <div className="g-form">
+        <label>API-ключ<input className="input" value={key} onChange={(e) => setKey(e.target.value.trim())} placeholder={data?.key || 'xkeysib-…'} /></label>
+        <label>Отправитель<input className="input" value={from} onChange={(e) => setFrom(e.target.value.trim())} placeholder={data?.from || 'no-reply@winly.rs'} /></label>
+        <button className="btn btn-gold btn-sm" disabled={!key && !from} onClick={save}>Сохранить</button>
+      </div>
+      <div className="g-vid" style={{ marginTop: 12 }}><input className="input" placeholder="Куда отправить тестовое письмо" value={to} onChange={(e) => setTo(e.target.value.trim())} /><button className="btn btn-ghost btn-sm" disabled={!to || !data?.on} onClick={test}>Тест</button></div>
+      {data && <div className="small" style={{ marginTop: 8 }}>Кодов за сутки: {data.codes_24h} · неподтверждённых аккаунтов: {data.unverified}</div>}
+      {msg && <div className="small" style={{ marginTop: 6, color: '#3DD68C' }}>{msg}</div>}
+    </div>
+  )
+}
+
 function Dashboard() {
   const [ver, setVer] = useState(0)
   const [toast, setToast] = useState('')
@@ -42,6 +67,7 @@ function Dashboard() {
   return (
     <div>
       <Sources />
+      <MailSettings />
       <section>
         <div className="card scroll-x">
           <table className="table">
