@@ -381,35 +381,31 @@ export function CourtLines({ sport }) {
     )
   }
   if (sport === 'waterpolo') {
-    // World Aquatics field of play 25 x 20 m: no lines on the water; lane ropes mark the field, coloured
-    // markers on the pool side (white goal line and half, red 2 m, yellow 5 m, green 6 m), floating goals
+    // flat bookmaker-style pool (World Aquatics 25 x 20 m): lane stripes, white goal & half lines, red 2 m, yellow 5 m, goals with nets
     const cy = Y + H / 2, cx = X + W / 2
-    const floats = (y) => Array.from({ length: 50 }, (_, i) => <rect key={i} x={X + i * 0.5} y={y - 0.12} width={0.42} height={0.24} rx="0.12" fill={i % 6 < 3 ? '#E8ECEE' : '#C8443F'} />)
-    const marker = (x, col) => <g key={`${x}${col}`}><rect x={x - 0.35} y={Y - 1.25} width={0.7} height={0.5} fill={col} /><rect x={x - 0.35} y={Y + H + 0.75} width={0.7} height={0.5} fill={col} /></g>
+    const across = (x, col, dash) => <line key={`${x}${col}`} x1={x} y1={Y} x2={x} y2={Y + H} stroke={col} strokeWidth="1.6" vectorEffect="non-scaling-stroke" strokeDasharray={dash} opacity="0.85" />
     const goal = (dir) => {
       const gx = dir === 1 ? X : X + W
       return (
         <g key={dir}>
-          <rect x={dir === 1 ? gx - 0.6 : gx} y={cy - 1.5} width={0.6} height={3} fill={`url(#${uid}net)`} />
-          <rect x={dir === 1 ? gx - 0.6 : gx} y={cy - 1.5} width={0.6} height={3} fill="none" stroke="#F2F4F5" strokeWidth="0.12" />
-          <line x1={gx} y1={cy - 1.5} x2={gx} y2={cy + 1.5} stroke="#F2F4F5" strokeWidth="0.16" />
+          <rect x={dir === 1 ? gx - 0.9 : gx} y={cy - 1.5} width={0.9} height={3} fill={`url(#${uid}wpnet)`} stroke="#fff" strokeWidth="0.1" />
         </g>
       )
     }
     return (
       <svg viewBox={vb} className="court-svg" aria-hidden="true">
         <defs>
-          <linearGradient id={`${uid}w`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#2A7FA1" /><stop offset="1" stopColor="#1F6888" /></linearGradient>
-          <filter id={`${uid}caus`} x="0" y="0" width="100%" height="100%"><feTurbulence type="turbulence" baseFrequency="0.35" numOctaves="2" seed="3"><animate attributeName="seed" values="3;4;5;6;3" dur="16s" repeatCount="indefinite" /></feTurbulence><feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.10 -0.02" /></filter>
-          <pattern id={`${uid}net`} width="0.25" height="0.25" patternUnits="userSpaceOnUse"><rect width="0.25" height="0.25" fill="#1B5671" /><path d="M0 0 L0.25 0.25 M0.25 0 L0 0.25" stroke="#CFD8DC" strokeWidth="0.025" /></pattern>
+          <pattern id={`${uid}wpnet`} width="0.3" height="0.3" patternUnits="userSpaceOnUse"><path d="M0 0 L0.3 0.3 M0.3 0 L0 0.3" stroke="#fff" strokeWidth="0.03" opacity="0.7" /></pattern>
         </defs>
-        <rect width={c.w} height={c.h} fill="#1A1F24" />
-        <rect x={X - 2} y={Y - 1.5} width={W + 4} height={H + 3} fill="#9AA3A6" />
-        <rect x={X - 1.6} y={Y - 0.6} width={W + 3.2} height={H + 1.2} fill={`url(#${uid}w)`} />
-        <rect x={X - 1.6} y={Y - 0.6} width={W + 3.2} height={H + 1.2} filter={`url(#${uid}caus)`} />
-        {floats(Y)}{floats(Y + H)}
-        {[[0, '#F2F4F5'], [2, '#C8443F'], [5, '#D9B53A'], [6, '#3E9A62']].map(([d, col]) => [marker(X + d, col), marker(X + W - d, col)])}
-        {marker(cx, '#F2F4F5')}
+        <rect width={c.w} height={c.h} fill="#123c5c" />
+        <rect x={X} y={Y} width={W} height={H} fill="#1f6fa8" />
+        {Array.from({ length: 8 }, (_, i) => <rect key={i} x={X} y={Y + i * 2.5} width={W} height={1.25} fill="#ffffff" opacity="0.045" />)}
+        <rect x={X} y={Y} width={W} height={H} fill="none" stroke="#fff" strokeWidth="1.6" vectorEffect="non-scaling-stroke" opacity="0.9" />
+        {across(cx, '#ffffff')}
+        {[X + 2, X + W - 2].map((x) => across(x, '#E5544B'))}
+        {[X + 5, X + W - 5].map((x) => across(x, '#F2C230', '6 4'))}
+        <circle cx={cx} cy={cy} r={0.25} fill="#fff" />
+        {[X + 5, X + W - 5].map((x) => <circle key={x} cx={x} cy={cy} r={0.2} fill="#F2C230" />)}
         {goal(1)}{goal(-1)}
       </svg>
     )

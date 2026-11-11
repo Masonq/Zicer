@@ -1466,3 +1466,5 @@ img { display: block; max-width: 100%; }
 .tex-waterpolo { opacity: .18 !important; }
 .court .eng-ball { width: 22px !important; height: 22px !important; }
 .court .eng-ball.ball-tennis, .court .eng-ball.ball-tabletennis { width: 15px !important; height: 15px !important; }
+
+.tex-waterpolo { display: none !important; }
