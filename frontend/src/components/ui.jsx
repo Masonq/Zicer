@@ -72,12 +72,13 @@ export function OddsButtons({ m, wide = false }) {
   const inv = ['1', 'X', '2'].map((k) => (m.best?.[k]?.odds ? 1 / m.best[k].odds : 0))
   const tot = inv.reduce((a, b) => a + b, 0) || 1
   const fav = inv.indexOf(Math.max(...inv))
+  const twoWay = m.sport === 'tennis' || m.sport === 'volleyball' || (!m.best?.X && (m.best?.['1'] || m.best?.['2']) && m.sport !== 'football')
   return (
-    <div className={`odds${wide ? ' wide' : ''}`}>
+    <div className={`odds${wide ? ' wide' : ''}${twoWay ? ' two' : ''}`}>
       {['1', 'X', '2'].map((k) => {
         const b = m.best?.[k]
         const on = slip.has(m.id, k)
-        if (k === 'X' && (m.sport === 'tennis' || m.sport === 'volleyball')) return <span key={k} aria-hidden="true" />
+        if (k === 'X' && twoWay) return null
         return (
           <button key={k} type="button" className={`odd${on ? ' on' : ''}${['1', 'X', '2'][fav] === k && b ? ' fav' : ''}`} disabled={!b || !open}
             style={{ '--p': `${Math.round((inv[['1', 'X', '2'].indexOf(k)] / tot) * 100)}%` }}
@@ -148,15 +149,15 @@ export function MatchRow({ m }) {
       </div>
       <Link to={`/mec/${m.id}`} state={{ m }} className={`row${fav ? ' is-fav' : ''}`} style={dx ? { transform: `translateX(${dx}px)`, transition: 'none' } : undefined}
         onTouchStart={onStart} onTouchMove={onMove} onTouchEnd={onEnd} onClick={(e) => { if (Math.abs(dx) > 6) e.preventDefault() }}>
+        <button type="button" className={`row-fav${fav ? ' on' : ''}`} aria-label={fav ? t('unfav') : t('fav')} title={fav ? t('unfav') : t('fav')}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); const on = toggleFav(m.id); showUndo(on ? t('favAdded') : t('favRemoved'), () => toggleFav(m.id)) }}>
+          <Star size={15} fill={fav ? 'currentColor' : 'none'} />
+        </button>
         <StatusTime m={m} />
         <div className="row-teams">
           <div className={`row-team${fin && aw ? ' lose' : ''}`}><Crest team={m.home} size={20} /><span className="name">{t.team(m.home)}</span>{sc && <span className="sc"><RollNum value={sc[0]} /></span>}</div>
           <div className={`row-team${fin && hw ? ' lose' : ''}`}><Crest team={m.away} size={20} /><span className="name">{t.team(m.away)}</span>{sc && <span className="sc"><RollNum value={sc[1]} /></span>}</div>
         </div>
-        <button type="button" className={`row-fav${fav ? ' on' : ''}`} aria-label={fav ? t('unfav') : t('fav')} title={fav ? t('unfav') : t('fav')}
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); const on = toggleFav(m.id); showUndo(on ? t('favAdded') : t('favRemoved'), () => toggleFav(m.id)) }}>
-          <Star size={15} fill={fav ? 'currentColor' : 'none'} />
-        </button>
         {m.status !== 'finished' ? <OddsButtons m={m} /> : <span />}
       </Link>
     </div>
