@@ -278,7 +278,7 @@ def sync_x22_line(db: Session) -> str:
     with httpx.Client(headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"}, timeout=25) as c:
         for sport, sid in X22_LINE.items():
             try:
-                games = c.get(X22_URL.format(s=sid)).json().get("Value") or []
+                games = xfeed._get(c, X22_URL.replace("https://22bet.com", "").format(s=sid)).json().get("Value") or []
             except Exception:  # noqa
                 log.exception("x22 line %s", sport)
                 continue
@@ -1130,7 +1130,7 @@ def sync_xfeed(db: Session) -> str:
     with httpx.Client() as c:
         games = xfeed.fetch_all(c)
     if not games:
-        return "xfeed empty"
+        return f"xfeed empty ({xfeed.STATE.get('last', '')})"
     by_id = {g["id"]: g for g in games}
     lo = datetime.utcnow() - timedelta(hours=4)
     cand = db.scalars(select(Match).where(Match.start > lo, Match.start < datetime.utcnow() + timedelta(minutes=15),

@@ -40,6 +40,26 @@ def _num(v):
 
 
 _ROUND = {"n": 0}
+# the same feed is served by the brand's mirror domains; if one refuses us (rate limit, block), use the next
+HOSTS = ["https://22bet.com", "https://22bet.co.ke", "https://22bet.ng", "https://22bets.me", "https://22bet.ug"]
+STATE = {"host": 0, "last": ""}
+
+
+def _get(client: httpx.Client, path: str):
+    err = None
+    for k in range(len(HOSTS)):
+        host = HOSTS[(STATE["host"] + k) % len(HOSTS)]
+        try:
+            r = client.get(host + path, headers={"User-Agent": UA, "Accept": "application/json"}, timeout=15)
+            if r.status_code == 200 and r.headers.get("content-type", "").startswith("application/json"):
+                STATE["host"] = (STATE["host"] + k) % len(HOSTS)
+                STATE["last"] = f"{host.split('//')[1]} ok"
+                return r
+            err = f"{host.split('//')[1]} http {r.status_code}"
+        except Exception as e:  # noqa
+            err = f"{host.split('//')[1]} {type(e).__name__}"
+    STATE["last"] = err or "no host"
+    raise RuntimeError(STATE["last"])
 EXTRA = {"handball", "tabletennis", "futsal", "esports"}
 
 
@@ -51,8 +71,7 @@ def fetch_all(client: httpx.Client) -> list[dict]:
         if sport in EXTRA and _ROUND["n"] % 3:
             continue
         try:
-            r = client.get(URL.format(s=sid), headers={"User-Agent": UA, "Accept": "application/json"}, timeout=15)
-            r.raise_for_status()
+            r = _get(client, URL.replace("https://22bet.com", "").format(s=sid))
             for g in r.json().get("Value") or []:
                 sc = g.get("SC") or {}
                 fs = sc.get("FS") or {}
