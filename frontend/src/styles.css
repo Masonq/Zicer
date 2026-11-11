@@ -1296,3 +1296,6 @@ img { display: block; max-width: 100%; }
 @media (min-width: 2200px) { .main { max-width: 1440px; } .sheet { max-width: 1360px; } }
 /* admin: latest tickets row (avatar, name, odds, status) */
 .lrow.tk { grid-template-columns: auto minmax(0, 1fr) auto auto; }
+
+/* blocks that the desktop right column already shows */
+@media (min-width: 1024px) { .only-mobile { display: none !important; } }

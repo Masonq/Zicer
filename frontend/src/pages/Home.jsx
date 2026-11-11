@@ -106,7 +106,7 @@ export default function Home() {
 
 
       {(sport === 'all' || sport === 'football' || sport === 'basketball') && d.battle.length > 0 && (
-        <section className="section">
+        <section className="section only-mobile">
           <SectionHead title={t('fanBattle')} to="/rang?tab=klubovi" link={t('seeAll')} />
           <div className="card">
             {d.battle.map((r, i) => (
