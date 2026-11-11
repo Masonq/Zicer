@@ -295,25 +295,34 @@ def render_ticket(t: Ticket, lang: str = "sr", fmt: str = "wide") -> bytes:
 
 
 @router.get("/api/share/ticket/{tid}.png")
-def ticket_png(tid: int, lang: str = "sr", f: str = "wide", db: Session = Depends(get_db)):
+async def ticket_png(tid: int, lang: str = "sr", f: str = "wide", db: Session = Depends(get_db)):
+    from .share_html import render_png
     t = db.get(Ticket, tid)
     if not t:
         raise HTTPException(404)
     lang = lang if lang in TXT else "sr"
-    return Response(render_ticket(t, lang, "story" if f == "story" else "wide"), media_type="image/png", headers={"Cache-Control": "public, max-age=120"})
+    fmt = "story" if f == "story" else "wide"
+    png = await render_png(t, lang, fmt)
+    if png is None:  # Chromium not available: the Pillow card
+        png = render_ticket(t, lang, fmt)
+    return Response(png, media_type="image/png", headers={"Cache-Control": "public, max-age=60"})
 
 
 @router.get("/t/{tid}", response_class=HTMLResponse)
-def ticket_share_page(tid: int, db: Session = Depends(get_db)):
+def ticket_share_page(tid: int, lang: str = "sr", db: Session = Depends(get_db)):
     t = db.get(Ticket, tid)
     if not t:
         raise HTTPException(404)
-    st = {"won": "Prošao", "lost": "Pao", "void": "Vraćen"}.get(t.status, "U igri")
-    title = f"Tiket @{t.user.username}: kvota {t.total_odds:.2f} ({st})"
-    img = f"{config.PUBLIC_URL}/api/share/ticket/{tid}.png?s={t.status}"
+    lang = lang if lang in TXT else "sr"
+    L = TXT[lang]
+    st = {"won": L["won"], "lost": L["lost"], "void": L["void"]}.get(t.status, L["open"]).capitalize()
+    n = len(t.items)
+    title = f"{L['ticket']} @{t.user.username}: {t.total_odds:.2f} ({st})"
+    img = f"{config.PUBLIC_URL}/api/share/ticket/{tid}.png?s={t.status}&lang={lang}"
     url = f"{config.PUBLIC_URL}/tiket/{tid}"
+    self_url = f"{config.PUBLIC_URL}/t/{tid}?lang={lang}"
     return f"""<!doctype html><html lang="sr"><head><meta charset="utf-8"><title>{title}</title>
-<meta property="og:title" content="{title}"><meta property="og:description" content="Winly — liga prognoza. Napravi svoj tiket.">
+<meta property="og:title" content="{title}"><meta property="og:description" content="Winly — {L['events'].format(n=n)}">
 <meta property="og:image" content="{img}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
-<meta property="og:url" content="{url}"><meta name="twitter:card" content="summary_large_image">
+<meta property="og:url" content="{self_url}"><meta property="og:site_name" content="Winly"><meta name="twitter:card" content="summary_large_image">
 <meta http-equiv="refresh" content="0;url={url}"></head><body><a href="{url}">{title}</a></body></html>"""

@@ -55,6 +55,13 @@ step "Python"
 [ -d $APP/venv ] || python3 -m venv $APP/venv
 $APP/venv/bin/pip install -q --upgrade pip >/dev/null
 $APP/venv/bin/pip install -q -r $APP/backend/requirements.txt && ok "зависимости" || bad "pip"
+# headless Chromium for the ticket share images (installed once, ~150 MB)
+if [ ! -d /root/.cache/ms-playwright ] || ! ls /root/.cache/ms-playwright | grep -q chromium; then
+  $APP/venv/bin/python -m playwright install --with-deps chromium >/tmp/pw-install.log 2>&1 && ok "chromium для картинок" || bad "chromium (см. /tmp/pw-install.log)"
+else
+  ok "chromium уже установлен"
+fi
+mkdir -p $APP/backend/media/share
 
 step "Сервисы"
 cat > /etc/systemd/system/zicer-api.service <<UNIT

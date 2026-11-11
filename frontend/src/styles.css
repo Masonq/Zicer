@@ -824,3 +824,12 @@ img { display: block; max-width: 100%; }
 .tsel-res { flex: none; font-size: 11px; font-weight: 800; text-transform: uppercase; padding: 2px 7px; border-radius: 6px; background: rgba(255,255,255,0.05); }
 .tsel-res.won { color: var(--win); } .tsel-res.lost { color: var(--loss); } .tsel-res.void { color: var(--muted); }
 .tsel-top { align-items: flex-start; } .tsel-top .status-time, .tsel-top > :last-child { flex: none; }
+
+/* match of the day: a real-looking ball in the corner */
+.pitch-ball { position: absolute; right: -30px; top: -34px; z-index: 2; pointer-events: none; line-height: 0;
+  filter: drop-shadow(0 8px 14px rgba(0,0,0,.45)); transform: rotate(-14deg); }
+.pitch:has(.pitch-ball) .pitch-top { padding-right: 50px; }
+.pitch-top .tag, .pitch-top .sport-chip { white-space: nowrap; flex: none; }
+.pitch-ball { right: -26px; top: -30px; }
+.pitch-ball svg { display: block; }
+.pitch > *:not(.pitch-ball):not(.pitch-mark) { position: relative; z-index: 1; }
