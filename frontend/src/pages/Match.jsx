@@ -4,7 +4,6 @@ import { ChevronLeft, Languages, Sparkles, X } from 'lucide-react'
 import { buildMarkets, tt } from '../markets'
 import MatchCenter, { periodLabel } from '../components/MatchCenter'
 import { SportIcon } from '../components/Sports'
-import SportBall from '../components/SportBall'
 import { MatchHighlights } from '../components/Highlights'
 import { api } from '../api'
 import { useT } from '../i18n'
@@ -53,7 +52,7 @@ export function FeaturedMatch({ m, label, linkable = true }) {
   )
   return (
     <div className={`pitch sc-${m.sport}`}>
-      <span className="pitch-ball" aria-hidden="true"><SportBall sport={m.sport} size={96} /></span>
+      <span className="pitch-ball" aria-hidden="true"><img src={`/balls/${['football', 'basketball', 'tennis', 'hockey', 'volleyball', 'waterpolo'].includes(m.sport) ? m.sport : 'football'}.png`} alt="" width="104" height="104" /></span>
       {inner}
     </div>
   )

@@ -828,9 +828,10 @@ img { display: block; max-width: 100%; }
 /* match of the day: a real-looking ball in the corner */
 .pitch-ball { position: absolute; right: -30px; top: -34px; z-index: 2; pointer-events: none; line-height: 0;
   filter: drop-shadow(0 8px 14px rgba(0,0,0,.45)); transform: rotate(-14deg); }
-.pitch:has(.pitch-ball) .pitch-top { padding-right: 50px; }
+.pitch:has(.pitch-ball) .pitch-top { padding-right: 70px; }
 .pitch-top .tag, .pitch-top .sport-chip { white-space: nowrap; flex: none; }
-.pitch-ball { right: -26px; top: -30px; }
+.pitch-ball { right: -24px; top: -30px; filter: none; transform: rotate(-8deg); }
+.pitch-ball img { display: block; width: 104px; height: 104px; }
 .pitch-ball svg { display: block; }
 .pitch > *:not(.pitch-ball):not(.pitch-mark) { position: relative; z-index: 1; }
 
