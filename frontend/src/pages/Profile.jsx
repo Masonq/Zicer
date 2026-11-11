@@ -1,4 +1,6 @@
-import { Shield } from 'lucide-react'
+import { Shield, Flame, Trophy } from 'lucide-react'
+import { AreaChart, Ring, Badges } from '../components/Bits'
+import { SportIcon } from '../components/Sports'
 import { Link, useParams } from 'react-router-dom'
 import { api } from '../api'
 import { useT } from '../i18n'
@@ -29,15 +31,19 @@ export function ProfileView({ data, editable = false }) {
           {me?.is_admin && <Link to="/admin" className="btn btn-ghost btn-block prof-btn" style={{ height: 42, gap: 8 }}><Shield size={17} />{t('admin')}</Link>}
         </div>
       )}
-      <div className="kv" style={{ marginTop: 16 }}>
-        <div><b className={s.profit >= 0 ? 'pos' : 'neg'}>{s.profit > 0 ? '+' : ''}{fmtNum(s.profit)}</b><span>{t('profit')}</span></div>
-        <div><b>{s.roi}%</b><span>{t('roi')}</span></div>
-        <div><b>{s.winrate}%</b><span>{t('winrate')}</span></div>
+      <div className="pbento">
+        <div className="pb-tile pb-ring"><Ring p={s.winrate} size={104} /><span>{t('winrate')}</span><small>{s.won} / {s.count}</small></div>
+        <div className="pb-tile"><span className="pb-l">{t('profit')}</span><b className={`pb-v num ${s.profit >= 0 ? 'pos' : 'neg'}`}>{s.profit > 0 ? '+' : ''}{fmtNum(s.profit)}</b><small>ROI {s.roi}%</small></div>
+        <div className="pb-tile"><span className="pb-l">{t('bank')}</span><b className="pb-v num">{fmtNum(u.bank)}</b><small>{t.n(s.count, 'predictions')}</small></div>
+        {data.bento && <>
+          <div className="pb-tile"><span className="pb-l"><Flame size={14} />{t('streak')}</span><b className="pb-v num">{data.bento.streak}</b><small>{t('bestStreak')} {data.bento.best_streak}</small></div>
+          <div className="pb-tile"><span className="pb-l">{t('favSport')}</span>{data.bento.fav_sport ? <b className="pb-v pb-sport"><SportIcon sport={data.bento.fav_sport} size={22} />{t(data.bento.fav_sport)}</b> : <b className="pb-v">—</b>}</div>
+          <div className="pb-tile pb-chart"><span className="pb-l">{t('bankMonth')}</span><AreaChart data={data.bento.curve} /></div>
+          {data.bento.best_win && <Link to={`/mec/${data.bento.best_win.match.id}`} className="pb-tile pb-best"><span className="pb-l"><Trophy size={14} />{t('bestWin')}</span>
+            <b className="pb-v num pos">+{fmtNum(data.bento.best_win.profit)}</b><small className="ellip">{t.team(data.bento.best_win.match.home)} – {t.team(data.bento.best_win.match.away)}, {fmtOdds(data.bento.best_win.odds)}</small></Link>}
+        </>}
       </div>
-      <div className="kv" style={{ marginTop: 8, gridTemplateColumns: '1fr 1fr' }}>
-        <div><b>{fmtNum(u.bank)}</b><span>{t('bank')}</span></div>
-        <div><b>{s.count}</b><span>{t('count')}</span></div>
-      </div>
+      {data.bento && <section className="section"><div className="section-head"><h2 className="h2">{t('achievements')}</h2></div><Badges list={data.bento.achievements} /></section>}
 
       {data.tickets.length > 0 && (
         <section className="section">

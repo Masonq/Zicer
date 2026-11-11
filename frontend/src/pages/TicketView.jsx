@@ -43,7 +43,7 @@ export default function TicketView() {
     <div>
       {sp.get('novi') && <div className="card pad" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, borderColor: 'var(--win)' }}><CheckCircle2 color="var(--win)" /><b>{t('ticketPlaced')}</b></div>}
       {/* the slip itself */}
-      <div className={`tslip st-${tk.status}`}>
+      <div className={`tslip st-${tk.status}${tk.status === 'open' && tk.items.some((i) => i.match.status === 'live') ? ' is-live' : ''}`}>
         <div className="tslip-head">
           <Link to={`/u/${tk.user.username}`} className="tslip-user"><Avatar user={tk.user} size={30} /><span className="ellip">{tk.user.name || tk.user.username}</span></Link>
           <span className="tslip-id num">#{tk.id}</span>
@@ -54,6 +54,24 @@ export default function TicketView() {
         </div>
         <div className="tslip-progress" aria-hidden="true">{tk.items.map((i) => <i key={i.match.id} className={i.status} />)}</div>
         <div className="small" style={{ marginTop: 6 }}>{t('itemsProgress').replace('{won}', tk.items.filter((i) => i.status === 'won').length).replace('{all}', tk.items.length)}</div>
+        {tk.status === 'open' && (() => {
+          // chance to pass by current odds: won legs count as done, open legs by their (live) price, bookmaker margin removed
+          let p = 1
+          for (const i of tk.items) {
+            if (i.status === 'won' || i.status === 'void') continue
+            if (i.status === 'lost') { p = 0; break }
+            const cur = i.match.best?.[i.pick]?.odds || i.odds
+            p *= Math.min(0.99, 0.95 / cur)
+          }
+          const pc = Math.round(p * 1000) / 10
+          return (
+            <div className="chance">
+              <div className="chance-h"><span>{t('chance')}</span><b className="num">{pc < 1 ? pc.toFixed(1) : Math.round(pc)}%</b></div>
+              <div className="chance-bar"><i style={{ width: `${Math.max(2, pc)}%` }} /></div>
+              <small>{t('chanceHint')}</small>
+            </div>
+          )
+        })()}
         <div className="tslip-nums">
           <div><span>{t('totalOdds')}</span><b className="num gold">{fmtOdds(tk.total_odds)}</b></div>
           <div><span>{t('stake')}</span><b className="num">{fmtNum(tk.stake)}</b></div>

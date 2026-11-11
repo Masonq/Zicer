@@ -239,3 +239,15 @@ class Highlight(Base):
     channel: Mapped[str] = mapped_column(String(80), default="")
     published: Mapped[datetime] = mapped_column(DateTime, default=now)
     status: Mapped[str] = mapped_column(String(8), default="")  # "" not checked yet, "ok" plays in Serbia, "blocked"
+
+
+
+class OddsSnap(Base):
+    """1-X-2 line history, written when the line moves (for line-movement trends)."""
+    __tablename__ = "odds_snaps"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    match_id: Mapped[int] = mapped_column(ForeignKey("matches.id", ondelete="CASCADE"), index=True)
+    ts: Mapped[datetime] = mapped_column(DateTime, default=now, index=True)
+    o1: Mapped[float | None] = mapped_column(Float, nullable=True)
+    ox: Mapped[float | None] = mapped_column(Float, nullable=True)
+    o2: Mapped[float | None] = mapped_column(Float, nullable=True)

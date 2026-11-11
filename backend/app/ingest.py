@@ -434,7 +434,34 @@ def sync_odds(db: Session) -> str:
                     m.odds_updated = now()
                     matched += 1
             db.commit()
+    try:
+        snap_odds(db)
+    except Exception:  # noqa
+        db.rollback()
     return f"odds matched {matched}"
+
+
+def snap_odds(db: Session):
+    """Store the 1-X-2 line of upcoming matches when it changed since the last snapshot."""
+    from .models import OddsSnap
+    from .serial import best as _best
+    n = now()
+    ms = db.scalars(select(Match).where(Match.start > n, Match.start < n + timedelta(days=2))).all()
+    if not ms:
+        return
+    last = {}
+    for s_ in db.scalars(select(OddsSnap).where(OddsSnap.match_id.in_([m.id for m in ms])).order_by(OddsSnap.ts)).all():
+        last[s_.match_id] = s_
+    for m in ms:
+        b = _best(m)
+        o = tuple((b.get(k) or {}).get("odds") for k in ("1", "X", "2"))
+        if not any(o):
+            continue
+        p = last.get(m.id)
+        if p and (p.o1, p.ox, p.o2) == o:
+            continue
+        db.add(OddsSnap(match_id=m.id, ts=n, o1=o[0], ox=o[1], o2=o[2]))
+    db.commit()
 
 
 def outcome(m: Match) -> str | None:

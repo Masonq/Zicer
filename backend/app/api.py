@@ -240,8 +240,12 @@ def _day_bounds(day: str, tz_offset: int):
 
 
 @router.get("/matches")
-def matches(sport: str = "all", day: str = "today", serbian: bool = False, tz: int = 60, db: Session = Depends(get_db)):
+def matches(sport: str = "all", day: str = "today", serbian: bool = False, tz: int = 60, ids: str = "", db: Session = Depends(get_db)):
     q = select(Match).join(League, Match.league_id == League.id)
+    if day == "fav":
+        want = [int(x) for x in ids.split(",") if x.strip().isdigit()][:200]
+        ms = db.scalars(q.where(Match.id.in_(want or [0])).order_by(Match.start)).unique().all()
+        return _list(db, ms)
     if sport != "all":
         q = q.where(Match.sport == sport)
     if day == "live":
@@ -282,7 +286,48 @@ def match_detail(mid: int, u: User | None = Depends(current_user_opt), db: Sessi
     if m.status == "finished":
         from .highlights import for_match
         out["highlights"] = for_match(db, m.id)
+    out["experts"] = _experts(db, m, mine)
     return out
+
+
+def _experts(db, m, mine):
+    """What the three best forecasters (by profit over 30 days) picked here; their picks open after your own pick or kick-off."""
+    since = utcnow() - timedelta(days=30)
+    ids = [p.user_id for p in db.scalars(select(Prediction).where(Prediction.match_id == m.id)).all()]
+    if not ids:
+        return {"count": 0, "locked": False, "list": []}
+    rows = db.execute(select(Prediction.user_id, func.coalesce(func.sum(Prediction.profit), 0)).where(
+        Prediction.user_id.in_(ids), Prediction.created_at > since, Prediction.status.in_(["won", "lost"])).group_by(Prediction.user_id)).all()
+    prof = dict(rows)
+    best = sorted(set(ids), key=lambda x: prof.get(x, 0), reverse=True)[:3]
+    locked = not mine and m.status == "scheduled"
+    lst = []
+    for uid in best:
+        p = db.scalar(select(Prediction).where(Prediction.match_id == m.id, Prediction.user_id == uid))
+        won = db.scalar(select(func.count()).select_from(Prediction).where(Prediction.user_id == uid, Prediction.created_at > since, Prediction.status == "won")) or 0
+        settled = db.scalar(select(func.count()).select_from(Prediction).where(Prediction.user_id == uid, Prediction.created_at > since, Prediction.status.in_(["won", "lost"]))) or 0
+        lst.append({"user": user_short(p.user), "profit": round(prof.get(uid, 0)), "hit": round(won * 100 / settled) if settled else None,
+                    "pick": None if locked else p.pick, "odds": None if locked else p.odds})
+    return {"count": len(lst), "locked": locked, "list": lst}
+
+
+@router.get("/me/watch")
+def watch(ids: str = "", u: User | None = Depends(current_user_opt), db: Session = Depends(get_db)):
+    """Live scores of the matches you follow (your open picks, tickets, favourites) and what got settled lately — for top-of-screen alerts."""
+    want = {int(x) for x in ids.split(",") if x.strip().isdigit()}
+    settled = []
+    if u:
+        for p in db.scalars(select(Prediction).where(Prediction.user_id == u.id, Prediction.status == "open")).all():
+            want.add(p.match_id)
+        for t in db.scalars(select(Ticket).where(Ticket.user_id == u.id, Ticket.status == "open")).all():
+            want.update(i.match_id for i in t.items)
+        since = utcnow() - timedelta(minutes=30)
+        for p in db.scalars(select(Prediction).where(Prediction.user_id == u.id, Prediction.settled_at > since, Prediction.status.in_(["won", "lost"]))).all():
+            settled.append({"kind": "pred", "id": p.id, "status": p.status, "profit": round(p.profit), "match": match_out(p.match)})
+        for t in db.scalars(select(Ticket).where(Ticket.user_id == u.id, Ticket.status.in_(["won", "lost"])).order_by(Ticket.id.desc()).limit(5)).all():
+            settled.append({"kind": "ticket", "id": t.id, "status": t.status, "profit": round(t.profit or 0)})
+    live = [match_out(m) for m in db.scalars(select(Match).where(Match.id.in_(list(want)[:300] or [0]), Match.status.in_(["live", "finished"]))).all()]
+    return {"live": live, "settled": settled}
 
 
 def _score_summary(db: Session, m: Match, u: User | None):
@@ -444,7 +489,32 @@ def ranking_rows(db: Session, period: str, limit: int = 50, min_preds: int = 3):
 
 @router.get("/ranking")
 def ranking(period: str = "month", db: Session = Depends(get_db)):
-    return ranking_rows(db, period)
+    rows = ranking_rows(db, period)
+    if not rows:
+        return rows
+    # where everyone stood 24 h ago (same rules, without the last day's results)
+    since = _period_start(period)
+    cut = utcnow() - timedelta(days=1)
+    prev = db.execute(select(Prediction.user_id, func.sum(Prediction.profit)).where(
+        Prediction.status.in_(["won", "lost"]), Prediction.settled_at >= since, Prediction.settled_at < cut).group_by(Prediction.user_id)).all()
+    prev_order = [uid for uid, _ in sorted(prev, key=lambda r: -(r[1] or 0))]
+    ids = [r["user_id"] for r in rows]
+    d0 = utcnow().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=6)
+    daily = db.execute(select(Prediction.user_id, Prediction.settled_at, Prediction.profit).where(
+        Prediction.user_id.in_(ids), Prediction.status.in_(["won", "lost"]), Prediction.settled_at >= d0)).all()
+    spark = {uid: [0.0] * 7 for uid in ids}
+    for uid, at, pr in daily:
+        i = min(6, max(0, (at - d0).days))
+        spark[uid][i] += pr or 0
+    for i, r in enumerate(rows):
+        uid = r["user_id"]
+        r["delta"] = (prev_order.index(uid) - i) if uid in prev_order else None
+        acc, ser = 0.0, []
+        for v in spark[uid]:
+            acc += v
+            ser.append(round(acc, 1))
+        r["form"] = ser
+    return rows
 
 
 def fan_battle(db: Session, sport: str = "football", period: str = "month"):
@@ -490,7 +560,50 @@ def profile(username: str, db: Session = Depends(get_db)):
                       "winrate": round(100 * (won or 0) / cnt) if cnt else 0},
             "predictions": [{"id": p.id, "match": match_out(p.match), "pick": p.pick, "odds": p.odds, "stake": p.stake,
                              "status": p.status, "profit": p.profit, "comment": p.comment} for p in preds],
-            "tickets": [ticket_out(t) for t in tickets]}
+            "tickets": [ticket_out(t) for t in tickets],
+            "bento": _profile_bento(db, u)}
+
+
+def _profile_bento(db, u):
+    settled = db.scalars(select(Prediction).where(Prediction.user_id == u.id, Prediction.status.in_(["won", "lost"]))
+                         .order_by(Prediction.settled_at)).all()
+    # current and best winning streak
+    best_streak = cur = 0
+    for p in settled:
+        cur = cur + 1 if p.status == "won" else 0
+        best_streak = max(best_streak, cur)
+    sports = {}
+    for p in settled:
+        sports[p.match.sport] = sports.get(p.match.sport, 0) + 1
+    fav_sport = max(sports, key=sports.get) if sports else None
+    best_win = max((p for p in settled if p.status == "won"), key=lambda p: p.profit, default=None)
+    d0 = utcnow().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=29)
+    days = [0.0] * 30
+    for p in settled:
+        if p.settled_at and p.settled_at >= d0:
+            days[min(29, (p.settled_at - d0).days)] += p.profit or 0
+    acc, curve = 0.0, []
+    for v in days:
+        acc += v
+        curve.append(round(acc, 1))
+    tickets_won = db.scalar(select(func.count()).select_from(Ticket).where(Ticket.user_id == u.id, Ticket.status == "won")) or 0
+    tickets_all = db.scalar(select(func.count()).select_from(Ticket).where(Ticket.user_id == u.id)) or 0
+    big_odds = any(p.status == "won" and p.odds >= 3 for p in settled)
+    el = sum(1 for p in settled if p.status == "won" and p.match.league and "euroleague" in (p.match.league.name or "").lower())
+    won_n = sum(1 for p in settled if p.status == "won")
+    ach = [
+        {"key": "first_pick", "got": len(settled) > 0 or db.scalar(select(func.count()).select_from(Prediction).where(Prediction.user_id == u.id)) > 0},
+        {"key": "first_ticket", "got": tickets_all > 0},
+        {"key": "streak5", "got": best_streak >= 5, "p": min(best_streak, 5), "of": 5},
+        {"key": "streak10", "got": best_streak >= 10, "p": min(best_streak, 10), "of": 10},
+        {"key": "won50", "got": won_n >= 50, "p": min(won_n, 50), "of": 50},
+        {"key": "underdog", "got": big_odds},
+        {"key": "ticket_won", "got": tickets_won > 0},
+        {"key": "euroleague", "got": el >= 10, "p": min(el, 10), "of": 10},
+    ]
+    return {"streak": cur, "best_streak": best_streak, "fav_sport": fav_sport, "curve": curve,
+            "best_win": {"profit": round(best_win.profit), "odds": best_win.odds, "match": match_out(best_win.match), "pick": best_win.pick} if best_win else None,
+            "achievements": ach}
 
 
 # ---------------- home / derby / trends / bookmakers ----------------
@@ -506,6 +619,65 @@ def sports(tz: int = 60, db: Session = Depends(get_db)):
                                                                    Match.start < utcnow() + timedelta(days=4)).group_by(Match.sport)).all())
     return [{"sport": s, "live": live.get(s, 0), "today": today.get(s, 0), "soon": soon.get(s, 0)} for s in SPORTS
             if s in ("football", "basketball") or soon.get(s) or live.get(s)]
+
+
+def _split(db, mid):
+    rows = db.execute(select(Prediction.pick, func.count()).where(Prediction.match_id == mid, Prediction.pick.in_(["1", "X", "2"]))
+                      .group_by(Prediction.pick)).all()
+    tot = sum(c for _, c in rows)
+    return ({k: round(c * 100 / tot) for k, c in rows}, tot) if tot else ({}, 0)
+
+
+def _hot(db, pool, pc, n):
+    """Matches people are betting on the most in the next 36 h; community split when there are enough picks, else the odds' chances."""
+    from .serial import best as _best
+    soon = [m for m in pool if m.start < n + timedelta(hours=36) and m.odds]
+    soon.sort(key=lambda m: (pc.get(m.id, 0), m.is_derby, m.home.is_serbian or m.away.is_serbian, -m.league.priority), reverse=True)
+    out = []
+    for m in soon[:8]:
+        split, tot = _split(db, m.id)
+        src = "community"
+        if tot < 3:
+            b = _best(m)
+            inv = {k: 1 / v["odds"] for k, v in b.items() if v.get("odds")}
+            s_ = sum(inv.values())
+            split = {k: round(v * 100 / s_) for k, v in inv.items()} if s_ else {}
+            src = "odds"
+        out.append({"match": match_out(m), "split": split, "picks": tot, "src": src})
+    return out
+
+
+def _line_trends(db, n, sport):
+    """Biggest line moves of the last 24 h: an outcome whose odds dropped the most (money coming in)."""
+    from .models import OddsSnap
+    snaps = db.scalars(select(OddsSnap).where(OddsSnap.ts > n - timedelta(hours=24)).order_by(OddsSnap.ts)).all()
+    by = {}
+    for s_ in snaps:
+        by.setdefault(s_.match_id, []).append(s_)
+    res = []
+    for mid, ss in by.items():
+        if len(ss) < 2:
+            continue
+        for k, attr in (("1", "o1"), ("X", "ox"), ("2", "o2")):
+            seq = [getattr(x, attr) for x in ss if getattr(x, attr)]
+            if len(seq) < 2 or seq[0] <= 0:
+                continue
+            ch = (seq[-1] - seq[0]) / seq[0]
+            if ch < -0.03:
+                res.append((ch, mid, k, seq))
+    res.sort()
+    out, seen = [], set()
+    for ch, mid, k, seq in res:
+        if mid in seen:
+            continue
+        m = db.get(Match, mid)
+        if not m or m.start < n or (sport and sport != "all" and m.sport != sport):
+            continue
+        seen.add(mid)
+        out.append({"match": match_out(m), "pick": k, "from": seq[0], "to": seq[-1], "change": round(ch * 100), "series": seq[-12:]})
+        if len(out) == 7:
+            break
+    return out
 
 
 def _latest_highlights(db, sport):
@@ -566,6 +738,24 @@ def home(tz: int = 60, sport: str = "all", u: User | None = Depends(current_user
             break
     if feat and feat.id not in seen_ids:
         picked.insert(0, feat)
+    # variety: take the best of each sport first, then the rest (no five basketball slides in a row)
+    picked_pool = sorted([x for x in pool if x.id not in seen_ids and x.start < n + timedelta(hours=36) and x.odds], key=rank, reverse=True)
+    have_sports = {m.sport for m in picked}
+    for m in picked_pool:
+        if m.sport not in have_sports:
+            picked.append(m)
+            have_sports.add(m.sport)
+    by_sport, order = {}, []
+    for m in picked:
+        if m.sport not in by_sport:
+            order.append(m.sport)
+        by_sport.setdefault(m.sport, []).append(m)
+    mixed = []
+    while any(by_sport.values()) and len(mixed) < 5:
+        for sp in order:
+            if by_sport[sp] and len(mixed) < 5:
+                mixed.append(by_sport[sp].pop(0))
+    picked = mixed
     nowd = utcnow()
     banners = db.scalars(select(Banner).where(Banner.active == True).order_by(Banner.position, Banner.id)).all()  # noqa
     banners = [b for b in banners if (not b.starts_at or b.starts_at <= nowd) and (not b.ends_at or b.ends_at > nowd)]
@@ -582,6 +772,8 @@ def home(tz: int = 60, sport: str = "all", u: User | None = Depends(current_user
     return {
         "featured": match_detail(feat.id, u, db) if feat else None,
         "featured_list": [match_detail(m.id, u, db) for m in picked[:5]],
+        "hot": _hot(db, pool, pc, n),
+        "trends": _line_trends(db, n, sport),
         "highlights": _latest_highlights(db, sport),
         "banners": [banner_out(b) for b in banners],
         "live": _list(db, live),

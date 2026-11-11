@@ -46,7 +46,7 @@ export function FeaturedMatch({ m, label, linkable = true }) {
         <Link to={`/klub/${m.away.id}`} className="board-team"><Crest team={m.away} size={58} /><span className="name">{t.team(m.away)}</span></Link>
       </div>
       {linkable && m.status !== 'finished' && <OddsButtons m={m} wide />}
-      {linkable && m.split && m.split.total > 0 && <div style={{ marginTop: 14 }}><SplitBar split={m.split} m={m} /></div>}
+      {m.split && m.split.total > 0 && <div style={{ marginTop: 14 }} className="pitch-vote"><SplitBar split={m.split} m={m} /><span className="small">{t.n(m.split.total, 'predictions')}</span></div>}
       {linkable && <Link to={`/mec/${m.id}`} className="btn btn-ghost btn-block" style={{ marginTop: 14 }}>{t('placePrediction')}{m.predictions?.length ? ` (${m.predictions.length})` : ''}</Link>}
     </>
   )
@@ -252,10 +252,19 @@ export default function MatchPage() {
 
       {m.derby && m.score_picks && <div style={{ marginTop: 16 }}><ScorePicker m={m} sp={m.score_picks} onSaved={() => setVer((v) => v + 1)} /></div>}
 
-      {m.split.total > 0 && (
+      {m.experts && m.experts.count > 0 && (
         <section className="section">
-          <div className="section-head"><h2 className="h2">{t('community')}</h2><span className="small">{t.n(m.split.total, 'predictions')}</span></div>
-          <div className="card pad"><SplitBar split={m.split} m={m} /></div>
+          <div className="section-head"><h2 className="h2">{t('experts')}</h2><span className="small">{t('last30')}</span></div>
+          <div className="card exp-list">
+            {m.experts.list.map((e, i) => (
+              <Link key={e.user.id} to={`/u/${e.user.username}`} className="exp-row">
+                <span className={`exp-medal m${i + 1}`}>{i + 1}</span><Avatar user={e.user} size={34} />
+                <span className="exp-u"><b className="ellip">{e.user.name || e.user.username}</b><small>{e.profit > 0 ? '+' : ''}{fmtNum(e.profit)}{e.hit != null ? ` · ${e.hit}%` : ''}</small></span>
+                {m.experts.locked ? <span className="exp-lock">?</span> : <span className="exp-pick"><b>{pickLabel(t, m, e.pick)}</b><em className="num">{fmtOdds(e.odds)}</em></span>}
+              </Link>
+            ))}
+            {m.experts.locked && <div className="small exp-hint">{t('expertsLocked')}</div>}
+          </div>
         </section>
       )}
 

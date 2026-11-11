@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Navigate, NavLink, Routes, Route, Link, useLocation } from 'react-router-dom'
 import { LayoutDashboard, Users as UsersIcon, MessageSquare, CalendarDays, Image as ImageIcon, Landmark, Cpu, ArrowLeft, Menu } from 'lucide-react'
 import Overview from './Overview'
@@ -243,6 +243,19 @@ export default function Admin() {
   const { user, ready } = useAuth()
   const [open, setOpen] = useState(false)
   const loc = useLocation()
+  const panel = useRef(null)
+  // phones: tables turn into cards; each cell gets its column name as a label
+  useEffect(() => {
+    const el = panel.current
+    if (!el) return
+    const label = () => el.querySelectorAll('table').forEach((tb) => {
+      const heads = [...tb.querySelectorAll('thead th')].map((th) => th.textContent.trim())
+      tb.querySelectorAll('tbody tr').forEach((tr) => [...tr.children].forEach((td, i) => { if (heads[i] && td.dataset.l !== heads[i]) td.dataset.l = heads[i] }))
+    })
+    label()
+    const mo = new MutationObserver(label); mo.observe(el, { childList: true, subtree: true })
+    return () => mo.disconnect()
+  })
   if (!ready) return <Skeleton />
   if (!user?.is_admin) return <Navigate to="/" replace />
   const cur = loc.pathname.replace(/^\/admin\/?/, '').split('/')[0]
@@ -268,7 +281,7 @@ export default function Admin() {
           <button className="adm-burger" onClick={() => setOpen(true)} aria-label="Меню"><Menu size={20} /></button>
           <b>{TITLES[cur] ?? 'Админка'}</b>
         </div>
-        <div className={cur ? 'adm-panel' : ''}>
+        <div className={cur ? 'adm-panel' : ''} ref={panel}>
           {cur && <h2 className="adm-h2">{TITLES[cur]}</h2>}
           <Routes>
             <Route index element={<Overview />} />

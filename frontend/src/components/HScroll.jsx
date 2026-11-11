@@ -20,7 +20,7 @@ export default function HScroll({ className, children, ...rest }) {
   })
   const go = (dir) => { const el = ref.current; el && el.scrollBy({ left: dir * el.clientWidth * 0.8, behavior: 'smooth' }) }
   return (
-    <div className="hs-wrap">
+    <div className={`hs-wrap${edge.l ? ' fl' : ''}${edge.r ? ' fr' : ''}`}>
       <div ref={ref} className={className} {...rest}>{children}</div>
       {edge.l && <button className="hs-btn l" onClick={() => go(-1)} aria-label="Назад"><ChevronLeft size={20} /></button>}
       {edge.r && <button className="hs-btn r" onClick={() => go(1)} aria-label="Вперёд"><ChevronRight size={20} /></button>}

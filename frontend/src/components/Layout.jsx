@@ -1,3 +1,5 @@
+import Island from './Island'
+import { useUndoToast } from '../fav'
 import { NavLink, Link, Outlet, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
 import { House, CalendarDays, Trophy, User, Flame, Landmark, Swords, Wallet, Shield } from 'lucide-react'
@@ -8,7 +10,7 @@ import { api, tz } from '../api'
 import Slip from './Slip'
 import { LOGO_SRC, LOGO_W, LOGO_H } from '../logoData'
 import { ErrorBoundary } from './Sports'
-import { Crest, fmtNum } from './ui'
+import { Crest, fmtNum , RollNum } from './ui'
 
 function LangSwitch() {
   const { lang, setLang } = useContext(LangCtx)
@@ -37,6 +39,13 @@ function BattleMini() {
       ))}
     </div>
   )
+}
+
+function UndoToast() {
+  const t = useT()
+  const [x, close] = useUndoToast()
+  if (!x) return null
+  return <div className="undo-toast" key={x.id}><span>{x.text}</span><button onClick={() => { x.undo(); close() }}>{t('undo')}</button></div>
 }
 
 export default function Layout() {
@@ -74,7 +83,7 @@ export default function Layout() {
         )}
         {user?.is_admin && <NavLink to="/admin" className={({ isActive }) => `side-link${isActive ? ' on' : ''}`}><Shield size={20} />{t('admin')}</NavLink>}
         <div className="side-foot">
-          {user && <span className="bank-chip" title={t('yourBank')}><Wallet size={16} />{fmtNum(user.bank)}</span>}
+          {user && <span className="bank-chip" title={t('yourBank')}><Wallet size={16} /><RollNum value={fmtNum(user.bank)} /></span>}
           <LangSwitch />
         </div>
       </aside>
@@ -83,7 +92,7 @@ export default function Layout() {
         <header className="topbar">
           <Link to="/" className="wordmark"><img src={LOGO_SRC} alt="" width={Math.round((LOGO_W * 21) / LOGO_H)} height={21} className="wm-logo" decoding="sync" /><span>Winly</span></Link>
           <div className="topbar-right">
-            {user && <Link to="/profil" className="bank-chip" title={t('yourBank')}><Wallet size={16} />{fmtNum(user.bank)}</Link>}
+            {user && <Link to="/profil" className="bank-chip" title={t('yourBank')}><Wallet size={16} /><RollNum value={fmtNum(user.bank)} /></Link>}
             <LangSwitch />
           </div>
         </header>
@@ -98,6 +107,8 @@ export default function Layout() {
         <BattleMini />
       </aside>
 
+      <UndoToast />
+      <Island />
       <nav className="tabbar" aria-label="Navigacija">
         <NavLink to="/" end className={({ isActive }) => `tab${isActive ? ' on' : ''}`}><House size={21} />{t('home')}</NavLink>
         <NavLink to="/mecevi" className={({ isActive }) => `tab${isActive ? ' on' : ''}`}><CalendarDays size={21} />{t('matches')}</NavLink>

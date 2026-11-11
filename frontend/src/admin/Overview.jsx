@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { Users, Target, Ticket, Radio, TrendingUp, TrendingDown, Activity, Image as ImageIcon, Pin, PlayCircle, Shield } from 'lucide-react'
 import { api } from '../api'
 import { usePoll } from '../store'
-import { Avatar, Crest, fmtNum, Skeleton } from '../components/ui'
+import { Avatar, Crest, fmtNum, Skeleton, RollNum } from '../components/ui'
 
 const nf = (n) => new Intl.NumberFormat('ru-RU').format(n || 0)
 
@@ -25,7 +25,7 @@ function Kpi({ icon: I, label, k, total, accent }) {
   return (
     <div className="adm-tile kpi">
       <div className="kpi-top"><span className="kpi-ico" style={{ color: accent }}><I size={18} /></span><span className="kpi-l">{label}</span></div>
-      <div className="kpi-v num">{nf(total ?? k?.value)}</div>
+      <div className="kpi-v num"><RollNum value={nf(total ?? k?.value)} /></div>
       {k && <div className={`kpi-d ${up ? 'up' : 'down'}`}>{up ? <TrendingUp size={14} /> : <TrendingDown size={14} />}{k.delta > 0 ? '+' : ''}{k.delta}%<span> к прошлому периоду</span></div>}
       {k && <Spark data={k.series} color={accent} />}
     </div>
@@ -86,7 +86,7 @@ export default function Overview() {
         <Kpi icon={Ticket} label="Тикеты" k={d.tickets} accent="#4CC38A" />
         <div className="adm-tile kpi live-tile">
           <div className="kpi-top"><span className="kpi-ico live"><Radio size={18} /></span><span className="kpi-l">Сейчас в лайве</span></div>
-          <div className="kpi-v num">{d.live_count}</div>
+          <div className="kpi-v num"><RollNum value={d.live_count} /></div>
           <div className="mini-list">{d.live.slice(0, 3).map((m) => <div key={m.id}><span className="ellip">{m.home.short} – {m.away.short}</span><b className="num">{m.score ? `${m.score[0]}:${m.score[1]}` : ''}</b></div>)}</div>
         </div>
         <Activity3 d={d} />

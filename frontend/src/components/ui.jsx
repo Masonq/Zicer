@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react'
+import { toggleFav, useFav, showUndo } from '../fav'
+import { useEffect, useRef, useState } from 'react'
+import { Star, Plus } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useT } from '../i18n'
 import { useSlip } from '../store'
@@ -85,20 +87,71 @@ export function OddsButtons({ m, wide = false }) {
   )
 }
 
+// Odometer-style number: every digit rolls to its new value
+export function RollNum({ value, className = '' }) {
+  const str = String(value ?? '')
+  return (
+    <span className={`roll ${className}`} aria-label={str}>
+      {str.split('').map((ch, i) => (/\d/.test(ch)
+        ? <span key={`${str.length - i}`} className="roll-d" aria-hidden="true"><span style={{ transform: `translateY(${-Number(ch) * 10}%)` }}>{'0123456789'.split('').map((d) => <i key={d}>{d}</i>)}</span></span>
+        : <span key={`s${str.length - i}`} className="roll-s" aria-hidden="true">{ch}</span>))}
+    </span>
+  )
+}
+
 export function MatchRow({ m }) {
   const t = useT()
+  const slip = useSlip()
+  const favs = useFav()
+  const fav = favs.includes(m.id)
   const sc = m.score
   const hw = sc && sc[0] > sc[1], aw = sc && sc[1] > sc[0]
   const fin = m.status === 'finished'
+  const [dx, setDx] = useState(0)
+  const st = useRef(null)
+  const open = m.status === 'scheduled' && new Date(m.start) > new Date()
+  // phone swipe: left adds the favourite outcome to the ticket, right stars the match; both can be undone
+  const onStart = (e) => { const p = e.touches[0]; st.current = { x: p.clientX, y: p.clientY, lock: null } }
+  const onMove = (e) => {
+    const s0 = st.current; if (!s0) return
+    const p = e.touches[0]; const ddx = p.clientX - s0.x, ddy = p.clientY - s0.y
+    if (s0.lock === null && (Math.abs(ddx) > 8 || Math.abs(ddy) > 8)) s0.lock = Math.abs(ddx) > Math.abs(ddy) ? 'x' : 'y'
+    if (s0.lock === 'x') setDx(Math.max(-110, Math.min(110, ddx)))
+  }
+  const onEnd = () => {
+    const s0 = st.current; st.current = null
+    if (s0?.lock === 'x') {
+      if (dx > 70) {
+        const on = toggleFav(m.id); navigator.vibrate?.(12)
+        showUndo(on ? t('favAdded') : t('favRemoved'), () => toggleFav(m.id))
+      } else if (dx < -70 && open) {
+        const opts = ['1', 'X', '2'].filter((k) => m.best?.[k]?.odds).sort((a, b) => m.best[a].odds - m.best[b].odds)
+        const k = opts[0]
+        if (k && !slip.has(m.id, k)) {
+          slip.toggle(m, k, m.best[k].odds); navigator.vibrate?.(12)
+          showUndo(`${t('addedToTicket')}: ${k} · ${fmtOdds(m.best[k].odds)}`, () => slip.toggle(m, k, m.best[k].odds))
+        }
+      }
+    }
+    setDx(0)
+  }
   return (
-    <Link to={`/mec/${m.id}`} state={{ m }} className="row">
-      <StatusTime m={m} />
-      <div className="row-teams">
-        <div className={`row-team${fin && aw ? ' lose' : ''}`}><Crest team={m.home} size={20} /><span className="name">{t.team(m.home)}</span>{sc && <span className="sc">{sc[0]}</span>}</div>
-        <div className={`row-team${fin && hw ? ' lose' : ''}`}><Crest team={m.away} size={20} /><span className="name">{t.team(m.away)}</span>{sc && <span className="sc">{sc[1]}</span>}</div>
+    <div className="row-swipe">
+      <div className={`row-under${dx > 0 ? ' r' : dx < 0 ? ' l' : ''}`} aria-hidden="true">
+        <span className={`ru-fav${dx > 70 ? ' go' : ''}`}><Star size={18} fill={fav ? 'currentColor' : 'none'} />{fav ? t('unfav') : t('fav')}</span>
+        <span className={`ru-add${dx < -70 ? ' go' : ''}`}><Plus size={18} />{t('ticket')}</span>
       </div>
-      {m.status !== 'finished' ? <OddsButtons m={m} /> : <span />}
-    </Link>
+      <Link to={`/mec/${m.id}`} state={{ m }} className="row" style={dx ? { transform: `translateX(${dx}px)`, transition: 'none' } : undefined}
+        onTouchStart={onStart} onTouchMove={onMove} onTouchEnd={onEnd} onClick={(e) => { if (Math.abs(dx) > 6) e.preventDefault() }}>
+        <StatusTime m={m} />
+        <div className="row-teams">
+          <div className={`row-team${fin && aw ? ' lose' : ''}`}><Crest team={m.home} size={20} /><span className="name">{t.team(m.home)}</span>{sc && <span className="sc"><RollNum value={sc[0]} /></span>}</div>
+          <div className={`row-team${fin && hw ? ' lose' : ''}`}><Crest team={m.away} size={20} /><span className="name">{t.team(m.away)}</span>{sc && <span className="sc"><RollNum value={sc[1]} /></span>}</div>
+        </div>
+        {m.status !== 'finished' ? <OddsButtons m={m} /> : <span />}
+        {fav && <Star className="row-star" size={12} fill="currentColor" />}
+      </Link>
+    </div>
   )
 }
 
