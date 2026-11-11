@@ -147,8 +147,10 @@ function Matches() {
   const [ver, setVer] = useState(0)
   const { data } = usePoll(() => api(`/admin/matches?q=${encodeURIComponent(q)}`), [q, ver])
   const feature = async (id) => { await api(`/admin/matches/${id}/feature`, { method: 'POST' }); setVer((v) => v + 1) }
+  const unfeature = async (id) => { await api(`/admin/matches/${id}/unfeature`, { method: 'POST' }); setVer((v) => v + 1) }
   return (
     <div>
+      <p className="small" style={{ marginTop: 0 }}>Матчи дня на главной листаются по очереди (до 5). Закреплённые здесь идут первыми, остальные подбираются автоматически.</p>
       <input className="input" placeholder="Поиск: команда или лига" value={q} onChange={(e) => setQ(e.target.value)} />
       <div className="card scroll-x" style={{ marginTop: 12 }}>
         {!data ? <Skeleton /> : (
@@ -160,7 +162,7 @@ function Matches() {
                 <td><Link to={`/mec/${m.id}`} style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}><Crest team={m.home} size={18} />{m.home.short} – {m.away.short}<Crest team={m.away} size={18} /></Link></td>
                 <td className="small">{m.league.name}</td>
                 <td className="num small">{m.best['1'] ? `${fmtOdds(m.best['1'].odds)} / ${fmtOdds(m.best.X?.odds)} / ${fmtOdds(m.best['2'].odds)}` : '—'}</td>
-                <td>{m.featured ? <span className="badge gold">Матч дня</span> : <button className="btn btn-ghost btn-sm" onClick={() => feature(m.id)}>Сделать матчем дня</button>}</td>
+                <td style={{ whiteSpace: 'nowrap' }}>{m.featured ? <button className="btn btn-gold btn-sm" onClick={() => unfeature(m.id)}>Матч дня ✓ (убрать)</button> : <button className="btn btn-ghost btn-sm" onClick={() => feature(m.id)}>В матчи дня</button>}</td>
               </tr>
             ))}</tbody>
           </table>
@@ -170,11 +172,72 @@ function Matches() {
   )
 }
 
+const EMPTY_BANNER = { kind: 'raffle', title_sr: '', title_ru: '', text_sr: '', text_ru: '', cta_sr: '', cta_ru: '', link: '', starts_at: '', ends_at: '', position: 0, active: true }
+const KIND_RU = { raffle: 'Розыгрыш', promo: 'Акция', news: 'Новость' }
+function Banners() {
+  const [ver, setVer] = useState(0)
+  const [edit, setEdit] = useState(null)
+  const [file, setFile] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const { data } = usePoll(() => api('/admin/banners'), [ver])
+  const toLocal = (v) => (v ? v.slice(0, 16) : '')
+  const save = async () => {
+    setBusy(true)
+    try {
+      const body = { ...edit, position: Number(edit.position) || 0, starts_at: edit.starts_at || null, ends_at: edit.ends_at || null }
+      delete body.id; delete body.image
+      const b = edit.id ? await api(`/admin/banners/${edit.id}`, { method: 'PUT', body }) : await api('/admin/banners', { method: 'POST', body })
+      if (file) { const fd = new FormData(); fd.append('file', file); await api(`/admin/banners/${b.id}/image`, { method: 'POST', body: fd }) }
+      setEdit(null); setFile(null); setVer((v) => v + 1)
+    } finally { setBusy(false) }
+  }
+  const del = async (b) => { if (!confirm('Удалить баннер?')) return; await api(`/admin/banners/${b.id}`, { method: 'DELETE' }); setVer((v) => v + 1) }
+  const toggle = async (b) => { await api(`/admin/banners/${b.id}`, { method: 'PUT', body: { ...b, active: !b.active, image: undefined, id: undefined } }); setVer((v) => v + 1) }
+  const F = ([k, l, ph]) => <div className="field" key={k}><label>{l}</label><input className="input" placeholder={ph || ''} value={edit[k] ?? ''} onChange={(e) => setEdit({ ...edit, [k]: e.target.value })} /></div>
+  return (
+    <div>
+      <p className="small" style={{ marginTop: 0 }}>Баннеры показываются в карусели на главной после второго матча дня. Сами появляются и исчезают по датам показа.</p>
+      <button className="btn btn-gold btn-sm" onClick={() => { setEdit({ ...EMPTY_BANNER }); setFile(null) }}>Добавить баннер</button>
+      {edit && (
+        <div className="card pad stack" style={{ marginTop: 12 }}>
+          <div className="field"><label>Тип</label>
+            <div className="seg">{Object.entries(KIND_RU).map(([k, l]) => <button key={k} className={edit.kind === k ? 'on' : ''} onClick={() => setEdit({ ...edit, kind: k })}>{l}</button>)}</div>
+          </div>
+          {[['title_sr', 'Заголовок (сербский)'], ['title_ru', 'Заголовок (русский)'], ['text_sr', 'Текст (сербский)'], ['text_ru', 'Текст (русский)'], ['cta_sr', 'Кнопка (сербский)', 'Učestvuj'], ['cta_ru', 'Кнопка (русский)', 'Участвовать'], ['link', 'Ссылка', '/rang или https://...']].map(F)}
+          <div className="field"><label>Картинка (необязательно)</label><input className="input" type="file" accept="image/*" onChange={(e) => setFile(e.target.files[0] || null)} />{edit.image && !file && <img src={edit.image} alt="" style={{ marginTop: 8, maxHeight: 120, borderRadius: 10 }} />}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div className="field"><label>Показывать с</label><input className="input" type="datetime-local" value={toLocal(edit.starts_at)} onChange={(e) => setEdit({ ...edit, starts_at: e.target.value })} /></div>
+            <div className="field"><label>Показывать до</label><input className="input" type="datetime-local" value={toLocal(edit.ends_at)} onChange={(e) => setEdit({ ...edit, ends_at: e.target.value })} /></div>
+          </div>
+          {F(['position', 'Порядок (меньше — раньше)'])}
+          <label className="toggle"><input type="checkbox" checked={edit.active} onChange={(e) => setEdit({ ...edit, active: e.target.checked })} />Показывать на сайте</label>
+          <div style={{ display: 'flex', gap: 8 }}><button className="btn btn-gold btn-sm" onClick={save} disabled={busy}>Сохранить</button><button className="btn btn-line btn-sm" onClick={() => setEdit(null)}>Отмена</button></div>
+        </div>
+      )}
+      <div className="card" style={{ marginTop: 12 }}>
+        {(data || []).length === 0 && <div className="empty" style={{ padding: 20 }}>Баннеров пока нет.</div>}
+        {(data || []).map((b) => (
+          <div className="bm" key={b.id}>
+            <span className="bm-logo" style={{ background: b.image ? `center / cover url(${b.image})` : 'var(--surface-2)' }}>{b.image ? '' : (KIND_RU[b.kind] || '').slice(0, 1)}</span>
+            <div style={{ minWidth: 0 }}><b>{b.title_ru || b.title_sr || 'Без заголовка'}</b>{!b.active && <span className="small"> (выключен)</span>}
+              <div className="small ellip">{KIND_RU[b.kind]}{b.ends_at ? `, до ${new Date(b.ends_at).toLocaleDateString('ru-RU')}` : ''}{b.link ? `, ${b.link}` : ''}</div></div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button className="btn btn-ghost btn-sm" onClick={() => toggle(b)}>{b.active ? 'Выключить' : 'Включить'}</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => { setEdit({ ...b }); setFile(null) }}>Изменить</button>
+              <button className="btn btn-line btn-sm" onClick={() => del(b)}>Удалить</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function Admin() {
   const { user, ready } = useAuth()
   if (!ready) return <Skeleton />
   if (!user?.is_admin) return <Navigate to="/" replace />
-  const tabs = [['', 'Обзор'], ['users', 'Пользователи'], ['comments', 'Комментарии'], ['matches', 'Матчи'], ['bookmakers', 'Букмекеры']]
+  const tabs = [['', 'Обзор'], ['users', 'Пользователи'], ['comments', 'Комментарии'], ['matches', 'Матчи'], ['banners', 'Баннеры'], ['bookmakers', 'Букмекеры']]
   return (
     <div>
       <h1 className="h1">Админка</h1>
@@ -186,6 +249,7 @@ export default function Admin() {
         <Route path="users" element={<Users />} />
         <Route path="comments" element={<Comments />} />
         <Route path="matches" element={<Matches />} />
+        <Route path="banners" element={<Banners />} />
         <Route path="bookmakers" element={<Bookmakers />} />
       </Routes>
     </div>

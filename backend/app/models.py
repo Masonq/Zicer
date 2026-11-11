@@ -205,3 +205,24 @@ class Meta(Base):
 
 
 Index("ix_pred_user_status", Prediction.user_id, Prediction.status)
+
+
+
+class Banner(Base):
+    """Promo / raffle banners shown in the home carousel between the matches of the day."""
+    __tablename__ = "banners"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    kind: Mapped[str] = mapped_column(String(16), default="promo")  # promo | raffle | news
+    title_sr: Mapped[str] = mapped_column(String(120), default="")
+    title_ru: Mapped[str] = mapped_column(String(120), default="")
+    text_sr: Mapped[str] = mapped_column(String(300), default="")
+    text_ru: Mapped[str] = mapped_column(String(300), default="")
+    cta_sr: Mapped[str] = mapped_column(String(40), default="")
+    cta_ru: Mapped[str] = mapped_column(String(40), default="")
+    link: Mapped[str] = mapped_column(String(500), default="")
+    image: Mapped[str] = mapped_column(String(200), default="")
+    starts_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    ends_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    position: Mapped[int] = mapped_column(Integer, default=0)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now)

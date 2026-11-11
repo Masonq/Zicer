@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from . import ingest
 from .auth import admin_user
 from .db import get_db, SessionLocal
-from .models import User, Match, Prediction, Ticket, Bookmaker, JobStatus, Team
+from .models import User, Match, Prediction, Ticket, Bookmaker, JobStatus, Team, Banner
 from .serial import match_out, iso, user_short
 from .api import bm_out
 
@@ -140,9 +140,7 @@ def feature(mid: int, db: Session = Depends(get_db)):
     m = db.get(Match, mid)
     if not m:
         raise HTTPException(404)
-    for x in db.scalars(select(Match).where(Match.featured == True)).all():  # noqa
-        x.featured = False
-    m.featured = True
+    m.featured = True  # several matches of the day can be pinned for the carousel
     db.commit()
     return {"ok": True}
 
@@ -165,3 +163,107 @@ def run_job(name: str, bg: BackgroundTasks):
         raise HTTPException(404)
     bg.add_task(_run, name)
     return {"started": name}
+
+
+
+# ---------------- banners (home carousel) ----------------
+from datetime import datetime as _dt  # noqa: E402
+import io as _io, os as _os, secrets as _secrets  # noqa: E402,E401
+from fastapi import UploadFile, File  # noqa: E402
+from PIL import Image as _Image, ImageOps as _ImageOps  # noqa: E402
+from pydantic import BaseModel as _BM  # noqa: E402
+from . import config as _config  # noqa: E402
+
+
+class BannerIn(_BM):
+    kind: str = "promo"
+    title_sr: str = ""
+    title_ru: str = ""
+    text_sr: str = ""
+    text_ru: str = ""
+    cta_sr: str = ""
+    cta_ru: str = ""
+    link: str = ""
+    starts_at: str | None = None
+    ends_at: str | None = None
+    position: int = 0
+    active: bool = True
+
+
+def _b_out(b: Banner):
+    return {"id": b.id, "kind": b.kind, "title_sr": b.title_sr, "title_ru": b.title_ru, "text_sr": b.text_sr, "text_ru": b.text_ru,
+            "cta_sr": b.cta_sr, "cta_ru": b.cta_ru, "link": b.link, "image": f"/media/banners/{b.image}" if b.image else "",
+            "starts_at": b.starts_at.isoformat() if b.starts_at else None, "ends_at": b.ends_at.isoformat() if b.ends_at else None,
+            "position": b.position, "active": b.active}
+
+
+def _apply(b: Banner, body: BannerIn):
+    for k in ("kind", "title_sr", "title_ru", "text_sr", "text_ru", "cta_sr", "cta_ru", "link", "position", "active"):
+        setattr(b, k, getattr(body, k))
+    for k in ("starts_at", "ends_at"):
+        v = getattr(body, k)
+        setattr(b, k, _dt.fromisoformat(v.replace("Z", "")) if v else None)
+
+
+@router.get("/banners")
+def banners_list(db: Session = Depends(get_db)):
+    return [_b_out(b) for b in db.scalars(select(Banner).order_by(Banner.position, Banner.id)).all()]
+
+
+@router.post("/banners")
+def banners_create(body: BannerIn, db: Session = Depends(get_db)):
+    b = Banner()
+    _apply(b, body)
+    db.add(b)
+    db.commit()
+    return _b_out(b)
+
+
+@router.put("/banners/{bid}")
+def banners_update(bid: int, body: BannerIn, db: Session = Depends(get_db)):
+    b = db.get(Banner, bid)
+    if not b:
+        raise HTTPException(404)
+    _apply(b, body)
+    db.commit()
+    return _b_out(b)
+
+
+@router.delete("/banners/{bid}")
+def banners_delete(bid: int, db: Session = Depends(get_db)):
+    b = db.get(Banner, bid)
+    if b:
+        db.delete(b)
+        db.commit()
+    return {"ok": True}
+
+
+@router.post("/banners/{bid}/image")
+async def banners_image(bid: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    b = db.get(Banner, bid)
+    if not b:
+        raise HTTPException(404)
+    data = await file.read()
+    if len(data) > 12 * 1024 * 1024:
+        raise HTTPException(400, "file_big")
+    try:
+        im = _ImageOps.exif_transpose(_Image.open(_io.BytesIO(data))).convert("RGB")
+    except Exception:  # noqa
+        raise HTTPException(400, "file_bad")
+    im.thumbnail((1600, 900), _Image.LANCZOS)
+    folder = _os.path.join(_config.MEDIA_DIR, "banners")
+    _os.makedirs(folder, exist_ok=True)
+    name = f"{bid}_{_secrets.token_hex(5)}.webp"
+    im.save(_os.path.join(folder, name), "WEBP", quality=84)
+    b.image = name
+    db.commit()
+    return _b_out(b)
+
+
+@router.post("/matches/{mid}/unfeature")
+def unfeature(mid: int, db: Session = Depends(get_db)):
+    m = db.get(Match, mid)
+    if m:
+        m.featured = False
+        db.commit()
+    return {"ok": True}

@@ -11,8 +11,9 @@ export async function api(path, { method = 'GET', body } = {}) {
   const headers = { Accept: 'application/json' }
   const tok = getToken()
   if (tok) headers.Authorization = `Bearer ${tok}`
-  if (body !== undefined) headers['Content-Type'] = 'application/json'
-  const r = await fetch(`/api${path}`, { method, headers, body: body !== undefined ? JSON.stringify(body) : undefined, cache: 'no-store' })
+  const isForm = typeof FormData !== 'undefined' && body instanceof FormData
+  if (body !== undefined && !isForm) headers['Content-Type'] = 'application/json'
+  const r = await fetch(`/api${path}`, { method, headers, body: body === undefined ? undefined : isForm ? body : JSON.stringify(body), cache: 'no-store' })
   let data = null
   try { data = await r.json() } catch {}
   if (!r.ok) {

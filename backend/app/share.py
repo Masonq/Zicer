@@ -84,23 +84,82 @@ def _paste_logo(im, x, cap_top, cap_h):
         h = int(round(cap_h))
         w = int(round(lg.width * h / lg.height))
         lg = lg.resize((w, h), Image.LANCZOS)
-        im.paste(lg, (int(x), int(round(cap_top))), lg)
+        im.paste(lg, (int(round(x)), int(round(cap_top))), lg)
         return w
     except Exception:  # noqa
         return 0
 
 
-def _wordmark(im, d, x, y, size):
-    """Logo + 'Winly', the logo exactly as tall as the capital letters and on the same line."""
+def ink(d, text, f):
+    """Real ink box of a text (left, top, right, bottom) relative to the draw origin."""
+    return d.textbbox((0, 0), text, font=f)
+
+
+def text_at(d, text, f, fill, *, left=None, cx=None, right=None, top=None, cy=None):
+    """Place text by its visible ink: exact left/centre/right and top/vertical centre."""
+    l, t, r, b = ink(d, text, f)
+    w, h = r - l, b - t
+    x = left - l if left is not None else (cx - w / 2 - l if cx is not None else right - w - l)
+    y = top - t if top is not None else cy - h / 2 - t
+    d.text((x, y), text, font=f, fill=fill)
+    return w, h
+
+
+def _wordmark(im, d, x, cap_top, size):
+    """Logo + 'Winly': the logo exactly as tall as the capital letters, on the same line."""
     f = font("Oswald.ttf", size, "Bold")
-    l, top, r, bottom = d.textbbox((0, 0), "W", font=f)  # cap box of the letter W
-    cap_top, cap_h = y + top, bottom - top
+    l, t, r, b = ink(d, "W", f)
+    cap_h = b - t
     w = _paste_logo(im, x, cap_top, cap_h)
-    d.text((x + w + size * 0.28, y), "Winly", font=f, fill=GOLD)
+    text_at(d, "Winly", f, GOLD, left=x + w + size * 0.26, top=cap_top)
+    return cap_h
 
 
 def _status(t, L):
     return {"won": (L["won"], WIN), "lost": (L["lost"], LOSS), "void": (L["void"], MUTED)}.get(t.status, (L["open"], CHALK))
+
+
+def _rows(d, items, lang, x0, x1, top, bottom, story, L, center=True):
+    maxn = 8 if story else 5
+    show = items[:maxn]
+    gap = 20 if story else 12
+    row_h = min(104 if story else 76, int((bottom - top - gap * (len(show) - 1)) / max(1, len(show))))
+    used = row_h * len(show) + gap * (len(show) - 1)
+    y = top + ((bottom - top - used) / 2 if center else 0)
+    tf = font("Manrope.ttf", 34 if story else 25, "Bold")
+    sf = font("Manrope.ttf", 24 if story else 17, "SemiBold")
+    pf = font("Oswald.ttf", 40 if story else 29, "SemiBold")
+    pad = 30 if story else 24
+    for it in show:
+        m = it.match
+        col = {"won": WIN, "lost": LOSS, "void": MUTED}.get(it.status, LINE)
+        d.rounded_rectangle([x0, y, x1, y + row_h], radius=16, fill=SURF)
+        d.rounded_rectangle([x0, y, x0 + 7, y + row_h], radius=3, fill=col)
+        cy = y + row_h / 2
+        odds = f"{it.odds:.2f}"
+        pk = pick_text(it.pick, lang)
+        ow = ink(d, odds, pf)[2] - ink(d, odds, pf)[0]
+        pw = ink(d, pk, pf)[2] - ink(d, pk, pf)[0]
+        text_at(d, odds, pf, CHALK, right=x1 - pad, cy=cy)
+        text_at(d, pk, pf, GOLD, right=x1 - pad - ow - 22, cy=cy)
+        name_w = x1 - x0 - pad * 2 - ow - pw - 50
+        name = fit(d, f"{team_name(m.home, lang)} – {team_name(m.away, lang)}", tf, name_w)
+        lg = league_name(m.league, lang) if m.league else ""
+        if m.score_home is not None and m.status != "scheduled":
+            lg = f"{lg}  {m.score_home}:{m.score_away}"
+        lg = fit(d, lg, sf, name_w)
+        # name + league as one block, centred in the row by their ink
+        nh = ink(d, "Ag", tf)[3] - ink(d, "Ag", tf)[1]
+        lh = ink(d, "Ag", sf)[3] - ink(d, "Ag", sf)[1]
+        inner = 8 if story else 6
+        block = nh + inner + lh
+        bt = cy - block / 2
+        n_top = bt - (ink(d, "Ag", tf)[1] - ink(d, name, tf)[1]) if False else bt
+        text_at(d, name, tf, CHALK, left=x0 + pad, top=n_top + (ink(d, name, tf)[1] - ink(d, "Ag", tf)[1]))
+        text_at(d, lg, sf, MUTED, left=x0 + pad, top=bt + nh + inner + (ink(d, lg, sf)[1] - ink(d, "Ag", sf)[1]))
+        y += row_h + gap
+    if len(items) > maxn:
+        text_at(d, L["more"].format(n=len(items) - maxn), sf, MUTED, left=x0 + pad, top=y)
 
 
 def render_ticket(t: Ticket, lang: str = "sr", fmt: str = "wide") -> bytes:
@@ -108,95 +167,82 @@ def render_ticket(t: Ticket, lang: str = "sr", fmt: str = "wide") -> bytes:
     story = fmt == "story"
     W, H = (1080, 1920) if story else (1200, 630)
     im = Image.new("RGB", (W, H), BG)
-    d = ImageDraw.Draw(im)
-    # very soft light from the top-left corner (blurred, no visible edge)
     glow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     ImageDraw.Draw(glow).ellipse([-W * 0.5, -H * 0.6, W * 0.7, H * 0.5], fill=(242, 194, 48, 22))
     glow = glow.filter(ImageFilter.GaussianBlur(160))
     im.paste(glow, (0, 0), glow)
     d = ImageDraw.Draw(im)
     st_txt, st_col = _status(t, L)
-    who = (t.user.display_name or t.user.username) if hasattr(t.user, "display_name") else t.user.username
     items = list(t.items)
     total = f"{t.total_odds:.2f}"
     win_val = f"{t.stake * t.total_odds:,.0f}".replace(",", ".")
     win_lab = L["win"] if t.status == "won" else L["pot"]
-    if not story:
-        _wordmark(im, d, 64, 52, 50)
-        d.text((64, 124), f"{L['ticket']} @{t.user.username}", font=font("Manrope.ttf", 24, "SemiBold"), fill=MUTED)
-        # right panel
-        px = W - 360
-        d.rounded_rectangle([px, 48, W - 48, H - 48], radius=28, fill=SURF)
-        sf = font("Oswald.ttf", 64, "Bold")
-        sw = d.textlength(st_txt, font=sf)
-        cx = (px + W - 48) / 2
-        d.rounded_rectangle([cx - sw / 2 - 26, 86, cx + sw / 2 + 26, 176], radius=20, outline=st_col, width=3)
-        d.text((cx - sw / 2, 94), st_txt, font=sf, fill=st_col)
-        lab = font("Manrope.ttf", 22, "SemiBold")
-        big = font("Oswald.ttf", 70, "SemiBold")
-        for i, (label, val, col) in enumerate(((L["odds"], total, GOLD), (win_lab, win_val, CHALK))):
-            y = 230 + i * 150
-            lw = d.textlength(label, font=lab)
-            d.text((cx - lw / 2, y), label, font=lab, fill=MUTED)
-            vw = d.textlength(val, font=big)
-            d.text((cx - vw / 2, y + 32), val, font=big, fill=col)
-        rows_x0, rows_x1, rows_top, rows_bottom, maxn = 64, px - 32, 180, H - 110, 5
-    else:
-        _wordmark(im, d, 80, 110, 74)
-        d.text((80, 220), f"{L['ticket']} @{t.user.username}", font=font("Manrope.ttf", 34, "SemiBold"), fill=MUTED)
-        sf = font("Oswald.ttf", 120, "Bold")
-        d.text((80, 300), st_txt, font=sf, fill=st_col)
-        lab = font("Manrope.ttf", 32, "SemiBold")
-        big = font("Oswald.ttf", 110, "SemiBold")
-        d.rounded_rectangle([80, 480, W - 80, 720], radius=34, fill=SURF)
-        half = (W - 160) / 2
-        for i, (label, val, col) in enumerate(((L["odds"], total, GOLD), (win_lab, win_val, CHALK))):
-            cx = 80 + half * i + half / 2
-            lw = d.textlength(label, font=lab)
-            d.text((cx - lw / 2, 520), label, font=lab, fill=MUTED)
-            vw = d.textlength(val, font=big)
-            d.text((cx - vw / 2, 565), val, font=big, fill=col)
-        d.line([80 + half, 510, 80 + half, 690], fill=LINE, width=3)
-        rows_x0, rows_x1, rows_top, rows_bottom, maxn = 80, W - 80, 780, H - 220, 8
-    # selections
-    show = items[:maxn]
-    gap = 14 if not story else 22
-    row_h = min(96 if story else 74, int((rows_bottom - rows_top - gap * (len(show) - 1)) / max(1, len(show))))
-    y = rows_top if story else rows_top + max(0, ((rows_bottom - rows_top) - (row_h * len(show) + gap * (len(show) - 1))) / 2)
-    tf = font("Manrope.ttf", 34 if story else 26, "Bold")
-    sub_f = font("Manrope.ttf", 24 if story else 18, "SemiBold")
-    pf = font("Oswald.ttf", 40 if story else 30, "SemiBold")
-    for it in show:
-        m = it.match
-        col = {"won": WIN, "lost": LOSS, "void": MUTED}.get(it.status, LINE)
-        d.rounded_rectangle([rows_x0, y, rows_x1, y + row_h], radius=16, fill=SURF)
-        d.rounded_rectangle([rows_x0, y, rows_x0 + 8, y + row_h], radius=4, fill=col)
-        odds = f"{it.odds:.2f}"
-        ow = d.textlength(odds, font=pf)
-        pk = pick_text(it.pick, lang)
-        pw = d.textlength(pk, font=pf)
-        name_w = rows_x1 - rows_x0 - 48 - ow - pw - 60
-        name = fit(d, f"{team_name(m.home, lang)} – {team_name(m.away, lang)}", tf, name_w)
-        lg = league_name(m.league, lang) if m.league else ""
-        if m.score_home is not None and m.status != "scheduled":
-            lg = f"{lg}   {m.score_home}:{m.score_away}"
-        has_sub = row_h >= (80 if story else 64)
-        ty = y + (row_h - (34 if story else 26) - ((30 if story else 22) if has_sub else 0)) / 2 - 4
-        d.text((rows_x0 + 30, ty), name, font=tf, fill=CHALK)
-        if has_sub:
-            d.text((rows_x0 + 30, ty + (44 if story else 34)), fit(d, lg, sub_f, name_w), font=sub_f, fill=MUTED)
-        py = y + (row_h - (44 if story else 34)) / 2 - 4
-        d.text((rows_x1 - 24 - ow - 24 - pw, py), pk, font=pf, fill=GOLD)
-        d.text((rows_x1 - 24 - ow, py), odds, font=pf, fill=CHALK)
-        y += row_h + gap
-    if len(items) > maxn:
-        d.text((rows_x0 + 30, y), L["more"].format(n=len(items) - maxn), font=sub_f, fill=MUTED)
-    # footer
     host = config.PUBLIC_URL.replace("https://", "").replace("http://", "")
-    ff = font("Manrope.ttf", 32 if story else 22, "SemiBold")
-    fy = H - (120 if story else 80)
-    d.text((rows_x0, fy), L["cta"], font=ff, fill=CHALK)
-    d.text((rows_x0, fy + (44 if story else 30)), f"{host}/t/{t.id}", font=font("Manrope.ttf", 26 if story else 18, "Regular"), fill=MUTED)
+    M = 48
+    if not story:
+        # right panel
+        px0, px1 = W - 372, W - M
+        d.rounded_rectangle([px0, M, px1, H - M], radius=28, fill=SURF)
+        pcx = (px0 + px1) / 2
+        # header line: logo cap top == status pill top, both 32 px below the panel top
+        head_top = M + 32
+        TX = M + 24  # text column = the text inside the rows
+        cap = _wordmark(im, d, TX, head_top, 50)
+        sf = font("Oswald.ttf", 56, "Bold")
+        sw, sh = ink(d, st_txt, sf)[2] - ink(d, st_txt, sf)[0], ink(d, st_txt, sf)[3] - ink(d, st_txt, sf)[1]
+        pill_h = sh + 34
+        d.rounded_rectangle([pcx - sw / 2 - 28, head_top, pcx + sw / 2 + 28, head_top + pill_h], radius=18, outline=st_col, width=3)
+        text_at(d, st_txt, sf, st_col, cx=pcx, cy=head_top + pill_h / 2)
+        user_f = font("Manrope.ttf", 23, "SemiBold")
+        text_at(d, f"{L['ticket']} @{t.user.username}", user_f, MUTED, left=TX, top=head_top + cap + 16)
+        # odds / win: two equal blocks under the pill, label and value centred by ink
+        lab = font("Manrope.ttf", 21, "SemiBold")
+        big = font("Oswald.ttf", 66, "SemiBold")
+        area_top, area_bot = head_top + pill_h + 34, H - M - 30
+        blk = (area_bot - area_top) / 2
+        for i, (label, val, colr) in enumerate(((L["odds"], total, GOLD), (win_lab, win_val, CHALK))):
+            b0 = area_top + blk * i
+            lh = ink(d, label, lab)[3] - ink(d, label, lab)[1]
+            vh = ink(d, "0", big)[3] - ink(d, "0", big)[1]
+            gap = 16
+            top = b0 + (blk - (lh + gap + vh)) / 2
+            text_at(d, label, lab, MUTED, cx=pcx, top=top)
+            text_at(d, val, big, colr, cx=pcx, top=top + lh + gap + (ink(d, val, big)[1] - ink(d, "0", big)[1]))
+        if blk:
+            d.line([px0 + 40, area_top + blk, px1 - 40, area_top + blk], fill=LINE, width=2)
+        # footer, its last line on the panel's inner bottom
+        ff, uf = font("Manrope.ttf", 22, "SemiBold"), font("Manrope.ttf", 18, "Regular")
+        url = f"{host}/t/{t.id}"
+        uh = ink(d, url, uf)[3] - ink(d, url, uf)[1]
+        fh = ink(d, L["cta"], ff)[3] - ink(d, L["cta"], ff)[1]
+        url_top = H - M - 32 - uh
+        text_at(d, url, uf, MUTED, left=TX, top=url_top)
+        text_at(d, L["cta"], ff, CHALK, left=TX, top=url_top - 10 - fh)
+        _rows(d, items, lang, M, px0 - 28, head_top + cap + 64, url_top - fh - 34, False, L)
+    else:
+        X0, X1 = 80, W - 80
+        TX = X0 + 30
+        cap = _wordmark(im, d, TX, 110, 74)
+        text_at(d, f"{L['ticket']} @{t.user.username}", font("Manrope.ttf", 34, "SemiBold"), MUTED, left=TX, top=110 + cap + 22)
+        sf = font("Oswald.ttf", 120, "Bold")
+        text_at(d, st_txt, sf, st_col, left=TX, top=300)
+        box_top, box_h = 470, 230
+        d.rounded_rectangle([X0, box_top, X1, box_top + box_h], radius=34, fill=SURF)
+        half = (X1 - X0) / 2
+        lab = font("Manrope.ttf", 30, "SemiBold")
+        big = font("Oswald.ttf", 100, "SemiBold")
+        for i, (label, val, colr) in enumerate(((L["odds"], total, GOLD), (win_lab, win_val, CHALK))):
+            cx = X0 + half * i + half / 2
+            lh = ink(d, label, lab)[3] - ink(d, label, lab)[1]
+            vh = ink(d, "0", big)[3] - ink(d, "0", big)[1]
+            top = box_top + (box_h - (lh + 22 + vh)) / 2
+            text_at(d, label, lab, MUTED, cx=cx, top=top)
+            text_at(d, val, big, colr, cx=cx, top=top + lh + 22 + (ink(d, val, big)[1] - ink(d, "0", big)[1]))
+        d.line([X0 + half, box_top + 36, X0 + half, box_top + box_h - 36], fill=LINE, width=3)
+        _rows(d, items, lang, X0, X1, box_top + box_h + 60, H - 300, True, L, center=False)
+        ff, uf = font("Manrope.ttf", 40, "Bold"), font("Manrope.ttf", 28, "Regular")
+        text_at(d, L["cta"], ff, CHALK, left=TX, top=H - 200)
+        text_at(d, f"{host}/t/{t.id}", uf, MUTED, left=TX, top=H - 140)
     buf = io.BytesIO()
     im.save(buf, "PNG", optimize=True)
     return buf.getvalue()

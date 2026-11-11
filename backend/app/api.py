@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from . import config, ingest
 from .auth import hash_pw, check_pw, make_token, current_user, current_user_opt
 from .db import get_db
-from .models import (User, Team, Match, Prediction, Ticket, TicketItem, ScorePick, Trend, Bookmaker, League)
+from .models import (User, Team, Match, Prediction, Ticket, TicketItem, ScorePick, Trend, Bookmaker, League, Banner)
 from .serial import match_out, user_short, user_me, team_out, iso
 
 router = APIRouter(prefix="/api")
@@ -505,6 +505,11 @@ def sports(tz: int = 60, db: Session = Depends(get_db)):
             if s in ("football", "basketball") or soon.get(s) or live.get(s)]
 
 
+def banner_out(b):
+    return {"id": b.id, "kind": b.kind, "title": {"sr": b.title_sr, "ru": b.title_ru}, "text": {"sr": b.text_sr, "ru": b.text_ru},
+            "cta": {"sr": b.cta_sr, "ru": b.cta_ru}, "link": b.link, "image": f"/media/banners/{b.image}" if b.image else "", "position": b.position}
+
+
 @router.get("/home")
 def home(tz: int = 60, sport: str = "all", u: User | None = Depends(current_user_opt), db: Session = Depends(get_db)):
     n = utcnow()
@@ -523,6 +528,24 @@ def home(tz: int = 60, sport: str = "all", u: User | None = Depends(current_user
         cands = [m for m in pool if m.odds] or pool
         if cands:
             feat = max(cands, key=lambda m: (m.is_derby, m.home.is_serbian or m.away.is_serbian, pc.get(m.id, 0), -m.league.priority))
+    # matches of the day for the carousel: pinned ones first, a live big match, then the best of today/tomorrow
+    rank = lambda m: (m.featured, m.is_derby, m.home.is_serbian or m.away.is_serbian, pc.get(m.id, 0), -m.league.priority)  # noqa
+    big_live = [m for m in db.scalars(select(Match).join(League, Match.league_id == League.id).where(Match.status == "live")
+                                      .order_by(League.priority).limit(10)).unique().all() if m.league.priority <= 2 or m.featured]
+    soon = [m for m in pool if m.start < n + timedelta(hours=36) and (m.odds or m.featured)]
+    picked, seen_ids = [], set()
+    for m in sorted([x for x in pool if x.featured], key=lambda x: x.start) + big_live[:1] + sorted(soon, key=rank, reverse=True):
+        if m.id in seen_ids:
+            continue
+        seen_ids.add(m.id)
+        picked.append(m)
+        if len(picked) == 5:
+            break
+    if feat and feat.id not in seen_ids:
+        picked.insert(0, feat)
+    nowd = utcnow()
+    banners = db.scalars(select(Banner).where(Banner.active == True).order_by(Banner.position, Banner.id)).all()  # noqa
+    banners = [b for b in banners if (not b.starts_at or b.starts_at <= nowd) and (not b.ends_at or b.ends_at > nowd)]
     my = []
     if u:
         fav = [x for x in (u.fav_football_id, u.fav_basket_id) if x]
@@ -535,6 +558,8 @@ def home(tz: int = 60, sport: str = "all", u: User | None = Depends(current_user
     bms = db.scalars(select(Bookmaker).where(Bookmaker.active == True).order_by(Bookmaker.sort)).all()  # noqa
     return {
         "featured": match_detail(feat.id, u, db) if feat else None,
+        "featured_list": [match_detail(m.id, u, db) for m in picked[:5]],
+        "banners": [banner_out(b) for b in banners],
         "live": _list(db, live),
         "upcoming": _list(db, upcoming[:24]),
         "my_club": _list(db, my),

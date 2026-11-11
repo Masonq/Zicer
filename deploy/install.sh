@@ -49,7 +49,7 @@ sudo -u postgres psql -qc "ALTER ROLE zicer PASSWORD '$DBPASS'" >/dev/null
 sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='zicer'" | grep -q 1 || sudo -u postgres createdb -O zicer zicer
 ok "база zicer готова"
 
-mkdir -p $APP/backend/media/avatars
+mkdir -p $APP/backend/media/avatars $APP/backend/media/banners
 
 step "Python"
 [ -d $APP/venv ] || python3 -m venv $APP/venv
