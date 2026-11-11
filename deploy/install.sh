@@ -12,6 +12,8 @@ reach() { curl -s -m 8 "https://dns.google/resolve?name=$1&type=A" | grep -q "$S
 # once the real domain has its certificate, stay on it (no flip-flopping while caches expire)
 if [ -d /etc/letsencrypt/live/$NEWDOM ] || reach $NEWDOM; then DOMAIN=$NEWDOM; else DOMAIN=$OLDDOM; fi
 WWW=""; reach www.$NEWDOM && WWW="www.$NEWDOM"
+# names already in the certificate are always served (a flaky DNS answer must never drop www from the config)
+if [ -f /etc/letsencrypt/live/$NEWDOM/fullchain.pem ] && openssl x509 -in /etc/letsencrypt/live/$NEWDOM/fullchain.pem -noout -text 2>/dev/null | grep -q "DNS:www.$NEWDOM"; then WWW="www.$NEWDOM"; fi
 EMAIL=maxsim_kolesnikov@icloud.com
 REPORT=$APP/reports/deploy.md
 mkdir -p $APP/reports
@@ -185,11 +187,16 @@ if [ ! -d /etc/letsencrypt/live/$DOMAIN ]; then
   certbot --nginx -d $DOMAIN $([ -n "$WWW" ] && [ "$DOMAIN" = "$NEWDOM" ] && echo "-d $WWW") --non-interactive --agree-tos -m $EMAIL --redirect && ok "сертификат выпущен" || bad "certbot"
 else
   DOMS="-d $DOMAIN"; [ "$DOMAIN" = "$NEWDOM" ] && [ -n "$WWW" ] && DOMS="$DOMS -d $WWW"
-  # www joins the same certificate once it points here (expand), and both names get the HTTPS server block
   if [ "$DOMAIN" = "$NEWDOM" ] && [ -n "$WWW" ] && ! openssl x509 -in /etc/letsencrypt/live/$DOMAIN/fullchain.pem -noout -text 2>/dev/null | grep -q "DNS:$WWW"; then
     certbot --nginx $DOMS --cert-name $DOMAIN --expand --non-interactive --agree-tos -m $EMAIL --redirect && ok "сертификат расширен на $WWW" || bad "certbot expand"
-  else
-    grep -q "listen 443" /etc/nginx/sites-available/zicer.conf || certbot --nginx $DOMS --cert-name $DOMAIN --non-interactive --reinstall --redirect >/dev/null 2>&1
+  elif ! grep -q "listen 443" /etc/nginx/sites-available/zicer.conf; then
+    # put the existing certificate back into the freshly written config (all names it covers), loudly
+    certbot install --nginx --cert-name $DOMAIN --non-interactive --redirect 2>&1 | tail -3
+    if ! grep -q "listen 443" /etc/nginx/sites-available/zicer.conf; then
+      CD=$(openssl x509 -in /etc/letsencrypt/live/$DOMAIN/fullchain.pem -noout -text 2>/dev/null | grep -o 'DNS:[^,]*' | sed 's/DNS:/-d /' | tr '\n' ' ')
+      certbot --nginx --cert-name $DOMAIN $CD --non-interactive --reinstall --redirect 2>&1 | tail -3
+    fi
+    grep -q "listen 443" /etc/nginx/sites-available/zicer.conf && ok "HTTPS включён" || bad "HTTPS не включился"
   fi
   ok "сертификат уже есть"
 fi
