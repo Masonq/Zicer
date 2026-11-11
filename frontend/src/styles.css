@@ -752,3 +752,7 @@ img { display: block; max-width: 100%; }
 .sc-txt { display: flex; flex-direction: column; min-width: 0; flex: 1; line-height: 1.2; }
 .sc-txt b { color: #fff; font-size: 14px; font-weight: 800; } .sc-txt span { color: #b9c6bf; font-size: 12px; }
 .sc-time { color: var(--gold); font-size: 15px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(242,194,48,0.12); }
+
+.sboard-head { flex-wrap: wrap; row-gap: 6px; align-items: flex-start; }
+.sb-title { flex: 1 1 60%; min-width: 0; white-space: normal; line-height: 1.15; }
+.trk-st-time { flex: none; color: var(--gold); font-size: 14px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(242,194,48,0.12); }

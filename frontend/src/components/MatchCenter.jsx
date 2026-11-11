@@ -85,6 +85,7 @@ export const COURT = {
 export const fieldStyle = (sport) => { const c = COURT[sport] || COURT.football; return { left: `${(c.fx / c.w) * 100}%`, top: `${(c.fy / c.h) * 100}%`, width: `${(c.fw / c.w) * 100}%`, height: `${(c.fh / c.h) * 100}%` } }
 export const courtAspect = (sport) => { const c = COURT[sport] || COURT.football; return `${c.w} / ${c.h}` }
 const WL = { stroke: '#fff', strokeOpacity: 0.72, fill: 'none', vectorEffect: 'non-scaling-stroke', strokeWidth: 1.6 }
+export const fmtClock = (c) => { const v = String(c || '').trim(); if (/^\d+(\.\d+)?$/.test(v)) { const sec = Math.floor(parseFloat(v)); return `0:${String(sec).padStart(2, '0')}` } return v }
 export function CourtLines({ sport }) {
   const uid = useId().replace(/[^a-z0-9]/gi, '')
   const c = COURT[sport] || COURT.football
@@ -1056,12 +1057,12 @@ const BOARD_KEYS = {
 }
 // Stats board shown on the court in pauses (changeover after a game, breaks) and at the end of the match
 function StatsBoard({ sport, data, t, title, sub, names, winner }) {
-  const stats = data.stats || []
+  const stats = (data.stats || []).map((st) => (sport === 'hockey' && /Possession/.test(st.key) ? { ...st, ru: 'Владение шайбой', sr: 'Posed paka' } : st))
   const picked = []
   for (const k of BOARD_KEYS[sport] || []) { const st = stats.find((x) => x.key === k); if (st && !picked.find((p) => p.ru === st.ru)) picked.push(st); if (picked.length === (['football', 'waterpolo'].includes(sport) ? 4 : 3)) break }
   return (
     <motion.div className="sboard" initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
-      <div className="sboard-head"><b className="ellip">{title}</b>{sub && <span className="sb-time num">{sub}</span>}{winner != null && <span className={`sb-win s${winner}`}>{names[winner]}</span>}</div>
+      <div className="sboard-head"><b className="sb-title">{title}</b>{sub && <span className="sb-time num">{sub}</span>}{winner != null && <span className={`sb-win s${winner}`}>{names[winner]}</span>}</div>
       {picked.map((st) => {
         const a = parseFloat(st.v[0]) || 0, b = parseFloat(st.v[1]) || 0, sum = a + b || 1
         return (
@@ -1311,12 +1312,12 @@ function Arena({ m, data, t }) {
   const boardR = sport === 'tennis' ? (live ? shown.ss[1] : scoreNow[1]) : finished ? scoreNow[1] : shown.score[1]
   let status = null
   if (finished) status = null
-  else if (phase.kind === 'stop' && phase.ev) status = { side: phase.ev.side, title: `${xevLabel(phase.ev, sport, t)} ${fmtLeft(phase.until)}`, icon: phase.ev.t }
-  else if (phase.kind === 'stats') status = { side: null, title: `${phase.setBreak ? t('setBreak') : t('changeover')} ${fmtLeft(phase.until)}`, icon: 'timeout' }
-  else if (isBreak && phase.kind === 'idle') status = { side: null, title: brkLabel, icon: 'timeout' }
+  else if (phase.kind === 'stop' && phase.ev) status = { side: phase.ev.side, title: xevLabel(phase.ev, sport, t), icon: phase.ev.t, time: fmtLeft(phase.until) }
+  else if (phase.kind === 'stats') status = { side: null, title: phase.title || (phase.setBreak ? t('setBreak') : t('changeover')), icon: 'timeout', time: fmtLeft(phase.until) }
+  else if (isBreak && phase.kind === 'idle') status = { side: null, title: brkTitle, icon: 'timeout', time: brkUntil && brkUntil > Date.now() ? fmtLeft(brkUntil) : null }
   else if (phase.kind !== 'idle' && phase.ev) status = { side: phase.ev.side, title: phase.kind === 'finish' ? (net ? t('rally') : sport === 'basketball' ? t('shot') : t('ev_shot_on')) : bannerTitle(phase.ev, sport, t), icon: phase.kind === 'finish' ? null : (sport === 'tennis' ? 'ace' : 'score') }
   else if (infoShown) status = { side: infoShown.side, title: infoShown.t === 'bp' ? t('ev_bp') : xevLabel(infoShown, sport, t), icon: infoShown.t === 'bp' ? 'break' : infoShown.t }
-  else if (pp && live) status = { side: pp.side, title: `${t('powerPlay')} ${fmtLeft(pp.until)}`, icon: 'pen2' }
+  else if (pp && live) status = { side: pp.side, title: t('powerPlay'), icon: 'pen2', time: fmtLeft(pp.until) }
   else if (live && att !== null) status = { side: att, title: net ? t('serve') : sport === 'basketball' ? t('withBall') : sport === 'hockey' ? t('withPuck') : (ttl && ![t('live'), t('finished'), t('pause'), t('ev_goal'), t('ev_set'), t('ev_vpoint'), `${t('goal')}!`].includes(ttl) && !ttl.startsWith('+') ? ttl : (sport === 'hockey' ? t('withPuck') : t('withBall'))), arrow: !net }
   const ev = phase.ev
   const bannerScore = sport === 'tennis' ? (ev && ev.t === 'game' ? (shown.per[shown.per.length - 1] || [0, 0]) : shown.ss) : sport === 'volleyball' && ev && ev.t === 'point' ? (shown.per[shown.per.length - 1] || [0, 0]) : shown.score
@@ -1324,7 +1325,7 @@ function Arena({ m, data, t }) {
   // event feed under the court: scoring events appear only after they were played on the court
   const pending = new Set([...queue.current.map((q) => q.k), ...(phase.kind === 'finish' || phase.kind === 'pause' ? [phase.ev?.k] : [])])
   const feed = (sport === 'basketball' && plays.length
-    ? plays.map((p) => ({ k: `b-${p.q}-${p.clock}-${p.player}-${p.pts}-${p.home ? 0 : 1}`, t: p.pts ? 'score' : ['CM', 'CMU', 'CMT'].includes(p.pt) ? 'foul' : p.pt === 'TOUT' ? 'timeout' : null, side: p.home ? 0 : 1, title: t.lang === 'ru' ? p.ru : t.serb(p.sr), when: p.clock ? `Q${p.q} ${p.clock}` : '' })).filter((e) => e.t)
+    ? plays.map((p) => ({ k: `b-${p.q}-${p.clock}-${p.player}-${p.pts}-${p.home ? 0 : 1}`, t: p.pts ? 'score' : ['CM', 'CMU', 'CMT'].includes(p.pt) ? 'foul' : p.pt === 'TOUT' ? 'timeout' : null, side: p.home ? 0 : 1, title: t.lang === 'ru' ? p.ru : t.serb(p.sr), when: p.clock ? `Q${p.q} ${fmtClock(p.clock)}` : '' })).filter((e) => e.t)
     : (data.xev || []).filter((e) => [...TOAST, 'foul', 'game', 'bp'].includes(e.t) && (sport !== 'tennis' || e.t !== 'score')).map((e) => ({
       k: SCORING.has(e.t) ? `x-${e.at}-${e.t}-${e.side}-${(e.ss || e.ps || []).join(':')}` : `i-${e.at}-${e.t}-${e.side}`,
       t: sport === 'tennis' ? (e.t === 'game' ? 'score' : e.t === 'bp' ? 'break' : 'ace') : e.t, side: e.side,
@@ -1373,6 +1374,7 @@ function Arena({ m, data, t }) {
             <motion.div key={(status.title || '') + status.side + phase.kind} className={`trk-st s${status.side ?? 'n'}`} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.18 }}>
               {status.icon ? <span className="trk-st-ico"><EvIconBig type={status.icon} sport={sport} /></span> : null}
               <span className="trk-st-txt ellip">{status.side !== null && status.side !== undefined && <b>{names[status.side]}</b>}{status.title}</span>
+              {status.time && <span className="trk-st-time num">{status.time}</span>}
               {status.arrow && <span className={`trk-st-arrow ${status.side === 0 ? 'r' : 'l'}`} />}
             </motion.div>
           ) : <motion.div key="none" className="trk-st muted-st" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>{live ? t('live') : t('finished')}</motion.div>}
@@ -1508,7 +1510,7 @@ function Events({ m, data, t }) {
   return (
     <div className="ev-list">{[...plays].reverse().slice(0, 40).map((p, i) => (
       <div key={i} className="ev ev-wide">
-        <span className="ev-min num" style={{ fontSize: 13, whiteSpace: 'nowrap' }}>Q{p.q} {p.clock}</span>
+        <span className="ev-min num" style={{ fontSize: 13, whiteSpace: 'nowrap' }}>Q{p.q} {fmtClock(p.clock)}</span>
         <span className={`ev-ico${p.pts ? ' goal' : ''}`}>{p.pts ? `+${p.pts}` : '•'}</span>
         <div className="ev-body">
           <div className="ev-player ellip">{p.player || (t.lang === 'ru' ? p.ru : t.serb(p.sr))}{p.score && p.pts ? <b className="num"> {p.score[0]}–{p.score[1]}</b> : null}</div>
@@ -1536,7 +1538,7 @@ export default function MatchCenter({ m, fallback = null }) {
     <div className="center-card hero-center">
       <div className="hc-top">
         <span className="ellip">{t.league(m.league)}</span>
-        {(data.status || m.status) === 'live' && !isDecided(m, data.score || m.score, (lv.x || {}).periods || lv.per) ? <span className="badge live"><span className="live-dot" style={{ marginRight: 6 }} />{m.minute === 'HT' ? t('ht') : /^[A-Z0-9_]+$/.test(m.minute || '') ? periodLabel(m.minute, m.sport, t) : m.minute || t('live')}</span> : <span className="badge">{t('finished')}</span>}
+        {(data.status || m.status) === 'live' && !isDecided(m, data.score || m.score, (lv.x || {}).periods || lv.per) ? <span className="badge live"><span className="live-dot" style={{ marginRight: 6 }} />{(m.minute === 'HT' ? t('ht') : /^[A-Z0-9_]+$/.test(m.minute || '') ? periodLabel(m.minute, m.sport, t) : m.minute) || periodLabel((lv || {}).p, m.sport, t) || t('live')}</span> : <span className="badge">{t('finished')}</span>}
       </div>
       <Arena m={m} data={data} t={t} />
       <div className="seg" style={{ margin: '12px 12px 0' }}>{tabs.map(([k, l]) => <button key={k} className={active === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}</div>
@@ -1545,7 +1547,7 @@ export default function MatchCenter({ m, fallback = null }) {
           <>
             {active === 'events' && <Events m={m} data={data} t={t} />}
             {active === 'periods' && <Periods m={m} lv={lv} t={t} />}
-            {active === 'stats' && <Stats stats={data.stats} t={t} />}
+            {active === 'stats' && <Stats stats={(data.stats || []).map((st) => (m.sport === 'hockey' && /Possession|possession/.test(st.key || '') ? { ...st, ru: 'Владение шайбой', sr: 'Posed paka' } : st))} t={t} />}
           </>
         )}
       </div>

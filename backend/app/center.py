@@ -1,4 +1,5 @@
 """Match centre: live events, statistics and momentum."""
+import re
 import time
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
@@ -153,6 +154,41 @@ def _el(m: Match):
     return out
 
 
+NBA_PATTERNS = [  # (regex on the ESPN text, serbian, russian)
+    (r"defensive rebound", "skok u odbrani", "подбор в защите"),
+    (r"offensive rebound", "skok u napadu", "подбор в нападении"),
+    (r"makes free throw (\d) of (\d)", "pogođeno slobodno bacanje {0}/{1}", "реализован штрафной {0} из {1}"),
+    (r"misses free throw (\d) of (\d)", "promašeno slobodno bacanje {0}/{1}", "промах штрафного {0} из {1}"),
+    (r"makes .*three point", "pogođena trojka", "трёхочковый"),
+    (r"misses .*three point", "promašena trojka", "промах трёхочкового"),
+    (r"makes .*dunk", "zakucavanje", "данк"),
+    (r"makes .*layup", "polaganje", "проход под кольцо"),
+    (r"makes", "pogođena dvojka", "двухочковый"),
+    (r"misses", "promašaj za 2", "промах двухочкового"),
+    (r"blocks", "blokada", "блок-шот"),
+    (r"turnover|traveling|bad pass|lost ball|offensive foul", "izgubljena lopta", "потеря"),
+    (r"steals", "ukradena lopta", "перехват"),
+    (r"shooting foul", "lična greška u šutu", "фол на броске"),
+    (r"foul", "lična greška", "фол"),
+    (r"timeout", "tajm-aut", "тайм-аут"),
+    (r"enters the game", "izmena", "замена"),
+]
+
+
+def _nba_player(text: str) -> str:
+    m = re.match(r"^([A-Z][\w'.-]+(?: [A-Z][\w'.-]+){0,2}) (makes|misses|defensive|offensive|blocks|steals|shooting|personal|bad|lost|traveling|turnover|enters)", text or "")
+    return m.group(1) if m else ""
+
+
+def _nba_text(text: str, lang: str) -> str:
+    low = (text or "").lower()
+    for rx, sr, ru in NBA_PATTERNS:
+        mm = re.search(rx, low)
+        if mm:
+            return (sr if lang == "sr" else ru).format(*mm.groups())
+    return text or ""
+
+
 def _nba(m: Match):
     eid = m.ext.split(":", 1)[1]
     key = f"nba:{eid}"
@@ -185,7 +221,7 @@ def _nba(m: Match):
             if not pl.get("scoringPlay") and pl.get("type", {}).get("text") not in ("Defensive Rebound", "Offensive Rebound", "Steal", "Block", "Turnover"):
                 continue
             out["plays"].append({"q": (pl.get("period") or {}).get("number"), "clock": (pl.get("clock") or {}).get("displayValue", ""),
-                                 "home": (pl.get("team") or {}).get("id") == hid, "player": "", "sr": pl.get("text", ""), "ru": pl.get("text", ""),
+                                 "home": (pl.get("team") or {}).get("id") == hid, "player": _nba_player(pl.get("text", "")), "sr": _nba_text(pl.get("text", ""), "sr"), "ru": _nba_text(pl.get("text", ""), "ru"),
                                  "pts": pl.get("scoreValue") or 0, "score": [pl.get("homeScore"), pl.get("awayScore")]})
     except Exception:  # noqa
         pass
