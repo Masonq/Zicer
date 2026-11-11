@@ -717,3 +717,21 @@ img { display: block; max-width: 100%; }
 .sboard-head b { min-width: 0; }
 .sb-time { flex: none; font-size: 15px; color: var(--gold); font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(242,194,48,0.12); }
 .eng-ball.ball-hockey { width: 11px; height: 7px; }
+
+/* serious look: no glows, no halos, restrained colours */
+.eng-ball { box-shadow: 0 1px 2px rgba(0,0,0,0.45) !important; width: 9px !important; height: 9px !important; background: #F4F4F2 !important; }
+.eng-ball.ball-basketball { background: #C8682A !important; }
+.eng-ball.ball-tennis { background: #D7E35A !important; width: 8px !important; height: 8px !important; }
+.eng-ball.ball-volleyball, .eng-ball.ball-waterpolo { background: #E9D27A !important; }
+.eng-ball.ball-hockey { background: #111 !important; width: 9px !important; height: 6px !important; box-shadow: 0 1px 1px rgba(0,0,0,0.35) !important; }
+.eng-shadow { width: 10px; height: 4px; background: rgba(0,0,0,0.3); filter: none; }
+.ripple { border-width: 1px; border-color: rgba(255,255,255,0.7); }
+.ripple.go { animation: ripple .9s ease-out 1; }
+.arena-fx polyline { stroke-opacity: 0.55; }
+.tt-court .tt-tag { background: rgba(10, 16, 14, 0.62); backdrop-filter: none; -webkit-backdrop-filter: none; text-shadow: none; font-weight: 600; }
+.tt-court .tt-tag b { color: #E9C46A; }
+.terr.t0 { background: linear-gradient(90deg, rgba(61,142,240,0) 0%, rgba(61,142,240,0.12) 100%); }
+.terr.t1 { background: linear-gradient(270deg, rgba(139,209,47,0) 0%, rgba(139,209,47,0.12) 100%); }
+.arena-banner { box-shadow: 0 8px 22px rgba(0,0,0,0.35); }
+.ab-score .hl { text-shadow: none; }
+.tn-srv { box-shadow: none; }

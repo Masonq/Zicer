@@ -83,14 +83,14 @@ export const COURT = {
 }
 export const fieldStyle = (sport) => { const c = COURT[sport] || COURT.football; return { left: `${(c.fx / c.w) * 100}%`, top: `${(c.fy / c.h) * 100}%`, width: `${(c.fw / c.w) * 100}%`, height: `${(c.fh / c.h) * 100}%` } }
 export const courtAspect = (sport) => { const c = COURT[sport] || COURT.football; return `${c.w} / ${c.h}` }
-const WL = { stroke: '#fff', strokeOpacity: 0.85, fill: 'none', vectorEffect: 'non-scaling-stroke', strokeWidth: 1.6 }
+const WL = { stroke: '#fff', strokeOpacity: 0.72, fill: 'none', vectorEffect: 'non-scaling-stroke', strokeWidth: 1.6 }
 export function CourtLines({ sport }) {
   const c = COURT[sport] || COURT.football
   const { fx: X, fy: Y, fw: W, fh: H } = c
   const vb = `0 0 ${c.w} ${c.h}`
   if (sport === 'football') {
     const cy = Y + H / 2
-    const stripes = Array.from({ length: 12 }, (_, i) => <rect key={i} x={X + (W / 12) * i} y={Y} width={W / 12} height={H} fill={i % 2 ? '#2F8152' : '#2B774B'} />)
+    const stripes = Array.from({ length: 12 }, (_, i) => <rect key={i} x={X + (W / 12) * i} y={Y} width={W / 12} height={H} fill={i % 2 ? '#2C5E43' : '#29583F'} />)
     const side = (dir) => {
       const gx = dir === 1 ? X : X + W
       const s = dir
@@ -106,7 +106,7 @@ export function CourtLines({ sport }) {
     }
     return (
       <svg viewBox={vb} className="court-svg" aria-hidden="true">
-        <rect width={c.w} height={c.h} fill="#256B42" />
+        <rect width={c.w} height={c.h} fill="#24503A" />
         {stripes}
         <rect x={X} y={Y} width={W} height={H} {...WL} />
         <line x1={X + W / 2} y1={Y} x2={X + W / 2} y2={Y + H} {...WL} />
@@ -124,7 +124,7 @@ export function CourtLines({ sport }) {
       const hoop = bx + s * 1.575
       return (
         <g key={dir}>
-          <rect x={dir === 1 ? bx : bx - 5.8} y={cy - 2.45} width={5.8} height={4.9} fill="#1F5E48" fillOpacity="0.92" />
+          <rect x={dir === 1 ? bx : bx - 5.8} y={cy - 2.45} width={5.8} height={4.9} fill="#3B5249" fillOpacity="0.88" />
           <rect x={dir === 1 ? bx : bx - 5.8} y={cy - 2.45} width={5.8} height={4.9} {...WL} />
           <path d={`M ${bx + s * 5.8} ${cy - 1.8} A 1.8 1.8 0 0 ${dir === 1 ? 1 : 0} ${bx + s * 5.8} ${cy + 1.8}`} {...WL} />
           <path d={`M ${bx} ${cy - 6.6} H ${bx + s * 2.99} A 6.75 6.75 0 0 ${dir === 1 ? 1 : 0} ${bx + s * 2.99} ${cy + 6.6} H ${bx}`} {...WL} />
@@ -136,12 +136,12 @@ export function CourtLines({ sport }) {
     }
     return (
       <svg viewBox={vb} className="court-svg" aria-hidden="true">
-        <defs><pattern id="planks" width="0.6" height="2.4" patternUnits="userSpaceOnUse"><rect width="0.6" height="2.4" fill="#D6A26C" /><rect x="0.59" width="0.01" height="2.4" fill="rgba(90,50,20,0.25)" /></pattern></defs>
-        <rect width={c.w} height={c.h} fill="#1F5E48" />
+        <defs><pattern id="planks" width="0.6" height="2.4" patternUnits="userSpaceOnUse"><rect width="0.6" height="2.4" fill="#C49A70" /><rect x="0.59" width="0.01" height="2.4" fill="rgba(90,50,20,0.25)" /></pattern></defs>
+        <rect width={c.w} height={c.h} fill="#2A3B34" />
         <rect x={X} y={Y} width={W} height={H} fill="url(#planks)" />
         <rect x={X} y={Y} width={W} height={H} {...WL} />
         <line x1={X + W / 2} y1={Y} x2={X + W / 2} y2={Y + H} {...WL} />
-        <circle cx={X + W / 2} cy={cy} r={1.8} fill="#1F5E48" fillOpacity="0.92" /><circle cx={X + W / 2} cy={cy} r={1.8} {...WL} />
+        <circle cx={X + W / 2} cy={cy} r={1.8} fill="#3B5249" fillOpacity="0.88" /><circle cx={X + W / 2} cy={cy} r={1.8} {...WL} />
         {[1, -1].map(half)}
       </svg>
     )
@@ -150,7 +150,7 @@ export function CourtLines({ sport }) {
     // IIHF / NHL rink 60 x 30 m: corner radius 8.5, goal lines 4 m from the boards, blue lines 22.86 m,
     // end face-off spots 6 m from the goal line and 7 m off-centre, neutral spots 1.5 m from the blue lines
     const cy = Y + H / 2, R = 8.5, cx = X + W / 2
-    const red = '#D2323C', blue = '#1F5FD0'
+    const red = '#B23A40', blue = '#2D57A3'
     const clip = `rk${Math.random().toString(36).slice(2, 7)}`
     const endSpot = [[X + 10, cy - 7], [X + 10, cy + 7], [X + W - 10, cy - 7], [X + W - 10, cy + 7]]
     const midSpot = [[X + 24.36, cy - 7], [X + 24.36, cy + 7], [X + W - 24.36, cy - 7], [X + W - 24.36, cy + 7]]
@@ -159,7 +159,7 @@ export function CourtLines({ sport }) {
       const s = dir
       return (
         <g key={dir}>
-          <path d={`M ${gx} ${cy - 1.8} A 1.8 1.8 0 0 ${dir === 1 ? 1 : 0} ${gx} ${cy + 1.8} Z`} fill="#7FB2EE" fillOpacity="0.75" stroke={red} strokeWidth="0.12" />
+          <path d={`M ${gx} ${cy - 1.8} A 1.8 1.8 0 0 ${dir === 1 ? 1 : 0} ${gx} ${cy + 1.8} Z`} fill="#9DB6D3" fillOpacity="0.6" stroke={red} strokeWidth="0.12" />
           <rect x={dir === 1 ? gx - 1.12 : gx} y={cy - 0.915} width={1.12} height={1.83} rx="0.25" fill="rgba(120,130,140,0.25)" stroke={red} strokeWidth="0.16" />
           <path d={`M ${gx} ${cy - 3.35} L ${gx - s * 4} ${cy - 4.25} M ${gx} ${cy + 3.35} L ${gx - s * 4} ${cy + 4.25}`} stroke={red} strokeWidth="0.1" fill="none" />
         </g>
@@ -169,10 +169,10 @@ export function CourtLines({ sport }) {
       <svg viewBox={vb} className="court-svg" aria-hidden="true">
         <defs>
           <clipPath id={clip}><rect x={X} y={Y} width={W} height={H} rx={R} /></clipPath>
-          <radialGradient id={clip + 'g'} cx="50%" cy="45%" r="70%"><stop offset="0" stopColor="#F7FAFC" /><stop offset="1" stopColor="#DCE7EF" /></radialGradient>
+          <radialGradient id={clip + 'g'} cx="50%" cy="45%" r="70%"><stop offset="0" stopColor="#EEF2F5" /><stop offset="1" stopColor="#E2E8ED" /></radialGradient>
         </defs>
-        <rect width={c.w} height={c.h} fill="#15222B" />
-        <rect x={X - 0.35} y={Y - 0.35} width={W + 0.7} height={H + 0.7} rx={R + 0.35} fill="#F2C230" />
+        <rect width={c.w} height={c.h} fill="#1B2228" />
+        <rect x={X - 0.3} y={Y - 0.3} width={W + 0.6} height={H + 0.6} rx={R + 0.3} fill="#4A5560" />
         <rect x={X} y={Y} width={W} height={H} rx={R} fill={`url(#${clip}g)`} />
         <g clipPath={`url(#${clip})`}>
           <rect x={X + 4 - 0.05} y={Y} width={0.1} height={H} fill={red} />
@@ -194,7 +194,7 @@ export function CourtLines({ sport }) {
           {midSpot.map(([x0, y0]) => <circle key={`m${x0}-${y0}`} cx={x0} cy={y0} r={0.3} fill={red} />)}
           {goal(1)}{goal(-1)}
         </g>
-        <rect x={X} y={Y} width={W} height={H} rx={R} fill="none" stroke="#9FB3C2" strokeWidth="0.25" />
+        <rect x={X} y={Y} width={W} height={H} rx={R} fill="none" stroke="#7F8B95" strokeWidth="0.15" />
       </svg>
     )
   }
@@ -202,8 +202,8 @@ export function CourtLines({ sport }) {
     const al = 1.37
     return (
       <svg viewBox={vb} className="court-svg" aria-hidden="true">
-        <rect width={c.w} height={c.h} fill="#3C7A5A" />
-        <rect x={X} y={Y} width={W} height={H} fill="#2D5F95" />
+        <rect width={c.w} height={c.h} fill="#3B5E50" />
+        <rect x={X} y={Y} width={W} height={H} fill="#30577E" />
         <rect x={X} y={Y} width={W} height={H} {...WL} />
         <line x1={X} y1={Y + al} x2={X + W} y2={Y + al} {...WL} /><line x1={X} y1={Y + H - al} x2={X + W} y2={Y + H - al} {...WL} />
         <line x1={X + W / 2 - 6.4} y1={Y + al} x2={X + W / 2 - 6.4} y2={Y + H - al} {...WL} /><line x1={X + W / 2 + 6.4} y1={Y + al} x2={X + W / 2 + 6.4} y2={Y + H - al} {...WL} />
@@ -216,8 +216,8 @@ export function CourtLines({ sport }) {
   if (sport === 'volleyball') {
     return (
       <svg viewBox={vb} className="court-svg" aria-hidden="true">
-        <rect width={c.w} height={c.h} fill="#2A6FA8" />
-        <rect x={X} y={Y} width={W} height={H} fill="#E08A3C" />
+        <rect width={c.w} height={c.h} fill="#2E5878" />
+        <rect x={X} y={Y} width={W} height={H} fill="#B9784A" />
         <rect x={X} y={Y} width={W} height={H} {...WL} />
         <line x1={X + 6} y1={Y} x2={X + 6} y2={Y + H} {...WL} /><line x1={X + 12} y1={Y} x2={X + 12} y2={Y + H} {...WL} />
         <line x1={X + W / 2} y1={Y - 1} x2={X + W / 2} y2={Y + H + 1} stroke="#fff" strokeWidth="3" vectorEffect="non-scaling-stroke" />
@@ -230,8 +230,8 @@ export function CourtLines({ sport }) {
     const ln = (x, col) => <line key={x + col} x1={x} y1={Y} x2={x} y2={Y + H} stroke={col} strokeWidth="1.8" vectorEffect="non-scaling-stroke" />
     return (
       <svg viewBox={vb} className="court-svg" aria-hidden="true">
-        <rect width={c.w} height={c.h} fill="#0F5E86" />
-        <rect x={X} y={Y} width={W} height={H} fill="#1C8CC0" />
+        <rect width={c.w} height={c.h} fill="#1A4C66" />
+        <rect x={X} y={Y} width={W} height={H} fill="#24708F" />
         {[2, 5, 6].map((d) => [ln(X + d, d === 2 ? '#E04848' : d === 5 ? '#F2C230' : '#4CC38A'), ln(X + W - d, d === 2 ? '#E04848' : d === 5 ? '#F2C230' : '#4CC38A')])}
         {ln(X + W / 2, '#ffffff')}
         <rect x={X} y={Y} width={W} height={H} stroke="#fff" strokeOpacity="0.85" fill="none" strokeWidth="1.6" vectorEffect="non-scaling-stroke" />
