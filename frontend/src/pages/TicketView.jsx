@@ -16,8 +16,8 @@ export default function TicketView() {
   const { data: tk, loading } = usePoll(() => api(`/tickets/${id}`), [id], 60000)
   if (loading && !tk) return <Skeleton h={120} n={3} />
   if (!tk) return <Empty title={t('error')} />
-  const shareUrl = `${window.location.origin}/t/${tk.id}`
   const lang = t.lang === 'ru' ? 'ru' : t.lang === 'sr-cyr' ? 'cyr' : 'sr'
+  const shareUrl = `${window.location.origin}/t/${tk.id}?lang=${lang}`
   const img = `/api/share/ticket/${tk.id}.png?s=${tk.status}&lang=${lang}&f=${fmt}`
   const text = `${t('shareText')} ${fmtOdds(tk.total_odds)}`
   // share the picture itself (Telegram, WhatsApp, Instagram stories...) where the phone allows it, otherwise the link
