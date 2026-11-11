@@ -838,6 +838,17 @@ function TennisCourt({ m, data, t }) {
 const SCORING = new Set(['score', 'point', 'game'])
 const HOOP_X = (1.575 / 28) * 100
 
+// Travel time from real distance (metres) and a speed per sport that reads well on a small screen:
+// passes / rally shots / shots on goal. Long passes take longer, short ones shorter.
+const SPEED = { football: [9, 16], hockey: [8, 14], basketball: [5.5, 8], waterpolo: [4.5, 8], tennis: [17, 24], volleyball: [8, 12] }
+const MIN_MS = { football: 1100, hockey: 800, basketball: 800, waterpolo: 1200, tennis: 1000, volleyball: 1200 }
+function travelMs(sport, a, b, kind = 'pass') {
+  const c = COURT[sport] || COURT.football
+  const dx = ((b.x - a.x) / 100) * c.fw, dy = ((b.y - a.y) / 100) * c.fh
+  const d = Math.hypot(dx, dy)
+  const [pass, shot] = SPEED[sport] || [9, 14]
+  return Math.max(kind === 'shot' ? MIN_MS[sport] * 0.7 : MIN_MS[sport], (d / (kind === 'shot' ? shot : pass)) * 1000)
+}
 function useArenaEngine(cfgNow) {
   const ballEl = useRef(null), shadowEl = useRef(null), trailEl = useRef(null), rippleEl = useRef(null), marksEl = useRef(null)
   const cfg = useRef(cfgNow); cfg.current = cfgNow
@@ -868,18 +879,19 @@ function useArenaEngine(cfgNow) {
         s.side = s.side === 0 ? 1 : 0
         s.shot += 1
         if (s.shot === 1 && c.sport === 'tennis') { // serve into the diagonal service box
-          return { to: { x: s.side === 1 ? rnd(54, 72) : rnd(28, 46), y: c.rcvY > 50 ? rnd(54, 84) : rnd(16, 46) }, dur: 820, hop: 1 }
+          const to = { x: s.side === 1 ? rnd(54, 72) : rnd(28, 46), y: c.rcvY > 50 ? rnd(54, 84) : rnd(16, 46) }
+          return { to, dur: travelMs('tennis', s.pos, to, 'shot'), hop: 1 }
         }
         const deep = c.sport === 'tennis' ? [70, 96] : [58, 92]
-        return { to: { x: s.side === 1 ? rnd(deep[0], deep[1]) : rnd(100 - deep[1], 100 - deep[0]), y: rnd(16, 84) }, dur: c.sport === 'tennis' ? 960 : rnd(1050, 1250), hop: 1 }
+        const to = { x: s.side === 1 ? rnd(deep[0], deep[1]) : rnd(100 - deep[1], 100 - deep[0]), y: rnd(16, 84) }
+        return { to, dur: travelMs(c.sport, s.pos, to), hop: 1 }
       }
       const a = c.att, k = c.intensity
-      const [d0, d1] = { football: [1300, 2000], hockey: [520, 820], basketball: [650, 1000], waterpolo: [1000, 1500] }[c.sport] || [900, 1400]
-      if (a === null || a === undefined) return { to: { x: rnd(36, 64), y: Math.max(18, Math.min(82, s.pos.y + rnd(-30, 30))) }, dur: rnd(d0, d1), hop: 0 }
+      if (a === null || a === undefined) { const to = { x: rnd(36, 64), y: Math.max(18, Math.min(82, s.pos.y + rnd(-30, 30))) }; return { to, dur: travelMs(c.sport, s.pos, to) * rnd(1, 1.25), hop: 0 } }
       const depth = c.sport === 'basketball' ? [62, 90] : [52 + 12 * k, 66 + 26 * k]
       let x = rnd(depth[0], depth[1]); if (a === 1) x = 100 - x
       const y = Math.max(18, Math.min(82, s.pos.y + rnd(-(c.sport === 'hockey' ? 46 : 34), c.sport === 'hockey' ? 46 : 34)))
-      return { to: { x, y }, dur: rnd(d0, d1) * (c.sport === 'football' ? 1 - 0.25 * k : 1), hop: c.sport === 'basketball' ? 0.25 : 0 }
+      return { to: { x, y }, dur: travelMs(c.sport, s.pos, { x, y }) * rnd(1, 1.25) * (c.sport === 'football' ? 1 - 0.15 * k : 1), hop: c.sport === 'basketball' ? 0.25 : 0 }
     }
     const serveFrom = (side) => { // toss at the server, behind the baseline
       const c = cfg.current
@@ -915,13 +927,13 @@ function useArenaEngine(cfgNow) {
         s.strike = null; s.stopped = true; ripple(s.to); st.cb && st.cb(); return
       }
       if (st) { st.launched = true; seg(st.spot, st.dur, st.hop); return }
-      if (s.poke) { const pk = s.poke; s.poke = null; seg(pk, 600, cfg.current.sport === 'hockey' ? 0 : 0.2); return }
+      if (s.poke) { const pk = s.poke; s.poke = null; seg(pk, travelMs(cfg.current.sport, s.pos, pk, 'shot'), cfg.current.sport === 'hockey' ? 0 : 0.2); return }
       const n = next(); seg(n.to, n.dur, n.hop)
     }
     api.current = {
       // finish the play with a deciding ball to `spot`; field sports cut in right away, net sports finish the current shot first
       strike(spot, hop, cb) {
-        s.strike = { spot, hop, dur: hop > 0.6 ? 760 : 620, cb, launched: false }
+        s.strike = { spot, hop, dur: travelMs(cfg.current.sport, s.pos, spot, 'shot'), cb, launched: false }
         if (!net()) { s.strike.launched = true; seg(spot, s.strike.dur, hop) }
       },
       poke(spot) { if (!s.strike) s.poke = spot },
