@@ -1359,13 +1359,15 @@ img { display: block; max-width: 100%; }
 @media (max-width: 760px) { .g-post { grid-template-columns: 1fr; } .g-post img { width: 100%; height: auto; aspect-ratio: 1; } .g-addg { grid-template-columns: 1fr; } .g-times { grid-template-columns: 1fr; } }
 .adm-tile .tile-h .small, .adm-tile .tile-h .g-on { white-space: nowrap; flex: none; }
 
-/* live tracker: real balls (same renders as the rest of the site) */
-.eng-ball { width: 17px !important; height: 17px !important; background: url(/balls/football.webp) center / contain no-repeat !important; box-shadow: none !important; border-radius: 0 !important; filter: drop-shadow(0 2px 2px rgba(0,0,0,.45)); }
-.eng-ball.ball-basketball { background-image: url(/balls/basketball.webp) !important; }
-.eng-ball.ball-tennis { background-image: url(/balls/tennis.webp) !important; width: 13px !important; height: 13px !important; }
-.eng-ball.ball-volleyball { background-image: url(/balls/volleyball.webp) !important; }
-.eng-ball.ball-waterpolo { background-image: url(/balls/waterpolo.webp) !important; }
-.eng-ball.ball-hockey { background-image: url(/balls/hockey.webp) !important; width: 16px !important; height: 16px !important; }
+/* live tracker: real balls (same renders as the rest of the site).
+   Full "background" shorthand per sport, so older per-sport colour rules can't leave a square of colour behind the picture */
+.eng-ball { width: 17px !important; height: 17px !important; border-radius: 50% !important; box-shadow: none !important; filter: drop-shadow(0 2px 2px rgba(0,0,0,.45)); background: transparent url(/balls/football.webp) center / contain no-repeat !important; }
+.eng-ball.ball-football { background: transparent url(/balls/football.webp) center / contain no-repeat !important; }
+.eng-ball.ball-basketball { background: transparent url(/balls/basketball.webp) center / contain no-repeat !important; }
+.eng-ball.ball-tennis { background: transparent url(/balls/tennis.webp) center / contain no-repeat !important; width: 13px !important; height: 13px !important; }
+.eng-ball.ball-volleyball { background: transparent url(/balls/volleyball.webp) center / contain no-repeat !important; }
+.eng-ball.ball-waterpolo { background: transparent url(/balls/waterpolo.webp) center / contain no-repeat !important; }
+.eng-ball.ball-hockey { background: transparent url(/balls/hockey.webp) center / contain no-repeat !important; width: 16px !important; height: 16px !important; border-radius: 0 !important; }
 /* attack zone (bookmaker style) + callout */
 .atk-zone { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; transition: opacity .5s; animation: fadeIn .5s; }
 .atk-zone.s1 { transform: scaleX(-1); }
