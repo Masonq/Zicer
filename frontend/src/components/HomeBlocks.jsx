@@ -33,7 +33,8 @@ export function HotMatches({ list = [] }) {
   )
 }
 
-function Line({ series }) {
+function Line({ series = [] }) {
+  if (series.length < 2) return <svg className="tr-line" />
   const max = Math.max(...series), min = Math.min(...series), w = 64, h = 26
   const pts = series.map((v, i) => `${(i / Math.max(1, series.length - 1)) * w},${max === min ? h / 2 : 3 + ((v - min) / (max - min)) * (h - 6)}`).join(' ')
   return <svg className="tr-line" viewBox={`0 0 ${w} ${h}`}><polyline points={pts} fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" /></svg>
@@ -42,6 +43,7 @@ function Line({ series }) {
 // Numbered list of the biggest line moves of the day, with a small chart of the odds
 export function LineTrends({ list = [] }) {
   const t = useT()
+  list = list.filter((x) => x && x.match && Array.isArray(x.series))
   if (list.length < 2) return null
   return (
     <section className="section">

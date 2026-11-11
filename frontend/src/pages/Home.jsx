@@ -78,7 +78,7 @@ export default function Home() {
       {switcher}
       <HotMatches list={d.hot || []} />
       <HighlightsStrip list={d.highlights || []} />
-      <LineTrends list={d.trends || []} />
+      <LineTrends list={d.line_moves || []} />
 
       {user && d.my_club.length > 0 && (
         <section className="section">
