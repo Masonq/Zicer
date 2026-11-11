@@ -1,4 +1,4 @@
-# Zicer deploy 2026-11-11 14:28 UTC
+# Zicer deploy 2026-11-11 14:40 UTC
 
 Итог: УСПЕХ
 
@@ -6,7 +6,7 @@
 
 Админ: ADMIN maxsim CZJXiYjPs500
 
-Коммит: 301d475 Новые виды спорта: гандбол и настольный теннис (MaxBet + лайв 22Bet), футзал и киберспорт (CS2, Dota 2, LoL, Valorant — линия и лайв 22Bet); площадки гандбола и футзала по правилам IHF/FIFA, стол для настольного тенниса, киберспорт без поля; иконки, цвета, мячи и геймпад; паузы и скорости по видам; проверка MMA/бокса в отчёте
+Коммит: 3e55bd1 Лайв-лента: новые виды спорта опрашиваются раз в 3 цикла (лента снова отвечает); футзал/киберспорт закрываются по исчезновению из лайва; линия футзала и киберспорта загружается сразу при запуске
 
 ```
 
@@ -35,12 +35,12 @@ OK: таймер автообновления включён
 OK: админ есть
 
 === nginx ===
-2026/11/11 17:28:20 [warn] 2917357#2917357: protocol options redefined for 0.0.0.0:443 in /etc/nginx/sites-enabled/plonk:93
-2026/11/11 17:28:20 [warn] 2917357#2917357: protocol options redefined for 0.0.0.0:443 in /etc/nginx/sites-enabled/plunkly:6
-2026/11/11 17:28:20 [warn] 2917357#2917357: protocol options redefined for 0.0.0.0:443 in /etc/nginx/sites-enabled/puskica.conf:4
-2026/11/11 17:28:20 [warn] 2917357#2917357: protocol options redefined for 0.0.0.0:443 in /etc/nginx/sites-enabled/severny-kubok:12
-2026/11/11 17:28:20 [warn] 2917357#2917357: conflicting server name "bookstats.89-208-113-147.sslip.io" on 0.0.0.0:80, ignored
-2026/11/11 17:28:20 [warn] 2917357#2917357: conflicting server name "bookstats.89-208-113-147.sslip.io" on 0.0.0.0:443, ignored
+2026/11/11 17:39:51 [warn] 2932701#2932701: protocol options redefined for 0.0.0.0:443 in /etc/nginx/sites-enabled/plonk:93
+2026/11/11 17:39:51 [warn] 2932701#2932701: protocol options redefined for 0.0.0.0:443 in /etc/nginx/sites-enabled/plunkly:6
+2026/11/11 17:39:51 [warn] 2932701#2932701: protocol options redefined for 0.0.0.0:443 in /etc/nginx/sites-enabled/puskica.conf:4
+2026/11/11 17:39:51 [warn] 2932701#2932701: protocol options redefined for 0.0.0.0:443 in /etc/nginx/sites-enabled/severny-kubok:12
+2026/11/11 17:39:51 [warn] 2932701#2932701: conflicting server name "bookstats.89-208-113-147.sslip.io" on 0.0.0.0:80, ignored
+2026/11/11 17:39:51 [warn] 2932701#2932701: conflicting server name "bookstats.89-208-113-147.sslip.io" on 0.0.0.0:443, ignored
 nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
 nginx: configuration file /etc/nginx/nginx.conf test is successful
 OK: nginx перезагружен
@@ -58,67 +58,67 @@ https /mecevi -> 200
 index cache: cache-control: no-cache
 cache-control: no-cache, no-store, must-revalidate
 matches: {'hockey': 52, 'volleyball': 33, 'tabletennis': 142, 'handball': 44, 'basketball': 707, 'waterpolo': 7, 'tennis': 23, 'football': 1100}
-tg_poll | 2026-11-11 14:28:06.190519 | no token | 
-football_live | 2026-11-11 14:28:11.291306 | live upserted 0 | 
-basketball | 2026-11-11 14:28:17.306966 | basketball upserted 414 | 
-basketball_week | 2026-11-11 14:28:18.092514 | nba week upserted 48 | 
-other_sports | 2026-11-11 14:28:19.227635 | other sports new 186 | 
-backfill | 2026-11-11 14:28:19.234508 | already | 
-logos | 2026-11-11 14:28:19.320708 | logos: nothing to do | 
-highlights | 2026-11-11 14:28:20.110547 | highlights +0 | 
-odds | 2026-11-11 14:28:21.159202 | odds matched 72 | 
-settle | 2026-11-11 14:28:21.185028 | settled 0 | 
-xfeed | 2026-11-11 14:28:37.593169 | xfeed games 212, linked 0, updated 3 | 
-live | 2026-11-11 14:28:42.982878 | live updated 3 | 
-names | 2026-11-11 14:25:26.972665 | names 0 | 
-tg_reminders | 2026-11-11 14:25:27.401337 | no token | 
-maxbet_results | 2026-11-11 14:26:52.078240 | no pending | 
-other_results | 2026-11-11 14:26:55.054218 | other results 3 | 
-social | 2026-11-11 14:27:29.108618 | social nothing due (test) | 
-finish_stale | 2026-11-11 14:27:37.973489 | finished 0 | 
+tg_reminders | 2026-11-11 14:34:20.899458 | no token | 
+xfeed | 2026-11-11 14:37:02.531811 | xfeed empty | 
+finish_stale | 2026-11-11 14:37:02.548011 | finished 0 | 
+social | 2026-11-11 14:37:02.560604 | social nothing due (test) | 
+maxbet_results | 2026-11-11 14:37:04.531985 | no pending | 
+other_results | 2026-11-11 14:37:08.652032 | other results 3 | 
+odds | 2026-11-11 14:37:09.514556 | odds matched 72 | 
+settle | 2026-11-11 14:37:09.525501 | settled 0 | 
+tg_poll | 2026-11-11 14:37:09.528447 | no token | 
+football_live | 2026-11-11 14:37:14.599744 | live upserted 0 | 
+live | 2026-11-11 14:37:14.898706 | live updated 3 | 
 trends | 2026-11-10 23:36:09.974574 | trends 11 | 
+names | 2026-11-11 14:37:26.184503 | names 103 | 
 analysis | 2026-11-10 23:36:10.199323 | analysis 27 | 
-football | 2026-11-11 14:28:15.048689 | football upserted 96 |  "/opt/zicer/venv/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
+basketball | 2026-11-11 14:39:46.938963 | basketball upserted 414 | 
+basketball_week | 2026-11-11 14:39:47.951116 | nba week upserted 48 | 
+other_sports | 2026-11-11 14:39:48.704016 | other sports new 0 | 
+backfill | 2026-11-11 14:39:48.708745 | already | 
+logos | 2026-11-11 14:39:48.792571 | logos: nothing to do | 
+highlights | 2026-11-11 14:39:49.282483 | highlights +0 | 
+football | 2026-11-11 14:39:44.797663 | football upserted 96 |  "/opt/zicer/venv/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
 --- worker log ---
-Nov 11 17:28:19 impressed-jade.ptr.network python[2917061]: 2026-11-11 17:28:19,671 INFO HTTP Request: GET https://www.youtube.com/feeds/videos.xml?channel_id=UCTv-XvfzLX3i4IGWAm4sbmA "HTTP/1.1 200 OK"
-Nov 11 17:28:19 impressed-jade.ptr.network python[2917061]: 2026-11-11 17:28:19,740 INFO HTTP Request: GET https://www.youtube.com/feeds/videos.xml?channel_id=UCxfPjORdISQSn2fV8tcVmgA "HTTP/1.1 200 OK"
-Nov 11 17:28:19 impressed-jade.ptr.network python[2917061]: 2026-11-11 17:28:19,805 INFO HTTP Request: GET https://www.youtube.com/feeds/videos.xml?channel_id=UCQsH5XtIc9hONE1BQjucM0g "HTTP/1.1 200 OK"
-Nov 11 17:28:19 impressed-jade.ptr.network python[2917061]: 2026-11-11 17:28:19,902 INFO HTTP Request: GET https://www.youtube.com/feeds/videos.xml?channel_id=UC6UL29enLNe4mqwTfAyeNuw "HTTP/1.1 200 OK"
-Nov 11 17:28:20 impressed-jade.ptr.network python[2917061]: 2026-11-11 17:28:20,025 INFO HTTP Request: GET https://www.youtube.com/feeds/videos.xml?channel_id=UCpryVRk_VDudG8SHXgWcG0w "HTTP/1.1 200 OK"
-Nov 11 17:28:20 impressed-jade.ptr.network python[2917061]: 2026-11-11 17:28:20,093 INFO HTTP Request: GET https://www.youtube.com/feeds/videos.xml?channel_id=UCyGa1YEx9ST66rYrJTGIKOw "HTTP/1.1 200 OK"
-Nov 11 17:28:20 impressed-jade.ptr.network python[2917061]: 2026-11-11 17:28:20,257 INFO HTTP Request: GET https://www.maxbet.rs/restapi/offer/sr/sport/S/mob?annex=3&desktopVersion=2.36.3.9&locale=sr "HTTP/1.1 200 OK"
-Nov 11 17:28:20 impressed-jade.ptr.network python[2917061]: 2026-11-11 17:28:20,471 INFO HTTP Request: GET https://www.maxbet.rs/restapi/offer/sr/ttg_lang?annex=3&desktopVersion=2.36.3.9&locale=sr "HTTP/1.1 200 OK"
-Nov 11 17:28:21 impressed-jade.ptr.network python[2917061]: 2026-11-11 17:28:21,011 INFO HTTP Request: GET https://www.maxbet.rs/restapi/offer/sr/sport/B/mob?annex=3&desktopVersion=2.36.3.9&locale=sr "HTTP/1.1 200 OK"
-Nov 11 17:28:31 impressed-jade.ptr.network python[2917061]: 2026-11-11 17:28:31,286 INFO HTTP Request: GET https://22bet.com/LiveFeed/Get1x2_VZip?sports=1&count=300&lng=en&mode=4&country=1&getEmpty=true "HTTP/1.1 200 OK"
-Nov 11 17:28:31 impressed-jade.ptr.network python[2917061]: 2026-11-11 17:28:31,913 INFO HTTP Request: GET https://22bet.com/LiveFeed/Get1x2_VZip?sports=2&count=300&lng=en&mode=4&country=1&getEmpty=true "HTTP/1.1 200 OK"
-Nov 11 17:28:32 impressed-jade.ptr.network python[2917061]: 2026-11-11 17:28:32,543 INFO HTTP Request: GET https://22bet.com/LiveFeed/Get1x2_VZip?sports=3&count=300&lng=en&mode=4&country=1&getEmpty=true "HTTP/1.1 200 OK"
-Nov 11 17:28:33 impressed-jade.ptr.network python[2917061]: 2026-11-11 17:28:33,187 INFO HTTP Request: GET https://22bet.com/LiveFeed/Get1x2_VZip?sports=4&count=300&lng=en&mode=4&country=1&getEmpty=true "HTTP/1.1 200 OK"
-Nov 11 17:28:33 impressed-jade.ptr.network python[2917061]: 2026-11-11 17:28:33,811 INFO HTTP Request: GET https://22bet.com/LiveFeed/Get1x2_VZip?sports=6&count=300&lng=en&mode=4&country=1&getEmpty=true "HTTP/1.1 200 OK"
-Nov 11 17:28:34 impressed-jade.ptr.network python[2917061]: 2026-11-11 17:28:34,430 INFO HTTP Request: GET https://22bet.com/LiveFeed/Get1x2_VZip?sports=17&count=300&lng=en&mode=4&country=1&getEmpty=true "HTTP/1.1 200 OK"
-Nov 11 17:28:35 impressed-jade.ptr.network python[2917061]: 2026-11-11 17:28:35,053 INFO HTTP Request: GET https://22bet.com/LiveFeed/Get1x2_VZip?sports=8&count=300&lng=en&mode=4&country=1&getEmpty=true "HTTP/1.1 200 OK"
-Nov 11 17:28:35 impressed-jade.ptr.network python[2917061]: 2026-11-11 17:28:35,696 INFO HTTP Request: GET https://22bet.com/LiveFeed/Get1x2_VZip?sports=10&count=300&lng=en&mode=4&country=1&getEmpty=true "HTTP/1.1 200 OK"
-Nov 11 17:28:36 impressed-jade.ptr.network python[2917061]: 2026-11-11 17:28:36,321 INFO HTTP Request: GET https://22bet.com/LiveFeed/Get1x2_VZip?sports=14&count=300&lng=en&mode=4&country=1&getEmpty=true "HTTP/1.1 200 OK"
-Nov 11 17:28:36 impressed-jade.ptr.network python[2917061]: 2026-11-11 17:28:36,963 INFO HTTP Request: GET https://22bet.com/LiveFeed/Get1x2_VZip?sports=40&count=300&lng=en&mode=4&country=1&getEmpty=true "HTTP/1.1 200 OK"
-Nov 11 17:28:42 impressed-jade.ptr.network python[2917061]: 2026-11-11 17:28:42,861 INFO HTTP Request: GET https://www.maxbet.rs/live/init/sr "HTTP/1.1 200 OK"
-Nov 11 17:28:43 impressed-jade.ptr.network python[2917061]: 2026-11-11 17:28:43,322 INFO HTTP Request: GET https://22bet.com/LiveFeed/Get1x2_VZip?sports=1&count=300&lng=en&mode=4&country=1&getEmpty=true "HTTP/1.1 200 OK"
-Nov 11 17:28:43 impressed-jade.ptr.network python[2917061]: 2026-11-11 17:28:43,949 INFO HTTP Request: GET https://22bet.com/LiveFeed/Get1x2_VZip?sports=2&count=300&lng=en&mode=4&country=1&getEmpty=true "HTTP/1.1 200 OK"
-Nov 11 17:28:44 impressed-jade.ptr.network python[2917061]: 2026-11-11 17:28:44,587 INFO HTTP Request: GET https://22bet.com/LiveFeed/Get1x2_VZip?sports=3&count=300&lng=en&mode=4&country=1&getEmpty=true "HTTP/1.1 200 OK"
-Nov 11 17:28:45 impressed-jade.ptr.network python[2917061]: 2026-11-11 17:28:45,602 INFO HTTP Request: GET https://22bet.com/LiveFeed/Get1x2_VZip?sports=4&count=300&lng=en&mode=4&country=1&getEmpty=true "HTTP/1.1 200 OK"
-Nov 11 17:28:46 impressed-jade.ptr.network python[2917061]: 2026-11-11 17:28:46,235 INFO HTTP Request: GET https://22bet.com/LiveFeed/Get1x2_VZip?sports=6&count=300&lng=en&mode=4&country=1&getEmpty=true "HTTP/1.1 200 OK"
+Nov 11 17:40:14 impressed-jade.ptr.network python[2932373]:   File "/opt/zicer/venv/lib/python3.12/site-packages/httpx/_client.py", line 1053, in get
+Nov 11 17:40:14 impressed-jade.ptr.network python[2932373]:     return self.request(
+Nov 11 17:40:14 impressed-jade.ptr.network python[2932373]:            ^^^^^^^^^^^^^
+Nov 11 17:40:14 impressed-jade.ptr.network python[2932373]:   File "/opt/zicer/venv/lib/python3.12/site-packages/httpx/_client.py", line 825, in request
+Nov 11 17:40:14 impressed-jade.ptr.network python[2932373]:     return self.send(request, auth=auth, follow_redirects=follow_redirects)
+Nov 11 17:40:14 impressed-jade.ptr.network python[2932373]:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Nov 11 17:40:14 impressed-jade.ptr.network python[2932373]:   File "/opt/zicer/venv/lib/python3.12/site-packages/httpx/_client.py", line 914, in send
+Nov 11 17:40:14 impressed-jade.ptr.network python[2932373]:     response = self._send_handling_auth(
+Nov 11 17:40:14 impressed-jade.ptr.network python[2932373]:                ^^^^^^^^^^^^^^^^^^^^^^^^^
+Nov 11 17:40:14 impressed-jade.ptr.network python[2932373]:   File "/opt/zicer/venv/lib/python3.12/site-packages/httpx/_client.py", line 942, in _send_handling_auth
+Nov 11 17:40:14 impressed-jade.ptr.network python[2932373]:     response = self._send_handling_redirects(
+Nov 11 17:40:14 impressed-jade.ptr.network python[2932373]:                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Nov 11 17:40:14 impressed-jade.ptr.network python[2932373]:   File "/opt/zicer/venv/lib/python3.12/site-packages/httpx/_client.py", line 979, in _send_handling_redirects
+Nov 11 17:40:14 impressed-jade.ptr.network python[2932373]:     response = self._send_single_request(request)
+Nov 11 17:40:14 impressed-jade.ptr.network python[2932373]:                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Nov 11 17:40:14 impressed-jade.ptr.network python[2932373]:   File "/opt/zicer/venv/lib/python3.12/site-packages/httpx/_client.py", line 1014, in _send_single_request
+Nov 11 17:40:14 impressed-jade.ptr.network python[2932373]:     response = transport.handle_request(request)
+Nov 11 17:40:14 impressed-jade.ptr.network python[2932373]:                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Nov 11 17:40:14 impressed-jade.ptr.network python[2932373]:   File "/opt/zicer/venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 249, in handle_request
+Nov 11 17:40:14 impressed-jade.ptr.network python[2932373]:     with map_httpcore_exceptions():
+Nov 11 17:40:14 impressed-jade.ptr.network python[2932373]:   File "/usr/lib/python3.12/contextlib.py", line 158, in __exit__
+Nov 11 17:40:14 impressed-jade.ptr.network python[2932373]:     self.gen.throw(value)
+Nov 11 17:40:14 impressed-jade.ptr.network python[2932373]:   File "/opt/zicer/venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 118, in map_httpcore_exceptions
+Nov 11 17:40:14 impressed-jade.ptr.network python[2932373]:     raise mapped_exc(message) from exc
+Nov 11 17:40:14 impressed-jade.ptr.network python[2932373]: httpx.ConnectTimeout: _ssl.c:983: The handshake operation timed out
 --- api log ---
-Nov 11 17:28:12 impressed-jade.ptr.network systemd[1]: Started zicer-api.service - Zicer API.
-Nov 11 17:28:12 impressed-jade.ptr.network uvicorn[2917065]: INFO:     Uvicorn running on http://127.0.0.1:8790 (Press CTRL+C to quit)
-Nov 11 17:28:12 impressed-jade.ptr.network uvicorn[2917065]: INFO:     Started parent process [2917065]
-Nov 11 17:28:14 impressed-jade.ptr.network uvicorn[2917068]: INFO:     Started server process [2917068]
-Nov 11 17:28:14 impressed-jade.ptr.network uvicorn[2917068]: INFO:     Waiting for application startup.
-Nov 11 17:28:14 impressed-jade.ptr.network uvicorn[2917068]: INFO:     Application startup complete.
-Nov 11 17:28:14 impressed-jade.ptr.network uvicorn[2917069]: INFO:     Started server process [2917069]
-Nov 11 17:28:14 impressed-jade.ptr.network uvicorn[2917069]: INFO:     Waiting for application startup.
-Nov 11 17:28:14 impressed-jade.ptr.network uvicorn[2917069]: INFO:     Application startup complete.
-Nov 11 17:28:25 impressed-jade.ptr.network uvicorn[2917069]: INFO:     109.92.227.130:0 - "GET /api/home?tz=180&sport=all HTTP/1.0" 200 OK
-Nov 11 17:28:31 impressed-jade.ptr.network uvicorn[2917068]: INFO:     109.92.227.130:0 - "GET /api/me/watch?ids= HTTP/1.0" 200 OK
-Nov 11 17:28:44 impressed-jade.ptr.network uvicorn[2917069]: INFO:     127.0.0.1:44986 - "GET /api/health HTTP/1.1" 200 OK
-Nov 11 17:28:44 impressed-jade.ptr.network uvicorn[2917069]: INFO:     89.208.113.147:0 - "GET /api/health HTTP/1.0" 200 OK
-Nov 11 17:28:45 impressed-jade.ptr.network uvicorn[2917069]: INFO:     89.208.113.147:0 - "GET /api/health HTTP/1.0" 200 OK
-Nov 11 17:28:46 impressed-jade.ptr.network uvicorn[2917068]: INFO:     89.208.113.147:0 - "GET /api/home HTTP/1.0" 200 OK
+Nov 11 17:39:43 impressed-jade.ptr.network uvicorn[2932395]: INFO:     Started parent process [2932395]
+Nov 11 17:39:44 impressed-jade.ptr.network uvicorn[2932398]: INFO:     Started server process [2932398]
+Nov 11 17:39:44 impressed-jade.ptr.network uvicorn[2932398]: INFO:     Waiting for application startup.
+Nov 11 17:39:45 impressed-jade.ptr.network uvicorn[2932399]: INFO:     Started server process [2932399]
+Nov 11 17:39:45 impressed-jade.ptr.network uvicorn[2932399]: INFO:     Waiting for application startup.
+Nov 11 17:39:45 impressed-jade.ptr.network uvicorn[2932398]: INFO:     Application startup complete.
+Nov 11 17:39:45 impressed-jade.ptr.network uvicorn[2932399]: INFO:     Application startup complete.
+Nov 11 17:39:46 impressed-jade.ptr.network uvicorn[2932398]: INFO:     109.92.227.130:0 - "GET /api/me/watch?ids= HTTP/1.0" 200 OK
+Nov 11 17:39:51 impressed-jade.ptr.network uvicorn[2932399]: INFO:     109.92.227.130:0 - "GET /api/home?tz=180&sport=all HTTP/1.0" 200 OK
+Nov 11 17:40:06 impressed-jade.ptr.network uvicorn[2932398]: INFO:     109.92.227.130:0 - "GET /api/sports?tz=180 HTTP/1.0" 200 OK
+Nov 11 17:40:06 impressed-jade.ptr.network uvicorn[2932399]: INFO:     109.92.227.130:0 - "GET /api/me/watch?ids= HTTP/1.0" 200 OK
+Nov 11 17:40:15 impressed-jade.ptr.network uvicorn[2932399]: INFO:     127.0.0.1:54202 - "GET /api/health HTTP/1.1" 200 OK
+Nov 11 17:40:15 impressed-jade.ptr.network uvicorn[2932398]: INFO:     89.208.113.147:0 - "GET /api/health HTTP/1.0" 200 OK
+Nov 11 17:40:15 impressed-jade.ptr.network uvicorn[2932399]: INFO:     89.208.113.147:0 - "GET /api/health HTTP/1.0" 200 OK
+Nov 11 17:40:16 impressed-jade.ptr.network uvicorn[2932399]: INFO:     89.208.113.147:0 - "GET /api/home HTTP/1.0" 200 OK
 ```
