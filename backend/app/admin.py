@@ -146,7 +146,7 @@ def feature(mid: int, db: Session = Depends(get_db)):
 
 
 JOBS = {"football": ingest.sync_football, "basketball": ingest.sync_basketball, "odds": ingest.sync_odds,
-        "settle": ingest.settle, "trends": ingest.build_trends, "analysis": ingest.build_analysis, "logos": __import__("app.logos", fromlist=["x"]).sync_logos, "highlights": __import__("app.highlights", fromlist=["x"]).sync_highlights, "other_sports": ingest.sync_other_sports}
+        "settle": ingest.settle, "trends": ingest.build_trends, "analysis": ingest.build_analysis, "logos": __import__("app.logos", fromlist=["x"]).sync_logos, "highlights": __import__("app.highlights", fromlist=["x"]).sync_highlights, "other_sports": ingest.sync_other_sports, "x22_line": ingest.sync_x22_line}
 
 
 def _run(name):

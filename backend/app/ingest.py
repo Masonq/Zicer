@@ -275,13 +275,19 @@ X22_URL = "https://22bet.com/LineFeed/Get1x2_VZip?sports={s}&count=200&lng=en&tf
 def sync_x22_line(db: Session) -> str:
     """Futsal and esports: fixtures and 1-X-2 prices from the 22Bet line (MaxBet doesn't offer them)."""
     n = 0
+    fetched = {}
     with httpx.Client(headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"}, timeout=25) as c:
         for sport, sid in X22_LINE.items():
-            try:
-                games = xfeed._get(c, X22_URL.replace("https://22bet.com", "").format(s=sid)).json().get("Value") or []
-            except Exception:  # noqa
-                log.exception("x22 line %s", sport)
-                continue
+            games = []
+            # the prematch feed answers only with the brand's partner/group ids on some mirrors: try the known variants
+            for extra in ("&partner=151", "&partner=151&gr=151", "", "&gr=151"):
+                try:
+                    games = xfeed._get(c, X22_URL.replace("https://22bet.com", "").format(s=sid) + extra).json().get("Value") or []
+                except Exception:  # noqa
+                    games = []
+                if games:
+                    break
+            fetched[sport] = len(games)
             for g in games:
                 gid, h, a, lname, st = g.get("I"), g.get("O1"), g.get("O2"), (g.get("L") or "").strip(), g.get("S")
                 if not (gid and h and a and lname and st):
@@ -316,7 +322,7 @@ def sync_x22_line(db: Session) -> str:
                 if odds:
                     m.odds = {**(m.odds or {}), "22bet": odds}
             db.commit()
-    return f"x22 line new {n}"
+    return f"x22 line new {n}, fetched {fetched}"
 
 
 def sync_other_results(db: Session) -> str:
