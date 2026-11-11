@@ -238,3 +238,4 @@ class Highlight(Base):
     title: Mapped[str] = mapped_column(String(300), default="")
     channel: Mapped[str] = mapped_column(String(80), default="")
     published: Mapped[datetime] = mapped_column(DateTime, default=now)
+    status: Mapped[str] = mapped_column(String(8), default="")  # "" not checked yet, "ok" plays in Serbia, "blocked"

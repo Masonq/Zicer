@@ -38,6 +38,7 @@ MIGRATIONS = [
     "CREATE INDEX IF NOT EXISTS ix_matches_mb_id ON matches (mb_id)",
     "ALTER TABLE matches ADD COLUMN IF NOT EXISTS x_id INTEGER",
     "CREATE INDEX IF NOT EXISTS ix_matches_x_id ON matches (x_id)",
+    "ALTER TABLE highlights ADD COLUMN IF NOT EXISTS status VARCHAR(8) DEFAULT ''",
 ]
 
 

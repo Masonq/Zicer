@@ -93,9 +93,9 @@ MAIN = re.compile(r"highlight|resumen|обзор|sintesi|recap|résumé|resume|a
 
 
 def out(h: Highlight) -> dict:
-    return {"video_id": h.video_id, "title": h.title, "channel": h.channel, "main": bool(MAIN.search(h.title or ""))}
+    return {"video_id": h.video_id, "title": h.title, "channel": h.channel, "main": bool(MAIN.search(h.title or "")), "status": h.status or ""}
 
 
 def for_match(db: Session, match_id: int) -> list[dict]:
-    hs = db.scalars(select(Highlight).where(Highlight.match_id == match_id)).all()
+    hs = db.scalars(select(Highlight).where(Highlight.match_id == match_id, Highlight.status != "blocked")).all()
     return sorted((out(h) for h in hs), key=lambda x: not x["main"])

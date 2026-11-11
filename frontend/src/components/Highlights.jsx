@@ -1,8 +1,60 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { api } from '../api'
 import { Link } from 'react-router-dom'
 import { Play } from 'lucide-react'
 import { useT } from '../i18n'
 import { Crest } from './ui'
+
+// ---- availability check: leagues block some videos in some countries (e.g. NBA in Serbia).
+// A hidden YouTube player tries each unchecked video once; the result is stored on the server for everyone.
+const verdict = {}
+let ytReady = null
+function loadYT() {
+  if (ytReady) return ytReady
+  ytReady = new Promise((res) => {
+    if (window.YT && window.YT.Player) return res(window.YT)
+    const prev = window.onYouTubeIframeAPIReady
+    window.onYouTubeIframeAPIReady = () => { prev && prev(); res(window.YT) }
+    const s = document.createElement('script'); s.src = 'https://www.youtube.com/iframe_api'; s.async = true; document.head.appendChild(s)
+  })
+  return ytReady
+}
+function probe(videoId) {
+  if (verdict[videoId] !== undefined) return Promise.resolve(verdict[videoId])
+  return loadYT().then((YT) => new Promise((res) => {
+    const host = document.createElement('div')
+    host.style.cssText = 'position:fixed;left:-9999px;top:0;width:200px;height:120px;opacity:0;pointer-events:none'
+    const inner = document.createElement('div'); host.appendChild(inner); document.body.appendChild(host)
+    let done = false
+    const finish = (ok) => {
+      if (done) return; done = true
+      verdict[videoId] = ok
+      api(`/highlights/${videoId}/check`, { method: 'POST', body: { ok } }).catch(() => {})
+      try { player.destroy() } catch {}
+      host.remove(); res(ok)
+    }
+    const player = new YT.Player(inner, {
+      videoId, host: 'https://www.youtube-nocookie.com', playerVars: { playsinline: 1, mute: 1 },
+      events: {
+        onReady: () => { try { player.mute(); player.playVideo() } catch {} },
+        onStateChange: (e) => { if (e.data === 1 || e.data === 3) finish(true) }, // playing / buffering = allowed here
+        onError: () => finish(false), // 100 removed, 101/150 blocked here or embedding disabled
+      },
+    })
+    setTimeout(() => finish(true), 9000) // no answer: don't hide the video
+  }))
+}
+// Keeps only videos that play in the visitor's country; unchecked ones are checked first
+export function usePlayable(list) {
+  const [, force] = useState(0)
+  const key = list.map((v) => v.video_id).join(',')
+  useEffect(() => {
+    let alive = true
+    list.filter((v) => !v.status && verdict[v.video_id] === undefined).slice(0, 6).forEach((v) => probe(v.video_id).then(() => alive && force((n) => n + 1)))
+    return () => { alive = false }
+  }, [key]) // eslint-disable-line react-hooks/exhaustive-deps
+  return list.filter((v) => (v.status === 'ok' && verdict[v.video_id] !== false) || verdict[v.video_id] === true)
+}
 
 // Lightweight YouTube embed: a thumbnail until the user presses play (fast pages, no tracking before play)
 export function VideoPlayer({ v, autoplay = false }) {
@@ -23,9 +75,11 @@ export function VideoPlayer({ v, autoplay = false }) {
   )
 }
 
-export function MatchHighlights({ list = [] }) {
+export function MatchHighlights({ list: all = [] }) {
   const t = useT()
-  const [cur, setCur] = useState(0)
+  const list = usePlayable(all)
+  const [cur0, setCur] = useState(0)
+  const cur = Math.min(cur0, Math.max(0, list.length - 1))
   if (!list.length) return null
   return (
     <section className="section" id="highlights">
@@ -45,8 +99,9 @@ export function MatchHighlights({ list = [] }) {
   )
 }
 
-export function HighlightsStrip({ list = [] }) {
+export function HighlightsStrip({ list: all = [] }) {
   const t = useT()
+  const list = usePlayable(all)
   if (!list.length) return null
   return (
     <section className="section">

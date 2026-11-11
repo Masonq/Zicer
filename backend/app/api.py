@@ -511,7 +511,7 @@ def sports(tz: int = 60, db: Session = Depends(get_db)):
 def _latest_highlights(db, sport):
     from .models import Highlight
     from .highlights import out as h_out
-    q = select(Highlight, Match).join(Match, Match.id == Highlight.match_id).order_by(Highlight.published.desc()).limit(40)
+    q = select(Highlight, Match).join(Match, Match.id == Highlight.match_id).where(Highlight.status != "blocked").order_by(Highlight.published.desc()).limit(60)
     if sport and sport != "all":
         q = q.where(Match.sport == sport)
     res, seen = [], set()
@@ -650,3 +650,19 @@ def translate(body: TrIn, db: Session = Depends(get_db)):
         return {"text": ingest.translate(db, body.text, body.target)}
     except Exception:  # noqa
         raise HTTPException(502, "translate")
+
+
+
+class HlCheck(BaseModel):
+    ok: bool
+
+
+@router.post("/highlights/{video_id}/check")
+def highlight_check(video_id: str, body: HlCheck, db: Session = Depends(get_db)):
+    """The visitor's browser tried the video in the YouTube player: remember if it plays here (Serbia) or is geo-blocked."""
+    from .models import Highlight
+    h = db.scalar(select(Highlight).where(Highlight.video_id == video_id))
+    if h and h.status != "blocked":
+        h.status = "ok" if body.ok else "blocked"
+        db.commit()
+    return {"ok": True}
