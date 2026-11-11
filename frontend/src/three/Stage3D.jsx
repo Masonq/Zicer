@@ -85,12 +85,37 @@ function addStands(scene, len, wid, rows = 14) {
 }
 
 function addBoards(scene, len, wid, h = 0.9) {
-  const tex = loadTex('/tex/boards.webp'); tex.wrapS = THREE.RepeatWrapping
-  const mk = (l) => { const t = new THREE.TextureLoader().load('/tex/boards.webp'); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; t.repeat.set(l / 22, 1); return new THREE.MeshStandardMaterial({ map: t, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: 0.55, roughness: 0.6 }) }
-  const far = new THREE.Mesh(new THREE.BoxGeometry(len + 6, h, 0.15), mk(len + 6)); far.position.set(0, h / 2, -(wid / 2 + 3)); scene.add(far)
-  const l = new THREE.Mesh(new THREE.BoxGeometry(0.15, h, wid + 6), mk(wid + 6)); l.position.set(-(len / 2 + 3), h / 2, 0); scene.add(l)
-  const r = l.clone(); r.position.x = len / 2 + 3; scene.add(r)
-  return far
+  // perimeter LED boards (far side, both ends and the near corners), dark frame, slight backward lean
+  const frame = new THREE.MeshStandardMaterial({ color: 0x0c1411, roughness: 0.6, metalness: 0.2 })
+  const led = (l) => {
+    const t = new THREE.TextureLoader().load('/tex/boards.webp'); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping
+    t.repeat.set(l / (h * 21), 1)
+    return new THREE.MeshStandardMaterial({ map: t, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: 0.9, roughness: 0.5 })
+  }
+  const board = (l, x, z, rotY) => {
+    const g = new THREE.Group()
+    const box = new THREE.Mesh(new THREE.BoxGeometry(l + 0.2, h + 0.12, 0.22), frame); box.position.y = h / 2 + 0.12; g.add(box)
+    const face = new THREE.Mesh(new THREE.PlaneGeometry(l, h), led(l)); face.position.set(0, h / 2 + 0.12, 0.112); g.add(face)
+    g.position.set(x, 0, z); g.rotation.y = rotY; g.rotation.x = -0.06
+    g.children.forEach((c) => { c.castShadow = true })
+    scene.add(g)
+    return g
+  }
+  board(len + 4, 0, -(wid / 2 + 2.6), 0)
+  board(wid + 4, -(len / 2 + 2.6), 0, Math.PI / 2)
+  board(wid + 4, len / 2 + 2.6, 0, -Math.PI / 2)
+}
+
+function addBackdrop(scene, len, wid) {
+  // our own branded LED wall instead of stands: dark green, gold light beams, Winly logos
+  const mk = (repX) => { const t = new THREE.TextureLoader().load('/tex/backdrop.webp'); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; t.repeat.set(repX, 1); return new THREE.MeshBasicMaterial({ map: t }) }
+  const H = Math.max(14, len * 0.32)
+  const far = new THREE.Mesh(new THREE.PlaneGeometry(len * 2.2, H), mk(2)); far.position.set(0, H / 2 - 1, -(wid / 2 + 14)); scene.add(far)
+  const left = new THREE.Mesh(new THREE.PlaneGeometry(wid * 2.4, H), mk(1)); left.rotation.y = Math.PI / 2; left.position.set(-(len / 2 + 16), H / 2 - 1, 0); scene.add(left)
+  const right = left.clone(); right.rotation.y = -Math.PI / 2; right.position.x = len / 2 + 16; scene.add(right)
+  // dark ground around the field of play
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(len * 3, wid * 4), new THREE.MeshStandardMaterial({ color: 0x0d1714, roughness: 1 }))
+  floor.rotation.x = -Math.PI / 2; floor.position.y = -0.05; scene.add(floor)
 }
 
 function addGoal(scene, x, dir) {
@@ -149,7 +174,7 @@ export default function Stage3D({ sport, eng, att = null, level = 0 }) {
     const sharpen = (o) => o.traverse((m) => { const mats = Array.isArray(m.material) ? m.material : m.material ? [m.material] : []; mats.forEach((mt) => ['map', 'emissiveMap'].forEach((k) => { if (mt[k]) { mt[k].anisotropy = ANISO; mt[k].needsUpdate = true } })) })
     const scene = new THREE.Scene()
     scene.background = new THREE.Color(0x0b1512)
-    scene.fog = new THREE.Fog(0x0b1512, 260, 520)
+    scene.fog = new THREE.Fog(0x0b1512, 300, 600)
     const football = sport !== 'tennis'
     const len = football ? 105 : 23.77, wid = football ? 68 : 10.97
     // ground with markings
@@ -158,7 +183,7 @@ export default function Stage3D({ sport, eng, att = null, level = 0 }) {
     ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground)
     const apron = new THREE.Mesh(new THREE.PlaneGeometry(pw + 30, ph + 30), new THREE.MeshStandardMaterial({ color: football ? 0x1f4d2a : 0x24503a, roughness: 1 }))
     apron.rotation.x = -Math.PI / 2; apron.position.y = -0.02; apron.receiveShadow = true; scene.add(apron)
-    addStands(scene, pw + 6, ph + 6, football ? 16 : 10)
+    addBackdrop(scene, pw, ph)
     addBoards(scene, pw, ph, football ? 0.9 : 0.8)
     if (football) { addGoal(scene, -len / 2, -1); addGoal(scene, len / 2, 1); addFlags(scene, len, wid) } else addNetTennis(scene)
     // lights: soft sky + four floodlights
@@ -215,7 +240,7 @@ export default function Stage3D({ sport, eng, att = null, level = 0 }) {
       if (ball.visible) {
         const last = hist[hist.length - 1]
         if (!last || last.distanceTo(ball.position) > (football ? 0.15 : 0.04)) hist.push(ball.position.clone())
-        if (hist.length > (football ? 14 : 40)) hist.shift()
+        if (hist.length > (football ? 14 : 18)) hist.shift()
         if (last && last.distanceTo(ball.position) > (football ? 18 : 6)) hist.splice(0, hist.length - 1) // teleport (new serve / restart): start over
       }
       if (++frame % 2 === 0) {
