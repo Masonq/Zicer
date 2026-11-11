@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { Share2, Link2, Download, CheckCircle2 } from 'lucide-react'
+import { Share2, Link2, Download, CheckCircle2, Send, MessageCircle, Phone } from 'lucide-react'
 import { api } from '../api'
 import { useT } from '../i18n'
 import { usePoll } from '../store'
@@ -11,16 +11,33 @@ export default function TicketView() {
   const [sp] = useSearchParams()
   const t = useT()
   const [toast, setToast] = useState('')
+  const [fmt, setFmt] = useState('wide')
+  const [busy, setBusy] = useState(false)
   const { data: tk, loading } = usePoll(() => api(`/tickets/${id}`), [id], 60000)
   if (loading && !tk) return <Skeleton h={120} n={3} />
   if (!tk) return <Empty title={t('error')} />
   const shareUrl = `${window.location.origin}/t/${tk.id}`
-  const img = `/api/share/ticket/${tk.id}.png?s=${tk.status}`
+  const lang = t.lang === 'ru' ? 'ru' : t.lang === 'sr-cyr' ? 'cyr' : 'sr'
+  const img = `/api/share/ticket/${tk.id}.png?s=${tk.status}&lang=${lang}&f=${fmt}`
+  const text = `${t('shareText')} ${fmtOdds(tk.total_odds)}`
+  // share the picture itself (Telegram, WhatsApp, Instagram stories...) where the phone allows it, otherwise the link
   const share = async () => {
-    if (navigator.share) { try { await navigator.share({ title: 'Winly tiket', url: shareUrl }); return } catch { return } }
-    copy()
+    setBusy(true)
+    try {
+      const blob = await (await fetch(img)).blob()
+      const file = new File([blob], `winly-tiket-${tk.id}.png`, { type: 'image/png' })
+      if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: 'Winly', text: `${text} ${shareUrl}` }); return }
+      if (navigator.share) { await navigator.share({ title: 'Winly', text, url: shareUrl }); return }
+      await copy()
+    } catch { /* closed by the user */ } finally { setBusy(false) }
   }
   const copy = async () => { try { await navigator.clipboard.writeText(shareUrl); setToast(t('linkCopied')) } catch {} }
+  const enc = encodeURIComponent
+  const apps = [
+    ['Telegram', `https://t.me/share/url?url=${enc(shareUrl)}&text=${enc(text)}`, Send],
+    ['WhatsApp', `https://wa.me/?text=${enc(`${text} ${shareUrl}`)}`, MessageCircle],
+    ['Viber', `viber://forward?text=${enc(`${text} ${shareUrl}`)}`, Phone],
+  ]
   const color = { won: 'var(--win)', lost: 'var(--loss)' }[tk.status] || 'var(--chalk)'
   return (
     <div>
@@ -52,12 +69,17 @@ export default function TicketView() {
         <div className="slip-sum"><span>{tk.status === 'won' ? t('win') : t('potentialWin')}</span><b style={{ color: 'var(--gold)' }}>{fmtNum(tk.potential)}</b></div>
       </div>
       <section className="section">
-        <h2 className="h2" style={{ marginBottom: 12 }}>{t('shareTicket')}</h2>
-        <img src={img} alt="" style={{ borderRadius: 14, border: '1px solid var(--line-soft)', width: '100%', aspectRatio: '1200 / 630' }} />
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 12 }}>
-          <button className="btn btn-gold btn-sm" onClick={share}><Share2 size={16} />{t('shareTicket').split(' ')[0]}</button>
+        <div className="section-head"><h2 className="h2">{t('shareTicket')}</h2></div>
+        <div className="seg" style={{ marginBottom: 12 }}>
+          <button className={fmt === 'wide' ? 'on' : ''} onClick={() => setFmt('wide')}>{t('fmtPost')}</button>
+          <button className={fmt === 'story' ? 'on' : ''} onClick={() => setFmt('story')}>{t('fmtStory')}</button>
+        </div>
+        <div className={`share-prev ${fmt}`}><img src={img} alt="" /></div>
+        <button className="btn btn-gold btn-block" style={{ marginTop: 12, height: 48 }} onClick={share} disabled={busy}><Share2 size={18} />{t('shareImage')}</button>
+        <div className="share-apps">
+          {apps.map(([name, href, I]) => <a key={name} className="btn btn-ghost btn-sm" href={href} target="_blank" rel="noopener"><I size={16} />{name}</a>)}
           <button className="btn btn-ghost btn-sm" onClick={copy}><Link2 size={16} />{t('copy')}</button>
-          <a className="btn btn-ghost btn-sm" href={img} download={`zicer-tiket-${tk.id}.png`}><Download size={16} />PNG</a>
+          <a className="btn btn-ghost btn-sm" href={img} download={`winly-tiket-${tk.id}.png`}><Download size={16} />{t('save')}</a>
         </div>
       </section>
       <Toast text={toast} onDone={() => setToast('')} />

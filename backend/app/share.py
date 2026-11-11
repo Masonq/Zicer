@@ -3,7 +3,7 @@ import os
 from functools import lru_cache
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response, HTMLResponse
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
 from sqlalchemy.orm import Session
 
 from . import config
@@ -33,67 +33,176 @@ def fit(draw, text, f, maxw):
     return text + "…"
 
 
-def render_ticket(t: Ticket) -> bytes:
-    W, H = 1200, 630
+TXT = {
+    "sr": {"ticket": "Tiket", "won": "PROŠAO", "lost": "PAO", "void": "VRAĆEN", "open": "U IGRI", "odds": "Ukupna kvota",
+           "win": "Dobitak", "pot": "Mogući dobitak", "stake": "Ulog", "more": "+ još {n}", "cta": "Napravi svoj tiket", "events": "{n} događaja"},
+    "cyr": {"ticket": "Тикет", "won": "ПРОШАО", "lost": "ПАО", "void": "ВРАЋЕН", "open": "У ИГРИ", "odds": "Укупна квота",
+            "win": "Добитак", "pot": "Могући добитак", "stake": "Улог", "more": "+ још {n}", "cta": "Направи свој тикет", "events": "{n} догађаја"},
+    "ru": {"ticket": "Тикет", "won": "ЗАШЁЛ", "lost": "НЕ ЗАШЁЛ", "void": "ВОЗВРАТ", "open": "В ИГРЕ", "odds": "Общий коэффициент",
+           "win": "Выигрыш", "pot": "Возможный выигрыш", "stake": "Ставка", "more": "+ ещё {n}", "cta": "Собери свой тикет", "events": "{n} событий"},
+}
+
+
+def team_name(team, lang):
+    if lang == "ru":
+        return team.name_ru or team.short_name or team.name
+    if lang == "cyr":
+        return team.name_cyr or team.name_sr or team.short_name or team.name
+    return team.name_sr or team.short_name or team.name
+
+
+def pick_text(key: str, lang: str) -> str:
+    ru, sr = lang == "ru", lang != "ru"
+    k = key or ""
+    if k in ("1", "X", "2", "1X", "12", "X2"):
+        return k
+    simple = {"GG": ("Обе забьют", "GG"), "NG": ("Обе не забьют", "NG"), "DNB1": ("Победа 1 (без ничьей)", "1 bez nerešenog"), "DNB2": ("Победа 2 (без ничьей)", "2 bez nerešenog")}
+    if k in simple:
+        return simple[k][0] if ru else simple[k][1]
+    parts = k.split(":")
+    if parts[0] in ("O", "U") and len(parts) == 2:
+        return (("Больше " if parts[0] == "O" else "Меньше ") if ru else ("Više " if parts[0] == "O" else "Manje ")) + parts[1]
+    if parts[0] == "CS" and len(parts) == 3:
+        return ("Счёт " if ru else "Tačan rezultat ") + f"{parts[1]}:{parts[2]}"
+    if parts[0] in ("AH1", "AH2", "EH1", "EH2", "EHX") and len(parts) == 2:
+        side = {"AH1": "1", "AH2": "2", "EH1": "1", "EH2": "2", "EHX": "X"}[parts[0]]
+        return (f"Фора {side} ({parts[1]})" if ru else f"Hendikep {side} ({parts[1]})")
+    if k.startswith("G") and len(k) > 1:
+        return (("Голы " if ru else "Golovi ") + k[1:])
+    return k
+
+
+def _paste_logo(im, x, cap_top, cap_h):
+    try:
+        lg = Image.open(os.path.join(FD, "logo-tight.png")).convert("RGBA")
+        h = int(round(cap_h))
+        w = int(round(lg.width * h / lg.height))
+        lg = lg.resize((w, h), Image.LANCZOS)
+        im.paste(lg, (int(x), int(round(cap_top))), lg)
+        return w
+    except Exception:  # noqa
+        return 0
+
+
+def _wordmark(im, d, x, y, size):
+    """Logo + 'Winly', the logo exactly as tall as the capital letters and on the same line."""
+    f = font("Oswald.ttf", size, "Bold")
+    l, top, r, bottom = d.textbbox((0, 0), "W", font=f)  # cap box of the letter W
+    cap_top, cap_h = y + top, bottom - top
+    w = _paste_logo(im, x, cap_top, cap_h)
+    d.text((x + w + size * 0.28, y), "Winly", font=f, fill=GOLD)
+
+
+def _status(t, L):
+    return {"won": (L["won"], WIN), "lost": (L["lost"], LOSS), "void": (L["void"], MUTED)}.get(t.status, (L["open"], CHALK))
+
+
+def render_ticket(t: Ticket, lang: str = "sr", fmt: str = "wide") -> bytes:
+    L = TXT.get(lang, TXT["sr"])
+    story = fmt == "story"
+    W, H = (1080, 1920) if story else (1200, 630)
     im = Image.new("RGB", (W, H), BG)
     d = ImageDraw.Draw(im)
-    # pitch lines
-    d.rectangle([40, 40, W - 40, H - 40], outline=LINE, width=3)
-    d.line([W - 330, 40, W - 330, H - 40], fill=LINE, width=3)
-    try:
-        lg = Image.open(os.path.join(FD, "logo-88.png")).convert("RGBA").resize((68, 68))
-        im.paste(lg, (76, 62), lg)
-    except Exception:  # noqa
-        pass
-    d.text((156, 66), "Winly", font=font("Oswald.ttf", 54, "Bold"), fill=GOLD)
-    d.text((80, 140), f"tiket @{t.user.username}", font=font("Manrope.ttf", 26, "SemiBold"), fill=MUTED)
-    status = {"won": ("PROŠAO", WIN), "lost": ("PAO", LOSS), "void": ("VRAĆEN", MUTED)}.get(t.status, ("U IGRI", CHALK))
-    sf = font("Oswald.ttf", 92, "Bold")
-    sw = d.textlength(status[0], font=sf)
-    cx = W - 185
-    d.text((cx - sw / 2, 150), status[0], font=sf, fill=status[1])
-    lab = font("Manrope.ttf", 24, "SemiBold")
-    big = font("Oswald.ttf", 64, "SemiBold")
-    win_label = "Dobitak" if t.status == "won" else "Mogući dobitak"
-    for i, (label, val) in enumerate((("Ukupna kvota", f"{t.total_odds:.2f}"), (win_label, f"{t.stake * t.total_odds:,.0f}".replace(",", ".")))):
-        y = 300 + i * 120
-        lw = d.textlength(label, font=lab)
-        d.text((cx - lw / 2, y), label, font=lab, fill=MUTED)
-        vw = d.textlength(val, font=big)
-        d.text((cx - vw / 2, y + 30), val, font=big, fill=GOLD if i == 0 else CHALK)
-    row_f = font("Manrope.ttf", 28, "Bold")
-    pick_f = font("Oswald.ttf", 30, "SemiBold")
-    items = t.items[:6]
-    step = min(64, int(360 / max(1, len(items))))
-    y = int(200 + (330 - step * len(items)) / 2)
-    for it in items:
+    # very soft light from the top-left corner (blurred, no visible edge)
+    glow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    ImageDraw.Draw(glow).ellipse([-W * 0.5, -H * 0.6, W * 0.7, H * 0.5], fill=(242, 194, 48, 22))
+    glow = glow.filter(ImageFilter.GaussianBlur(160))
+    im.paste(glow, (0, 0), glow)
+    d = ImageDraw.Draw(im)
+    st_txt, st_col = _status(t, L)
+    who = (t.user.display_name or t.user.username) if hasattr(t.user, "display_name") else t.user.username
+    items = list(t.items)
+    total = f"{t.total_odds:.2f}"
+    win_val = f"{t.stake * t.total_odds:,.0f}".replace(",", ".")
+    win_lab = L["win"] if t.status == "won" else L["pot"]
+    if not story:
+        _wordmark(im, d, 64, 52, 50)
+        d.text((64, 124), f"{L['ticket']} @{t.user.username}", font=font("Manrope.ttf", 24, "SemiBold"), fill=MUTED)
+        # right panel
+        px = W - 360
+        d.rounded_rectangle([px, 48, W - 48, H - 48], radius=28, fill=SURF)
+        sf = font("Oswald.ttf", 64, "Bold")
+        sw = d.textlength(st_txt, font=sf)
+        cx = (px + W - 48) / 2
+        d.rounded_rectangle([cx - sw / 2 - 26, 86, cx + sw / 2 + 26, 176], radius=20, outline=st_col, width=3)
+        d.text((cx - sw / 2, 94), st_txt, font=sf, fill=st_col)
+        lab = font("Manrope.ttf", 22, "SemiBold")
+        big = font("Oswald.ttf", 70, "SemiBold")
+        for i, (label, val, col) in enumerate(((L["odds"], total, GOLD), (win_lab, win_val, CHALK))):
+            y = 230 + i * 150
+            lw = d.textlength(label, font=lab)
+            d.text((cx - lw / 2, y), label, font=lab, fill=MUTED)
+            vw = d.textlength(val, font=big)
+            d.text((cx - vw / 2, y + 32), val, font=big, fill=col)
+        rows_x0, rows_x1, rows_top, rows_bottom, maxn = 64, px - 32, 180, H - 110, 5
+    else:
+        _wordmark(im, d, 80, 110, 74)
+        d.text((80, 220), f"{L['ticket']} @{t.user.username}", font=font("Manrope.ttf", 34, "SemiBold"), fill=MUTED)
+        sf = font("Oswald.ttf", 120, "Bold")
+        d.text((80, 300), st_txt, font=sf, fill=st_col)
+        lab = font("Manrope.ttf", 32, "SemiBold")
+        big = font("Oswald.ttf", 110, "SemiBold")
+        d.rounded_rectangle([80, 480, W - 80, 720], radius=34, fill=SURF)
+        half = (W - 160) / 2
+        for i, (label, val, col) in enumerate(((L["odds"], total, GOLD), (win_lab, win_val, CHALK))):
+            cx = 80 + half * i + half / 2
+            lw = d.textlength(label, font=lab)
+            d.text((cx - lw / 2, 520), label, font=lab, fill=MUTED)
+            vw = d.textlength(val, font=big)
+            d.text((cx - vw / 2, 565), val, font=big, fill=col)
+        d.line([80 + half, 510, 80 + half, 690], fill=LINE, width=3)
+        rows_x0, rows_x1, rows_top, rows_bottom, maxn = 80, W - 80, 780, H - 220, 8
+    # selections
+    show = items[:maxn]
+    gap = 14 if not story else 22
+    row_h = min(96 if story else 74, int((rows_bottom - rows_top - gap * (len(show) - 1)) / max(1, len(show))))
+    y = rows_top if story else rows_top + max(0, ((rows_bottom - rows_top) - (row_h * len(show) + gap * (len(show) - 1))) / 2)
+    tf = font("Manrope.ttf", 34 if story else 26, "Bold")
+    sub_f = font("Manrope.ttf", 24 if story else 18, "SemiBold")
+    pf = font("Oswald.ttf", 40 if story else 30, "SemiBold")
+    for it in show:
         m = it.match
-        col = {"won": WIN, "lost": LOSS}.get(it.status, LINE)
-        d.rounded_rectangle([80, y, 820, y + step - 12], radius=12, fill=SURF)
-        d.rectangle([80, y, 88, y + step - 12], fill=col)
-        name = fit(d, f"{m.home.short_name} – {m.away.short_name}", row_f, 520)
-        ty = y + (step - 12 - 34) / 2
-        d.text((108, ty), name, font=row_f, fill=CHALK)
-        pk = {"1": "1", "X": "X", "2": "2"}[it.pick]
-        d.text((660, ty - 2), pk, font=pick_f, fill=GOLD)
-        ot = f"{it.odds:.2f}"
-        d.text((800 - d.textlength(ot, font=pick_f), ty - 2), ot, font=pick_f, fill=CHALK)
-        y += step
-    if len(t.items) > 6:
-        d.text((108, y), f"+ još {len(t.items) - 6}", font=lab, fill=MUTED)
-    foot = font("Manrope.ttf", 24, "SemiBold")
-    d.text((80, H - 92), "Napravi svoj tiket na Winly", font=foot, fill=MUTED)
+        col = {"won": WIN, "lost": LOSS, "void": MUTED}.get(it.status, LINE)
+        d.rounded_rectangle([rows_x0, y, rows_x1, y + row_h], radius=16, fill=SURF)
+        d.rounded_rectangle([rows_x0, y, rows_x0 + 8, y + row_h], radius=4, fill=col)
+        odds = f"{it.odds:.2f}"
+        ow = d.textlength(odds, font=pf)
+        pk = pick_text(it.pick, lang)
+        pw = d.textlength(pk, font=pf)
+        name_w = rows_x1 - rows_x0 - 48 - ow - pw - 60
+        name = fit(d, f"{team_name(m.home, lang)} – {team_name(m.away, lang)}", tf, name_w)
+        lg = m.league.name if m.league else ""
+        if m.score_home is not None and m.status != "scheduled":
+            lg = f"{lg}   {m.score_home}:{m.score_away}"
+        has_sub = row_h >= (80 if story else 64)
+        ty = y + (row_h - (34 if story else 26) - ((30 if story else 22) if has_sub else 0)) / 2 - 4
+        d.text((rows_x0 + 30, ty), name, font=tf, fill=CHALK)
+        if has_sub:
+            d.text((rows_x0 + 30, ty + (44 if story else 34)), fit(d, lg, sub_f, name_w), font=sub_f, fill=MUTED)
+        py = y + (row_h - (44 if story else 34)) / 2 - 4
+        d.text((rows_x1 - 24 - ow - 24 - pw, py), pk, font=pf, fill=GOLD)
+        d.text((rows_x1 - 24 - ow, py), odds, font=pf, fill=CHALK)
+        y += row_h + gap
+    if len(items) > maxn:
+        d.text((rows_x0 + 30, y), L["more"].format(n=len(items) - maxn), font=sub_f, fill=MUTED)
+    # footer
+    host = config.PUBLIC_URL.replace("https://", "").replace("http://", "")
+    ff = font("Manrope.ttf", 32 if story else 22, "SemiBold")
+    fy = H - (120 if story else 80)
+    d.text((rows_x0, fy), L["cta"], font=ff, fill=CHALK)
+    d.text((rows_x0, fy + (44 if story else 30)), f"{host}/t/{t.id}", font=font("Manrope.ttf", 26 if story else 18, "Regular"), fill=MUTED)
     buf = io.BytesIO()
     im.save(buf, "PNG", optimize=True)
     return buf.getvalue()
 
 
 @router.get("/api/share/ticket/{tid}.png")
-def ticket_png(tid: int, db: Session = Depends(get_db)):
+def ticket_png(tid: int, lang: str = "sr", f: str = "wide", db: Session = Depends(get_db)):
     t = db.get(Ticket, tid)
     if not t:
         raise HTTPException(404)
-    return Response(render_ticket(t), media_type="image/png", headers={"Cache-Control": "public, max-age=120"})
+    lang = lang if lang in TXT else "sr"
+    return Response(render_ticket(t, lang, "story" if f == "story" else "wide"), media_type="image/png", headers={"Cache-Control": "public, max-age=120"})
 
 
 @router.get("/t/{tid}", response_class=HTMLResponse)
