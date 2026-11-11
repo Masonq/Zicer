@@ -202,6 +202,5 @@ echo "--- api log ---"; journalctl -u zicer-api -n 15 --no-pager 2>&1 | tail -15
 step "Отчёт в git"
 cd $APP
 git config user.email "deploy@zicer" ; git config user.name "zicer-deploy"
-( cd $APP/backend && set -a && . /etc/zicer.env && set +a && timeout 240 $APP/venv/bin/python -m app.probe > $APP/reports/probe.md 2>&1 )
 git add reports/ && git commit -qm "deploy report $(date -u +%F_%H%M)" && git pull -q --rebase && git push -q && echo "отчёт отправлен" || echo "отчёт не отправлен"
 echo; [ $fail = 0 ] && echo "ГОТОВО: https://$DOMAIN" || echo "ЕСТЬ ОШИБКИ — отчёт в reports/deploy.md"
