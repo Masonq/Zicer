@@ -295,6 +295,43 @@ def _utm(path, src, camp):
     return f"{config.PUBLIC_URL}{path}{'&' if '?' in path else '?'}utm_source={src}&utm_campaign={camp}"
 
 
+def chances(m) -> list:
+    """Bookmaker odds turned into fair chances in percent: [(label, pct)], labels are team names / 'nerešeno'."""
+    b = best(m)
+    inv = {k: 1 / v["odds"] for k, v in b.items() if v.get("odds")}
+    tot = sum(inv.values()) or 1
+    lab = {"1": tname(m.home), "X": "nerešeno", "2": tname(m.away)}
+    out = [(lab.get(k, k), round(100 * v / tot)) for k, v in inv.items()]
+    if out:  # make them add up to exactly 100
+        diff = 100 - sum(p for _, p in out)
+        i = max(range(len(out)), key=lambda j: out[j][1]); out[i] = (out[i][0], out[i][1] + diff)
+    return out
+
+
+def chances_txt(m) -> str:
+    return " · ".join(f"{lbl} {p}%" for lbl, p in chances(m))
+
+
+def yesterday_stats(db):
+    """Predictions settled during yesterday (Belgrade time): count, hit rate, top 3 by profit."""
+    loc = now() + timedelta(hours=1)
+    day0 = (loc - timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(hours=1)
+    day1 = day0 + timedelta(days=1)
+    ps = db.scalars(select(Prediction).where(Prediction.settled_at >= day0, Prediction.settled_at < day1, Prediction.status.in_(("won", "lost")))).all()
+    if not ps:
+        return None
+    won = sum(1 for p in ps if p.status == "won")
+    by = {}
+    for p in ps:
+        by[p.user_id] = by.get(p.user_id, 0) + p.profit
+    top = sorted(by.items(), key=lambda x: -x[1])[:3]
+    users = {u.id: u for u in db.scalars(select(User).where(User.id.in_([u for u, _ in top]))).all()}
+    best_p = max(ps, key=lambda p: p.odds if p.status == "won" else 0)
+    return {"n": len(ps), "won": won, "pct": round(100 * won / len(ps)),
+            "top": [(users[u].display_name or users[u].username, round(v)) for u, v in top if u in users and v > 0],
+            "best": (best_p, db.get(Match, best_p.match_id)) if best_p.status == "won" else None}
+
+
 def build_post(db, kind: str):
     """Returns (text, image_path_for_card, link_path) or None if there is nothing to say."""
     n = now()
@@ -308,7 +345,7 @@ def build_post(db, kind: str):
         m = sorted(ms, key=lambda x: (x.featured, x.is_derby, x.home.is_serbian or x.away.is_serbian, -x.league.priority), reverse=True)[0]
         b = best(m)
         t = (f"Meč dana: {tname(m.home)} – {tname(m.away)}\n{m.league.name_sr or m.league.name}, {(m.start + timedelta(hours=1)).strftime('%d.%m u %H:%M')}\n"
-             f"Kvote: {_odds_txt(m)}\nKo pobeđuje po tvom mišljenju? Daj prognozu besplatno i uđi u rang navijača.")
+             f"Šanse: {chances_txt(m)}\nKo pobeđuje po tvom mišljenju? Daj prognozu besplatno i uđi u rang navijača.")
         return t, f"/api/social/card/match/{m.id}.png", match_path(m)
     if kind == "hot":
         ms = db.scalars(select(Match).where(Match.start > n, Match.start < n + timedelta(hours=12)).order_by(Match.start)).all()
@@ -316,15 +353,22 @@ def build_post(db, kind: str):
         if not ms:
             return None
         lines = "\n".join(f"• {tname(m.home)} – {tname(m.away)} ({(m.start + timedelta(hours=1)).strftime('%H:%M')})" for m in sorted(ms, key=lambda x: x.start))
-        return f"Večeras na Winly:\n{lines}\nSastavi tiket i proveri koliko znaš.", f"/api/social/card/match/{ms[0].id}.png", "/mecevi"
+        ids = ",".join(str(m.id) for m in sorted(ms, key=lambda x: x.start))
+        return f"Večeras na Winly:\n{lines}\nSastavi tiket i proveri koliko znaš.", f"/api/social/card/hot.png?ids={ids}", "/mecevi"
     if kind == "results":
-        from .api import ranking_rows
-        rows = ranking_rows(db, "week", limit=3, min_preds=1)
-        if not rows:
+        st = yesterday_stats(db)
+        if not st:
             return ("Juče su se igrali sjajni mečevi, a ti još nisi u rangu prognozera? Pridruži se besplatno — prognoziraj i takmiči se sa navijačima.",
                     "/api/social/card/brand.png", "/rang")
-        top = "\n".join(f"{i + 1}. @{r['user']['username']} {'+' if r['profit'] > 0 else ''}{round(r['profit'])}" for i, r in enumerate(rows))
-        return f"Najbolji prognozeri nedelje:\n{top}\nMožeš li bolje?", "/api/social/card/brand.png", "/rang"
+        lines = [f"Juče na Winly: {st['n']} prognoza, pogođeno {st['pct']}%."]
+        if st["top"]:
+            lines.append("Najbolji prognozeri dana:")
+            lines += [f"{i + 1}. {n} +{v}" for i, (n, v) in enumerate(st["top"])]
+        if st["best"]:
+            p, m = st["best"]
+            lines.append(f"Najhrabrija pogođena prognoza: {tname(m.home)} – {tname(m.away)}, kvota {p.odds:.2f}.")
+        lines.append("Možeš li bolje danas?")
+        return "\n".join(lines), "/api/social/card/results.png", "/rang"
     if kind == "weekly":
         from .api import fan_battle
         rows = fan_battle(db, "football", "week")[:3]
@@ -478,25 +522,70 @@ background:radial-gradient(900px 700px at 100% 0%,rgba(242,194,48,.22),transpare
 .cr img{{width:72%;height:72%;object-fit:contain}} .vs{{font-family:Oswald;font-size:{int(w * .09)}px;color:#F2C230}}
 .meta{{text-align:center;color:#C9D6CF;font-size:{int(w * .032)}px;font-weight:700}}
 .odds{{display:flex;gap:{int(w * .017)}px;justify-content:center}} .o{{min-width:{int(w * .2)}px;padding:{int(w * .017)}px;border-radius:{int(w * .022)}px;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.1);text-align:center}}
-.o small{{display:block;color:#93AFA3;font-weight:800;font-size:{int(w * .025)}px}} .o b{{font-family:Oswald;font-size:{int(w * .06)}px}}
+.o small{{display:block;color:#93AFA3;font-weight:800;font-size:{int(w * .022)}px;max-width:{int(w * .26)}px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0 auto}} .o b{{font-family:Oswald;font-size:{int(w * .06)}px}}
 .cta{{text-align:center;font-size:{int(w * .034)}px;font-weight:800}} .cta span{{color:#F2C230}}
 {"@keyframes up{from{opacity:0;transform:translateY(60px)}} .a1{animation:up .8s .2s both} .a2{animation:up .8s .9s both} .a3{animation:up .8s 1.6s both} .a4{animation:up .8s 2.3s both} @keyframes pop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.08)}} .cr{animation:pop .9s .9s both}" if anim else ""}'''
     if m:
         def crest(t):
             return f'<div class="cr">{"<img src=" + json.dumps(t.logo) + ">" if t.logo else f"<span style=font-family:Oswald;font-size:{int(w * .085)}px;color:#0F2A22>" + E((t.short_name or "?")[:1]) + "</span>"}</div>'
-        b = best(m)
-        odds = "".join(f'<div class="o"><small>{k}</small><b>{v["odds"]:.2f}</b></div>' for k, v in b.items())
+        odds = "".join(f'<div class="o"><small>{E(lbl if lbl != "nerešeno" else "Nerešeno")}</small><b>{p}%</b></div>' for lbl, p in chances(m))
         body = f'''<div class="logo a1"><img src="data:image/png;base64,{A["logo"]}"><b>Winly</b></div>
 <div class="a1"><span class="tag">{"Meč dana" if kind == "match" else "Vrući meč"}</span></div>
 <div class="teams a2"><div class="t">{crest(m.home)}{E(tname(m.home))}</div><div class="vs">VS</div><div class="t">{crest(m.away)}{E(tname(m.away))}</div></div>
 <div class="meta a3">{E(m.league.name_sr or m.league.name)} · {(m.start + timedelta(hours=1)).strftime("%d.%m · %H:%M")}</div>
-<div class="odds a3">{odds}</div><div class="cta a4">Ko pobeđuje? Daj prognozu besplatno — <span>Winly</span></div>'''
+{f'<div class="a3"><div class="meta" style="margin-bottom:{int(w * .015)}px;font-size:{int(w * .026)}px;color:#93AFA3">Šanse za pobedu</div><div class="odds">{odds}</div></div>' if odds else '<div></div>'}<div class="cta a4">Ko pobeđuje? Daj prognozu besplatno — <span>Winly</span></div>'''
     else:
         body = f'''<div class="logo a1"><img src="data:image/png;base64,{A["logo"]}"><b>Winly</b></div>
 <div class="a2" style="font-family:Oswald;font-size:{int(w * .1)}px;line-height:1.05">Liga prognoza<br><span style="color:#F2C230">za navijače</span></div>
 <div class="meta a3" style="text-align:left">Fudbal · Košarka · Tenis · Hokej — besplatno, bez novca, samo znanje.</div>
 <div class="cta a4" style="text-align:left">Prognoziraj, sastavi tiket i pokaži da su <span>tvoji navijači najbolji</span>.</div>'''
     return f'<!doctype html><html><head><meta charset="utf-8"><style>{css}</style></head><body><div class="wrap">{body}</div></body></html>'
+
+
+def _list_card_html(db, title, tag, rows_html, cta, w=1080, h=1080):
+    from .share_html import _assets
+    A = _assets()
+    css = f'''@font-face {{ font-family: Oswald; src: url(data:font/ttf;base64,{A["oswald"]}); }} @font-face {{ font-family: Manrope; src: url(data:font/ttf;base64,{A["manrope"]}); font-weight: 200 800; }}
+*{{box-sizing:border-box;margin:0}} body{{width:{w}px;height:{h}px;overflow:hidden;font-family:Manrope;color:#EEF3EE;
+background:radial-gradient(900px 700px at 100% 0%,rgba(242,194,48,.22),transparent 60%),radial-gradient(800px 600px at 0% 100%,rgba(76,195,138,.16),transparent 60%),linear-gradient(160deg,#16392E,#0B2019)}}
+.wrap{{position:absolute;inset:0;padding:70px 76px;display:flex;flex-direction:column;gap:24px}}
+.top{{display:flex;align-items:center;justify-content:space-between}}
+.logo{{display:flex;align-items:center;gap:16px}} .logo img{{height:54px}} .logo b{{font-family:Oswald;font-size:70px;color:#F2C230;line-height:1}}
+.tag{{padding:10px 22px;border-radius:999px;background:rgba(242,194,48,.15);border:2px solid rgba(242,194,48,.5);color:#F2C230;font-weight:800;font-size:30px}}
+h1{{font-family:Oswald;font-weight:600;font-size:76px;line-height:1}}
+.rows{{display:flex;flex-direction:column;gap:12px;flex:1;min-height:0}}
+.r{{display:grid;grid-template-columns:120px 1fr;align-items:center;gap:22px;padding:13px 24px;border-radius:20px;background:rgba(255,255,255,.07);border:2px solid rgba(255,255,255,.09)}}
+.r .tm{{font-family:Oswald;font-size:46px;color:#F2C230;text-align:center}}
+.r .nm{{font-weight:800;font-size:34px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
+.r .lg{{color:#93AFA3;font-weight:700;font-size:24px;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
+.big{{display:flex;gap:18px}} .k{{flex:1;padding:22px;border-radius:22px;background:rgba(255,255,255,.07);border:2px solid rgba(255,255,255,.09)}}
+.k b{{display:block;font-family:Oswald;font-size:76px;color:#F2C230;line-height:1}} .k span{{color:#C9D6CF;font-weight:700;font-size:26px}}
+.cta{{font-size:34px;font-weight:800}} .cta span{{color:#F2C230}}'''
+    body = (f'<div class="top"><div class="logo"><img src="data:image/png;base64,{A["logo"]}"><b>Winly</b></div><span class="tag">{E(tag)}</span></div>'
+            f'<h1>{title}</h1>{rows_html}<div class="cta">{cta}</div>')
+    return f'<!doctype html><html><head><meta charset="utf-8"><style>{css}</style></head><body><div class="wrap">{body}</div></body></html>'
+
+
+SPORT_SR = {"football": "Fudbal", "basketball": "Košarka", "tennis": "Tenis", "hockey": "Hokej", "volleyball": "Odbojka", "handball": "Rukomet",
+            "waterpolo": "Vaterpolo", "tabletennis": "Stoni tenis", "futsal": "Futsal", "esports": "Esport"}
+
+
+def _hot_card(db, ids):
+    ms = [m for m in (db.get(Match, i) for i in ids[:5]) if m]
+    rows = "".join(f'<div class="r"><div class="tm">{(m.start + timedelta(hours=1)).strftime("%H:%M")}</div><div><div class="nm">{E(tname(m.home))} – {E(tname(m.away))}</div>'
+                   f'<div class="lg">{E(SPORT_SR.get(m.sport, m.sport))} · {E(m.league.name_sr or m.league.name)}</div></div></div>' for m in ms)
+    return _list_card_html(db, 'Vrući mečevi<br><span style="color:#F2C230">večeras</span>', "Večeras na Winly", f'<div class="rows">{rows}</div>',
+                           'Sastavi tiket i proveri koliko znaš — <span>besplatno</span>')
+
+
+def _results_card(db):
+    st = yesterday_stats(db)
+    if not st:
+        return _card_html(db, "brand")
+    kp = f'<div class="big"><div class="k"><b>{st["n"]}</b><span>prognoza juče</span></div><div class="k"><b>{st["pct"]}%</b><span>pogođeno</span></div></div>'
+    rows = "".join(f'<div class="r"><div class="tm">{i + 1}.</div><div><div class="nm">{E(n)}</div><div class="lg">+{v} poena</div></div></div>' for i, (n, v) in enumerate(st["top"]))
+    return _list_card_html(db, 'Juče na <span style="color:#F2C230">Winly</span>', "Rezultati dana", kp + f'<div class="rows">{rows}</div>',
+                           'Možeš li bolje danas? <span>winly.rs</span>')
 
 
 async def _render_card(doc, w, h):
@@ -524,6 +613,18 @@ async def _render_card(doc, w, h):
 @router.get("/api/social/card/match/{mid}.png", include_in_schema=False)
 async def card_match(mid: int, db: Session = Depends(get_db)):
     png = await _render_card(_card_html(db, "match", mid), 1080, 1080)
+    return Response(png, media_type="image/png", headers={"Cache-Control": "public, max-age=600"})
+
+
+@router.get("/api/social/card/hot.png", include_in_schema=False)
+async def card_hot(ids: str = "", db: Session = Depends(get_db)):
+    png = await _render_card(_hot_card(db, [int(x) for x in ids.split(",") if x.strip().isdigit()]), 1080, 1080)
+    return Response(png, media_type="image/png", headers={"Cache-Control": "public, max-age=600"})
+
+
+@router.get("/api/social/card/results.png", include_in_schema=False)
+async def card_results(db: Session = Depends(get_db)):
+    png = await _render_card(_results_card(db), 1080, 1080)
     return Response(png, media_type="image/png", headers={"Cache-Control": "public, max-age=600"})
 
 
