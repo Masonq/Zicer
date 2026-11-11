@@ -7,8 +7,10 @@ NEWDOM=winly.rs
 SERVER_IP=89.208.113.147
 # switch to the real domain by itself as soon as its DNS points to this server; until then keep the temporary address
 # (checked over HTTP, so it also works when the domain is behind Cloudflare)
-reach() { getent ahostsv4 "$1" | grep -q "$SERVER_IP" || curl -s -m 8 "http://$1/api/health" | grep -q '"app":"zicer"'; }
-if reach $NEWDOM; then DOMAIN=$NEWDOM; else DOMAIN=$OLDDOM; fi
+# public DNS (Google) first: the server's own resolver may keep the old address cached for hours
+reach() { curl -s -m 8 "https://dns.google/resolve?name=$1&type=A" | grep -q "$SERVER_IP" || getent ahostsv4 "$1" | grep -q "$SERVER_IP"; }
+# once the real domain has its certificate, stay on it (no flip-flopping while caches expire)
+if [ -d /etc/letsencrypt/live/$NEWDOM ] || reach $NEWDOM; then DOMAIN=$NEWDOM; else DOMAIN=$OLDDOM; fi
 WWW=""; reach www.$NEWDOM && WWW="www.$NEWDOM"
 EMAIL=maxsim_kolesnikov@icloud.com
 REPORT=$APP/reports/deploy.md
@@ -135,7 +137,7 @@ fi
 [ -f /etc/zicer-admin.txt ] && ADMIN_INFO=$(cat /etc/zicer-admin.txt) && ok "админ есть"
 
 [ -f /etc/zicer.env ] && sed -i "s#^PUBLIC_URL=.*#PUBLIC_URL=https://$DOMAIN#" /etc/zicer.env
-echo "домен: $DOMAIN (winly.rs → $(getent ahostsv4 $NEWDOM | awk '{print $1; exit}'))"
+echo "домен: $DOMAIN (winly.rs по Google DNS → $(curl -s -m 8 'https://dns.google/resolve?name=winly.rs&type=A' | grep -o '"data":"[0-9.]*"' | head -1), www: ${WWW:-нет})"
 step "nginx"
 # robots (search engines, link previews) get server-rendered pages with the same content; people get the app
 cat > /etc/nginx/conf.d/winly-bots.conf <<'BOTS'
@@ -190,11 +192,11 @@ systemctl reload nginx
 step "Проверки"
 sleep 20
 H=$(curl -s -m 10 http://127.0.0.1:$PORT/api/health); echo "api local: $H"; echo "$H" | grep -q '"app":"zicer"' || bad "api local"
-HS=$(curl -s -m 10 https://$DOMAIN/api/health); echo "api https: $HS"; echo "$HS" | grep -q '"app":"zicer"' || bad "api https отвечает не Zicer"
+HS=$(curl -s -m 10 --resolve $DOMAIN:443:127.0.0.1 https://$DOMAIN/api/health); echo "api https: $HS"; echo "$HS" | grep -q '"app":"zicer"' || bad "api https отвечает не Zicer"
 for path in / /api/health /api/home /mecevi; do
-  code=$(curl -s -m 15 -o /dev/null -w '%{http_code}' https://$DOMAIN$path); echo "https $path -> $code"; [ "$code" = "200" ] || bad "https $path $code"
+  code=$(curl -s -m 15 --resolve $DOMAIN:443:127.0.0.1 -o /dev/null -w '%{http_code}' https://$DOMAIN$path); echo "https $path -> $code"; [ "$code" = "200" ] || bad "https $path $code"
 done
-cc=$(curl -sI -m 10 https://$DOMAIN/ | grep -i cache-control); echo "index cache: $cc"
+cc=$(curl -sI -m 10 --resolve $DOMAIN:443:127.0.0.1 https://$DOMAIN/ | grep -i cache-control); echo "index cache: $cc"
 JOBS=$(cd $APP/backend && set -a && . /etc/zicer.env && set +a && $APP/venv/bin/python -c "
 from app.db import SessionLocal
 from app.models import JobStatus, Match
