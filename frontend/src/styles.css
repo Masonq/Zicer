@@ -967,3 +967,12 @@ img { display: block; max-width: 100%; }
   .adm-head { margin-bottom: 12px; } .pills { width: 100%; } .pills button { flex: 1; }
 }
 .lrow.nu { grid-template-columns: auto minmax(0, 1fr) auto; }
+
+/* match of the day: big faded club crests on both sides (as bookmakers' match cards do), diagonal split */
+.bg-crest { position: absolute; top: 50%; width: 210px; height: 210px; object-fit: contain; pointer-events: none; z-index: 0;
+  opacity: .09; filter: grayscale(.2) blur(.5px); translate: 0 -50%; }
+.bg-crest.l { left: -56px; rotate: -10deg; } .bg-crest.r { right: -56px; rotate: 10deg; top: 62%; opacity: .11; }
+.pitch-split { position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  background: linear-gradient(105deg, rgba(255,255,255,.035) 0%, rgba(255,255,255,.035) 49.6%, rgba(255,255,255,.08) 50%, transparent 50.4%, rgba(0,0,0,.08) 100%); }
+.pitch[class*="sc-"] > .bg-crest, .pitch[class*="sc-"] > .pitch-split { position: absolute; }
+@media (min-width: 900px) { .bg-crest { width: 260px; height: 260px; } .bg-crest.l { left: -40px; } .bg-crest.r { right: -40px; } }
