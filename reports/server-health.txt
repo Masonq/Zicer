@@ -1,0 +1,16 @@
+uptime: up 10 minutes
+               total        used        free      shared  buff/cache   available
+Mem:            3915        2881         275          61        1083        1034
+Swap:           4095        1583        2512
+/dev/vda2        59G   30G   29G  51% /
+--- сторож, последние записи:
+--- прошлая загрузка, память/зависания:
+--- больше всего памяти сейчас:
+0 MB COMMAND
+564 MB uvicorn
+368 MB python3
+258 MB python
+226 MB python
+112 MB python
+104 MB uvicorn
+102 MB python3
