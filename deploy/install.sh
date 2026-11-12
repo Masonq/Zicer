@@ -175,7 +175,7 @@ if [ ! -d /var/log/journal ]; then mkdir -p /var/log/journal && systemd-tmpfiles
   echo "uptime: $(uptime -p)"; free -m | head -3; df -h / | tail -1
   echo "--- сторож, последние записи:"; tail -n 15 /var/log/zicer-watchdog.log 2>/dev/null
   echo "--- прошлая загрузка, память/зависания:"; journalctl -b -1 -k --no-pager 2>/dev/null | grep -iE 'out of memory|oom-kill|killed process|hung task|soft lockup|blocked for more' | tail -n 15
-  echo "--- больше всего памяти сейчас:"; ps -eo rss,comm --sort=-rss | head -8 | awk '{printf "%d MB %s\n", $1/1024, $2}'
+  echo "--- больше всего памяти сейчас (по службам):"; for u in $(systemctl list-units --type=service --state=running --no-legend | awk '{print $1}'); do m=$(systemctl show -p MemoryCurrent --value $u 2>/dev/null); [ "$m" -gt 52428800 ] 2>/dev/null && echo "$((m/1048576)) MB $u"; done | sort -rn | head -15
 } > $APP/reports/server-health.txt 2>&1
 ok "снимок здоровья сервера записан"
 
