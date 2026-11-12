@@ -1,1 +1,0 @@
-Автодеплой на паузе. Удалить этот файл — автодеплой снова включится. Ручной деплой: cd /opt/zicer && git fetch -q && git reset -q --hard origin/main && bash deploy/install.sh
