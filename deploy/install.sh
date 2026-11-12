@@ -228,7 +228,7 @@ echo "--- api log ---"; journalctl -u zicer-api -n 15 --no-pager 2>&1 | tail -15
   echo "# Zicer deploy $(date -u '+%Y-%m-%d %H:%M UTC')"
   echo; echo "Итог: $([ $fail = 0 ] && echo УСПЕХ || echo ЕСТЬ ОШИБКИ)"
   echo; echo "Сайт: https://$DOMAIN"
-  echo; echo "Админ: $ADMIN_INFO"
+  echo; echo "Админ: данные входа в /etc/zicer-admin.txt на сервере"
   echo; echo "Коммит: $(git -C $APP log -1 --format='%h %s')"
   echo; echo '```'; cat $APP/reports/deploy.log | tail -120; echo '```'
 } > $REPORT
