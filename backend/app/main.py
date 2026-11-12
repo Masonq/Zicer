@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from sqlalchemy import select
 from .db import engine, Base, SessionLocal
 from .models import Bookmaker
-from . import api, admin, share, center, growth, emailauth
+from . import api, admin, share, center, growth, emailauth, social_login
 
 logging.basicConfig(level=logging.INFO)
 app = FastAPI(title="Winly", docs_url=None, redoc_url=None)
@@ -42,7 +42,9 @@ MIGRATIONS = [
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS ref_by INTEGER",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT TRUE",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_last VARCHAR(10) DEFAULT ''",
-    "ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_streak INTEGER DEFAULT 0",  # accounts made before email codes count as verified
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_streak INTEGER DEFAULT 0",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id VARCHAR(64)",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS fb_id VARCHAR(64)",  # accounts made before email codes count as verified
 ]
 
 
@@ -114,3 +116,5 @@ app.include_router(growth.router)
 app.include_router(growth.adm)
 app.include_router(emailauth.router)
 app.include_router(emailauth.adm)
+app.include_router(social_login.router)
+app.include_router(social_login.adm)

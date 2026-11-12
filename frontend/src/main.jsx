@@ -25,7 +25,7 @@ import Bookmakers from './pages/Bookmakers'
 import Profile from './pages/Profile'
 import Me from './pages/Me'
 import EditProfile from './pages/EditProfile'
-import { Login, Register } from './pages/Auth'
+import { Login, Register, OAuthDone } from './pages/Auth'
 import Onboarding from './pages/Onboarding'
 import TeamPage from './pages/Team'
 import Admin from './admin/Admin'
@@ -34,6 +34,7 @@ import { installAutoUpdate } from './autoupdate'
 import League from './pages/League'
 import How from './pages/How'
 import { VerifyEmail, ResetPassword, LoginByCode } from './pages/EmailCode'
+import { Privacy, DataDeletion } from './pages/Legal'
 installHScroll()
 installAutoUpdate()
 
@@ -88,6 +89,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                 <Route path="/zaboravljena-lozinka" element={<ResetPassword />} />
                 <Route path="/prijava-kod" element={<LoginByCode />} />
                 <Route path="/kako-funkcionise" element={<How />} />
+                <Route path="/oauth" element={<OAuthDone />} />
+                <Route path="/privatnost" element={<Privacy />} />
+                <Route path="/brisanje-podataka" element={<DataDeletion />} />
                 <Route path="/izbor-kluba" element={<Onboarding />} />
                 <Route path="*" element={<Home />} />
               </Route>

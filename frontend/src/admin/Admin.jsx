@@ -58,6 +58,27 @@ function MailSettings() {
   )
 }
 
+function OAuthSettings() {
+  const [ver, setVer] = useState(0)
+  const { data } = usePoll(() => api('/admin/oauth'), [ver], 0)
+  const [f, setF] = useState({ google_client_id: '', fb_app_id: '', fb_secret: '' })
+  const [msg, setMsg] = useState('')
+  const save = async () => { await api('/admin/oauth', { method: 'POST', body: f }); setF({ google_client_id: '', fb_app_id: '', fb_secret: '' }); setMsg('Сохранено'); setVer((v) => v + 1) }
+  return (
+    <div className="adm-tile" style={{ marginBottom: 14 }}>
+      <div className="tile-h"><b>Вход через Google и Facebook</b><span className="small">{data?.google_client_id ? 'Google ✓' : 'Google —'} · {data?.fb_app_id ? 'Facebook ✓' : 'Facebook —'}</span></div>
+      {data && <p className="small" style={{ marginTop: 0 }}>Google: разрешённые источники — {data.origins.join(', ')}. Facebook: адрес возврата — {data.redirect}</p>}
+      <div className="g-form">
+        <label>Google Client ID<input className="input" value={f.google_client_id} placeholder={data?.google_client_id || '…apps.googleusercontent.com'} onChange={(e) => setF({ ...f, google_client_id: e.target.value.trim() })} /></label>
+        <label>Facebook App ID<input className="input" value={f.fb_app_id} placeholder={data?.fb_app_id || ''} onChange={(e) => setF({ ...f, fb_app_id: e.target.value.trim() })} /></label>
+        <label>Facebook App Secret<input className="input" value={f.fb_secret} placeholder={data?.fb_secret || ''} onChange={(e) => setF({ ...f, fb_secret: e.target.value.trim() })} /></label>
+        <button className="btn btn-gold btn-sm" disabled={!f.google_client_id && !f.fb_app_id && !f.fb_secret} onClick={save}>Сохранить</button>
+      </div>
+      {msg && <div className="small" style={{ marginTop: 6, color: '#3DD68C' }}>{msg}</div>}
+    </div>
+  )
+}
+
 function Dashboard() {
   const [ver, setVer] = useState(0)
   const [toast, setToast] = useState('')
@@ -68,6 +89,7 @@ function Dashboard() {
     <div>
       <Sources />
       <MailSettings />
+      <OAuthSettings />
       <section>
         <div className="card scroll-x">
           <table className="table">

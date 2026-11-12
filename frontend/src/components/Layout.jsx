@@ -106,7 +106,7 @@ export default function Layout() {
             <Link to={`/potvrda?next=${encodeURIComponent(loc.pathname)}`} className="verify-strip"><span>{t('verifyBanner')}</span><b>{t('verifyNow')}</b></Link>
           )}
           <div className="page-body"><ErrorBoundary resetKey={loc.pathname + loc.search}><Outlet /></ErrorBoundary></div>
-          <div className="foot"><Link to="/kako-funkcionise" className="foot-link">{t('howTitle')}</Link> · <a href="mailto:podrska@winly.rs" className="foot-link">podrska@winly.rs</a><br />{t('responsible')}</div>
+          <div className="foot"><Link to="/kako-funkcionise" className="foot-link">{t('howTitle')}</Link> · <Link to="/privatnost" className="foot-link">{t('privacy')}</Link> · <a href="mailto:podrska@winly.rs" className="foot-link">podrska@winly.rs</a><br />{t('responsible')}</div>
         </main>
       </div>
 
