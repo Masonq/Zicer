@@ -1512,3 +1512,14 @@ img { display: block; max-width: 100%; }
 .pitch[class*="es-"] .pitch-glow { display: none; }
 .pitch[class*="es-"] .bg-crest { opacity: .10; filter: grayscale(.3); }
 .pitch[class*="es-"] .board-team .name { font-size: 15px; line-height: 1.2; text-align: center; overflow-wrap: break-word; max-width: 130px; }
+
+/* founders programme */
+.founder-banner { display: flex; align-items: center; gap: 12px; margin-top: 16px; padding: 12px 14px; border-radius: 16px;
+  background: linear-gradient(100deg, rgba(242,194,48,.16), rgba(242,194,48,.05)); border: 1px solid rgba(242,194,48,.38); }
+.founder-banner .fb-badge { flex: none; width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center; background: var(--gold); color: var(--gold-ink); font-size: 18px; font-weight: 900; }
+.founder-banner > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.founder-banner > div > b { font-size: 15px; color: var(--gold); }
+.founder-banner > div > span { font-size: 13px; color: #d9d3b8; }
+.founder-banner > div > span b { color: var(--chalk); }
+.founder-mark { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; font-size: 10.5px; font-weight: 800; vertical-align: 2px;
+  color: var(--gold); background: rgba(242,194,48,.14); border: 1px solid rgba(242,194,48,.4); }

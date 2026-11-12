@@ -48,9 +48,25 @@ def avatar_url(u: User) -> str:
     return f"/media/avatars/{u.avatar}" if u.avatar else ""
 
 
+FOUNDERS = 100
+_founders = {"at": 0.0, "ids": set()}
+
+
+def founder_ids() -> set:
+    """Ids of the first 100 registered players (admins don't take a place). Cached for a minute."""
+    import time
+    if time.time() - _founders["at"] > 60:
+        from .db import SessionLocal
+        from sqlalchemy import select
+        with SessionLocal() as db:
+            _founders["ids"] = set(db.scalars(select(User.id).where(User.is_admin == False).order_by(User.id).limit(FOUNDERS)).all())  # noqa
+        _founders["at"] = time.time()
+    return _founders["ids"]
+
+
 def user_short(u: User) -> dict:
     return {"id": u.id, "username": u.username, "color": u.color, "name": u.display_name or u.username,
-            "avatar": avatar_url(u),
+            "avatar": avatar_url(u), "founder": u.id in founder_ids(),
             "club": team_out(u.fav_football) if u.fav_football else team_out(u.fav_basket)}
 
 

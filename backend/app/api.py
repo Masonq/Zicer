@@ -60,6 +60,13 @@ def register(body: RegisterIn, db: Session = Depends(get_db)):
         apply_referral(db, u, body.ref.strip())
     except Exception:  # noqa
         db.rollback()
+    from .serial import FOUNDERS, _founders
+    taken = db.scalar(select(func.count()).select_from(User).where(User.is_admin == False, User.id < u.id)) or 0  # noqa
+    if taken < FOUNDERS:
+        from .growth import setting
+        u.bank += float(setting(db, "founder_bonus", 2000) or 0)
+        db.commit()
+        _founders["at"] = 0  # refresh the badge list
     from .emailauth import mail_on, issue_code
     mail = mail_on(db)
     if mail:
@@ -811,6 +818,10 @@ def home(tz: int = 60, sport: str = "all", u: User | None = Depends(current_user
         "tickets": [ticket_out(t) for t in db.scalars(select(Ticket).where(Ticket.status == "won").order_by(Ticket.settled_at.desc()).limit(4)).all()],
         "bookmakers": [bm_out(b) for b in bms[:4]],
         "stats": {"users": db.scalar(select(func.count()).select_from(User)),
+                  "matches_week": db.scalar(select(func.count()).select_from(Match).where(Match.start > n - timedelta(hours=3), Match.start < n + timedelta(days=7))) or 0,
+                  "sports": len(SPORTS),
+                  "founders_left": max(0, 100 - (db.scalar(select(func.count()).select_from(User).where(User.is_admin == False)) or 0)),  # noqa
+                  "founder_bonus": __import__("app.growth", fromlist=["setting"]).setting(db, "founder_bonus", 2000),
                   "predictions_today": db.scalar(select(func.count()).select_from(Prediction).where(Prediction.created_at > n - timedelta(hours=24)))},
     }
 

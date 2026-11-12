@@ -24,10 +24,15 @@ export function Avatar({ user, size = 32 }) {
   return <span className="avatar" style={{ width: size, height: size, background: user.color || '#2E7D5B', fontSize: size * 0.42 }}>{n.slice(0, 1).toUpperCase()}</span>
 }
 
+export function FounderMark() {
+  const t = useT()
+  return <span className="founder-mark" title={t('founderBadge')}>★ {t('founderBadge')}</span>
+}
+
 export function UserName({ user, sub }) {
   return (
     <div style={{ minWidth: 0 }}>
-      <div className="ellip" style={{ fontWeight: 700 }}>{user.name || user.username}</div>
+      <div className="ellip" style={{ fontWeight: 700 }}>{user.name || user.username}{user.founder && <FounderMark />}</div>
       <div className="small ellip">@{user.username}{sub ? <>, {sub}</> : null}</div>
     </div>
   )

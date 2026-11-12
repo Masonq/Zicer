@@ -54,12 +54,29 @@ def migrate():
             c.execute(text(q))
 
 
+def _founders_backfill():
+    from .db import SessionLocal
+    from .models import User, Meta
+    from sqlalchemy import select
+    with SessionLocal() as db:
+        if db.get(Meta, "founders_backfill"):
+            return
+        for u in db.scalars(select(User).where(User.is_admin == False).order_by(User.id).limit(100)).all():  # noqa
+            u.bank += 2000
+        db.add(Meta(key="founders_backfill", value="1"))
+        db.commit()
+
+
 @app.on_event("startup")
 def startup():
     migrate()
     try:
         _seed_bookmakers()
     except Exception:  # noqa — two API workers start at once; the second one just skips
+        pass
+    try:
+        _founders_backfill()
+    except Exception:  # noqa — the other worker already did it
         pass
 
 

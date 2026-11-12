@@ -28,6 +28,16 @@ export function TipsterRow({ r, i }) {
   )
 }
 
+export function FounderBanner({ left, bonus }) {
+  const t = useT()
+  return (
+    <div className="founder-banner">
+      <span className="fb-badge">★</span>
+      <div><b>{t('founderTitle')}</b><span>{t('founderText').replace('{b}', fmtNum(bonus || 2000))} · {t('founderLeft')} <b className="num">{left}</b></span></div>
+    </div>
+  )
+}
+
 export default function Home() {
   const t = useT()
   useSeo(t('seoHome'), t('seoHomeDesc'))
@@ -46,10 +56,18 @@ export default function Home() {
             <Link to="/registracija" className="btn btn-gold">{t('join')}</Link>
             <Link to="/prijava" className="btn btn-line">{t('login')}</Link>
           </div>
+          {/* until the league is big, show what the site offers instead of small player counts */}
           <div className="hero-stats">
-            <div><b>{fmtNum(st.users)}</b><span>{t('users')}</span></div>
-            <div><b>{fmtNum(st.predictions_today)}</b><span>{t('today24')}</span></div>
+            {st.users >= 50 ? <>
+              <div><b>{fmtNum(st.users)}</b><span>{t('users')}</span></div>
+              <div><b>{fmtNum(st.predictions_today)}</b><span>{t('today24')}</span></div>
+            </> : <>
+              <div><b>{fmtNum(st.matches_week || 0)}</b><span>{t('statMatchesWeek')}</span></div>
+              <div><b>{st.sports || 10}</b><span>{t('statSports')}</span></div>
+              <div><b>100%</b><span>{t('statFree')}</span></div>
+            </>}
           </div>
+          {st.founders_left > 0 && <FounderBanner left={st.founders_left} bonus={st.founder_bonus} />}
         </div>
   )
   if (loading && !data) return (

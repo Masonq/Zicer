@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 import { useT } from '../i18n'
-import { useAuth } from '../store'
+import { useAuth, usePoll } from '../store'
+import { FounderBanner } from './Home'
 
 function useNext() {
   const [sp] = useSearchParams()
@@ -39,6 +40,12 @@ export function Login() {
   )
 }
 
+function RegFounder() {
+  const { data } = usePoll(() => api('/home?tz=0&sport=all'), [], 0, true, 'home:all:0')
+  const st = data?.stats
+  return st?.founders_left > 0 ? <div style={{ margin: '12px 0 14px' }}><FounderBanner left={st.founders_left} bonus={st.founder_bonus} /></div> : null
+}
+
 export function Register() {
   const t = useT()
   const { login } = useAuth()
@@ -54,6 +61,7 @@ export function Register() {
   return (
     <div className="auth-wrap">
       <h1 className="h1">{t('register')}</h1>
+      <RegFounder />
       <p className="sub">{t('virtual')}</p>
       <form className="card pad stack" style={{ marginTop: 14 }} onSubmit={submit}>
         <div className="field"><label htmlFor="u">{t('username')}</label><input id="u" className="input" autoComplete="username" minLength={3} maxLength={24} pattern="[A-Za-z0-9_.]{3,24}" value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} required /><span className="note">{t('usernameRule')}</span></div>
