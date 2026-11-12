@@ -47,18 +47,47 @@ function FavButton({ id }) {
   )
 }
 
+// esports: which game the match belongs to (league names come as "CS2 · ESL Pro League")
+export const ES_GAMES = { cs2: 'CS2', dota2: 'Dota 2', lol: 'League of Legends', valorant: 'Valorant' }
+export function esGame(m) {
+  const g = (m.league?.name || '').split('·')[0].trim().toLowerCase()
+  if (g.startsWith('cs')) return 'cs2'
+  if (g.startsWith('dota')) return 'dota2'
+  if (g.startsWith('lol') || g.startsWith('league')) return 'lol'
+  if (g.startsWith('valorant')) return 'valorant'
+  return 'cs2'
+}
+
+function EsTablo({ m }) {
+  const t = useT()
+  if (m.status === 'scheduled' || !m.score) return <Tablo m={m} />
+  const bo = parseInt((m.minute || '').replace(/\D/g, ''), 10) || 0
+  const played = (m.score[0] || 0) + (m.score[1] || 0)
+  const decided = bo && Math.max(m.score[0] || 0, m.score[1] || 0) > bo / 2
+  return (
+    <div className="tablo es-tablo">
+      <div className="big">{m.score[0]}<span className="sep">:</span>{m.score[1]}</div>
+      <div className={`lbl${m.status === 'live' ? ' live' : ''}`}>
+        {m.status === 'live' ? <><span className="live-dot" />{bo ? (decided ? `BO${bo}` : `BO${bo} · ${t('esMap')} ${Math.min(played + 1, bo)}`) : t('live')}</> : <>{bo ? `BO${bo} · ` : ''}{t('finished')}</>}
+      </div>
+    </div>
+  )
+}
+
 export function FeaturedMatch({ m, label, linkable = true }) {
   const t = useT()
+  const es = m.sport === 'esports' ? esGame(m) : null
   const inner = (
     <>
       <div className="pitch-top">
-        <span className="sport-chip"><SportIcon sport={m.sport} size={16} />{t(m.sport)}</span>
+        {es ? <span className={`sport-chip es-chip es-${es}`}><SportIcon sport={m.sport} size={16} />{ES_GAMES[es]}</span>
+          : <span className="sport-chip"><SportIcon sport={m.sport} size={16} />{t(m.sport)}</span>}
         {label && <span className="tag"><Sparkles size={15} />{label}</span>}
-        <span className="ellip" style={{ marginLeft: 'auto', textAlign: 'right' }}>{leagueLabel(m, t)}</span>
+        <span className="ellip" style={{ marginLeft: 'auto', textAlign: 'right' }}>{es ? (m.league?.name || '').split('·').slice(1).join('·').trim() || leagueLabel(m, t) : leagueLabel(m, t)}</span>
       </div>
       <div className="board">
         <Link to={`/klub/${m.home.id}`} className="board-team"><Crest team={m.home} size={58} /><span className="name">{t.team(m.home)}</span></Link>
-        <Tablo m={m} />
+        {es ? <EsTablo m={m} /> : <Tablo m={m} />}
         <Link to={`/klub/${m.away.id}`} className="board-team"><Crest team={m.away} size={58} /><span className="name">{t.team(m.away)}</span></Link>
       </div>
       {linkable && m.status !== 'finished' && <OddsButtons m={m} wide />}
@@ -67,13 +96,14 @@ export function FeaturedMatch({ m, label, linkable = true }) {
     </>
   )
   return (
-    <div className={`pitch sc-${m.sport}`}>
+    <div className={`pitch sc-${m.sport}${es ? ` es-${es}` : ''}`}>
+      {es && <span className="es-mark" aria-hidden="true">{es === 'lol' ? 'LoL' : ES_GAMES[es]}</span>}
       {m.home.logo && <img className="bg-crest l" src={m.home.logo} alt="" aria-hidden="true" />}
       {m.away.logo && <img className="bg-crest r" src={m.away.logo} alt="" aria-hidden="true" />}
       <span className="pitch-split" aria-hidden="true" />
       <span className="pitch-glow" aria-hidden="true" />
-      <span className="pitch-ball" aria-hidden="true"><img src={`/balls/${['football', 'basketball', 'tennis', 'hockey', 'volleyball', 'waterpolo', 'handball', 'tabletennis', 'futsal', 'esports'].includes(m.sport) ? m.sport : 'football'}.webp`} alt="" width="104" height="104" decoding="async"
-        onError={(e) => { const el = e.currentTarget; if (!el.dataset.r) { el.dataset.r = '1'; el.src = el.src.replace('.webp', '.png') + '?r=' + Date.now() } else el.parentElement.style.display = 'none' }} /></span>
+      {!es && <span className="pitch-ball" aria-hidden="true"><img src={`/balls/${['football', 'basketball', 'tennis', 'hockey', 'volleyball', 'waterpolo', 'handball', 'tabletennis', 'futsal', 'esports'].includes(m.sport) ? m.sport : 'football'}.webp`} alt="" width="104" height="104" decoding="async"
+        onError={(e) => { const el = e.currentTarget; if (!el.dataset.r) { el.dataset.r = '1'; el.src = el.src.replace('.webp', '.png') + '?r=' + Date.now() } else el.parentElement.style.display = 'none' }} /></span>}
       {inner}
     </div>
   )
@@ -252,7 +282,7 @@ export default function MatchPage() {
         <button className="linkbtn" style={{ fontSize: 14 }} onClick={() => (window.history.length > 1 ? nav(-1) : nav('/mecevi'))}><ChevronLeft size={18} />{t('matches')}</button>
         <FavButton id={m.id} />
       </div>
-      {m.status === 'live' || m.status === 'finished' ? <MatchCenter m={m} fallback={<FeaturedMatch m={m} linkable={false} />} /> : <FeaturedMatch m={m} linkable={false} />}
+      {(m.status === 'live' || m.status === 'finished') && m.sport !== 'esports' ? <MatchCenter m={m} fallback={<FeaturedMatch m={m} linkable={false} />} /> : <FeaturedMatch m={m} linkable={false} />}
       {!full && <div style={{ marginTop: 16 }}><Skeleton h={120} n={3} /></div>}
       {full && (
         <>

@@ -1490,3 +1490,25 @@ img { display: block; max-width: 100%; }
 .code-card .code-ico, .code-card .code-resend { justify-self: center; margin-left: auto; margin-right: auto; display: grid; }
 .code-card .code-resend { display: block; text-align: center; }
 .undo-toast { max-width: calc(100vw - 24px); } .undo-toast span { min-width: 0; overflow-wrap: anywhere; }
+
+/* esports headers: one look per game */
+.pitch.es-cs2 { --es: #F5A524; --es2: #3b2608; background: radial-gradient(520px 300px at 85% 0%, rgba(245,165,36,.22), transparent 65%), linear-gradient(150deg, #241a0d 0%, #12161b 60%, #0c0f12 100%); }
+.pitch.es-dota2 { --es: #E5452B; --es2: #3a0f0b; background: radial-gradient(520px 300px at 85% 0%, rgba(229,69,43,.34), transparent 65%), linear-gradient(150deg, #34110d 0%, #160c0b 60%, #0d0a0a 100%); }
+.pitch.es-lol { --es: #C8AA6E; --es2: #0a1a33; background: radial-gradient(520px 300px at 85% 0%, rgba(10,200,185,.22), transparent 65%), radial-gradient(420px 260px at 0% 100%, rgba(200,170,110,.18), transparent 65%), linear-gradient(150deg, #0b1d38 0%, #091428 60%, #060d1b 100%); }
+.pitch.es-valorant { --es: #FF4655; --es2: #3a0d14; background: radial-gradient(520px 300px at 85% 0%, rgba(255,70,85,.30), transparent 65%), linear-gradient(150deg, #2e0d14 0%, #111a24 60%, #0f1923 100%); }
+.pitch[class*="es-"] { border-color: color-mix(in srgb, var(--es) 45%, transparent); }
+.pitch[class*="es-"] .pitch-split { background: linear-gradient(transparent, color-mix(in srgb, var(--es) 35%, transparent), transparent); }
+.es-mark { position: absolute; right: -6px; top: 10px; font-family: var(--display); font-weight: 700; font-size: 104px; line-height: 1; letter-spacing: -.02em; text-transform: uppercase;
+  color: transparent; -webkit-text-stroke: 2px color-mix(in srgb, var(--es) 40%, transparent); opacity: .55; pointer-events: none; white-space: nowrap; transform: rotate(-6deg); }
+.es-chip { background: color-mix(in srgb, var(--es) 16%, transparent) !important; border-color: color-mix(in srgb, var(--es) 55%, transparent) !important; color: var(--es) !important; }
+.es-chip.es-cs2 { --es: #F5A524; } .es-chip.es-dota2 { --es: #E5452B; } .es-chip.es-lol { --es: #C8AA6E; } .es-chip.es-valorant { --es: #FF4655; }
+.pitch[class*="es-"] .tablo { border-color: color-mix(in srgb, var(--es) 45%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--es) 20%, transparent), 0 12px 30px rgba(0,0,0,.35); }
+.pitch[class*="es-"] .tablo .big { color: var(--es); }
+.es-tablo .sep { opacity: .6; margin: 0 .08em; }
+.pitch[class*="es-"] .tablo-in { background: color-mix(in srgb, var(--es) 18%, transparent); color: var(--es); }
+.pitch[class*="es-"] .crest, .pitch[class*="es-"] .board-team img { background: #fff; }
+@media (max-width: 480px) { .es-mark { font-size: 72px; top: 14px; } }
+
+.pitch[class*="es-"] .pitch-glow { display: none; }
+.pitch[class*="es-"] .bg-crest { opacity: .10; filter: grayscale(.3); }
+.pitch[class*="es-"] .board-team .name { font-size: 15px; line-height: 1.2; text-align: center; overflow-wrap: break-word; max-width: 130px; }
