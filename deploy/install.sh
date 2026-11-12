@@ -200,6 +200,23 @@ if [ ! -d /var/log/journal ]; then mkdir -p /var/log/journal && systemd-tmpfiles
 } > $APP/reports/server-projects.txt 2>&1
 ok "снимок здоровья сервера записан"
 
+# inventory of everything running on this server (all projects, even small ones)
+{
+  echo "=== службы (запущенные) — память, папка ==="
+  systemctl list-units --type=service --state=running --no-legend | awk '{print $1}' | while read u; do m=$(systemctl show -p MemoryCurrent --value $u 2>/dev/null); d=$(systemctl show -p WorkingDirectory --value $u 2>/dev/null); e=$(systemctl show -p ExecStart --value $u 2>/dev/null | grep -o 'path=[^ ;]*' | head -1); echo "$(( ${m:-0} / 1048576 )) MB | $u | $d | $e"; done 2>/dev/null | sort -t'|' -k1 -rn
+  echo; echo "=== службы (остановленные/упавшие, но включённые) ==="
+  systemctl list-unit-files --type=service --state=enabled --no-legend | awk '{print $1}' | while read u; do systemctl is-active --quiet $u || echo "$u ($(systemctl is-active $u))"; done
+  echo; echo "=== таймеры ==="; systemctl list-timers --all --no-legend | awk '{print $(NF-1), $NF}'
+  echo; echo "=== сайты nginx (файл: домены) ==="; for f in /etc/nginx/sites-enabled/*; do echo "$(basename $f): $(grep -h 'server_name' $f | sed 's/server_name//;s/;//' | tr -s ' ' | sort -u | tr '\n' ' ')"; done
+  echo; echo "=== папки проектов ==="; ls -d /opt/*/ /srv/*/ /var/www/*/ /root/*/ /home/*/ 2>/dev/null | while read d; do echo "$(du -sh $d 2>/dev/null | cut -f1)  $d"; done
+  echo; echo "=== docker ==="; docker ps -a --format '{{.Names}} | {{.Image}} | {{.Status}}' 2>/dev/null
+  echo; echo "=== pm2 ==="; (command -v pm2 >/dev/null && pm2 jlist 2>/dev/null | python3 -c "import sys,json; [print(p['name'], p['pm2_env']['status']) for p in json.load(sys.stdin)]") 2>/dev/null
+  echo; echo "=== cron ==="; crontab -l 2>/dev/null | grep -v '^#'; ls /etc/cron.d 2>/dev/null
+  echo; echo "=== базы PostgreSQL ==="; sudo -u postgres psql -Atc "select datname, pg_size_pretty(pg_database_size(datname)) from pg_database where not datistemplate" 2>/dev/null
+  echo; echo "=== открытые порты ==="; ss -ltnpH | awk '{print $4, $6}' | sed 's/users:((//;s/,pid=[0-9]*,fd=[0-9]*))//' | sort -u
+} > $APP/reports/projects.txt 2>&1
+ok "список проектов на сервере записан"
+
 step "Админ"
 ADMIN_INFO=""
 if [ ! -f /etc/zicer-admin.txt ]; then
