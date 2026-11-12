@@ -1,37 +1,37 @@
 === службы (запущенные) — память, папка ===
-1066 MB | ttodds.service | /opt/ttodds/app | path=/opt/ttodds/venv/bin/uvicorn
-739 MB | res-collector.service | /opt/ttodds/app | path=/opt/ttodds/venv/bin/python3
-199 MB | ttodds-collector.service | /opt/ttodds/app | path=/opt/ttodds/venv/bin/python
-165 MB | zicer-api.service | /opt/zicer/backend | path=/opt/zicer/venv/bin/uvicorn
-127 MB | repostik2.service | /opt/repostik2/backend | path=/opt/repostik2/.venv/bin/uvicorn
-97 MB | zicer-worker.service | /opt/zicer/backend | path=/opt/zicer/venv/bin/python
-86 MB | postgresql@16-main.service |  | path=/usr/bin/pg_ctlcluster
-81 MB | containerd.service |  | path=/usr/bin/containerd
+907 MB | ttodds.service | /opt/ttodds/app | path=/opt/ttodds/venv/bin/uvicorn
+727 MB | res-collector.service | /opt/ttodds/app | path=/opt/ttodds/venv/bin/python3
+202 MB | fino.service | /opt/fino/backend | path=/opt/fino/backend/venv/bin/uvicorn
+162 MB | zicer-api.service | /opt/zicer/backend | path=/opt/zicer/venv/bin/uvicorn
+125 MB | postgresql@16-main.service |  | path=/usr/bin/pg_ctlcluster
+121 MB | att-collector.service | /opt/ttodds/app | path=/opt/ttodds/venv/bin/python3
+118 MB | ttodds-collector.service | /opt/ttodds/app | path=/opt/ttodds/venv/bin/python
+107 MB | zicer-worker.service | /opt/zicer/backend | path=/opt/zicer/venv/bin/python
+94 MB | containerd.service |  | path=/usr/bin/containerd
 79 MB | docker.service |  | path=/usr/bin/dockerd
-65 MB | hockey-collector.service | /opt/ttodds/app | path=/opt/ttodds/venv/bin/python
-42 MB | severny-kubok.service | /opt/severny-kubok | path=/opt/severny-kubok/venv/bin/uvicorn
-41 MB | att-collector.service | /opt/ttodds/app | path=/opt/ttodds/venv/bin/python3
-35 MB | fino.service | /opt/fino/backend | path=/opt/fino/backend/venv/bin/uvicorn
-33 MB | warp-svc.service |  | path=/bin/warp-svc
+60 MB | hockey-collector.service | /opt/ttodds/app | path=/opt/ttodds/venv/bin/python
+40 MB | warp-svc.service |  | path=/bin/warp-svc
+39 MB | repostik2.service | /opt/repostik2/backend | path=/opt/repostik2/.venv/bin/uvicorn
+31 MB | fwupd.service |  | path=/usr/libexec/fwupd/fwupd
+23 MB | forma.service | /opt/forma/backend | path=/opt/forma/backend/.venv/bin/uvicorn
 21 MB | multipathd.service |  | path=/sbin/multipathd
-19 MB | tor@default.service |  | path=/usr/bin/tor
-19 MB | fail2ban.service |  | path=/usr/bin/fail2ban-server
-13 MB | nginx.service |  | path=/usr/sbin/nginx
-11 MB | plonk-embed.service | /opt/fino/backend | path=/opt/fino/backend/venv/bin/uvicorn
-9 MB | plunkly.service | /opt/plunkly | path=/opt/plunkly/.venv/bin/uvicorn
-9 MB | plonk-bot.service | /opt/fino/backend | path=/opt/fino/backend/venv/bin/python
-8 MB | systemd-journald.service |  | path=/usr/lib/systemd/systemd-journald
-8 MB | forma.service | /opt/forma/backend | path=/opt/forma/backend/.venv/bin/uvicorn
+15 MB | severny-kubok.service | /opt/severny-kubok | path=/opt/severny-kubok/venv/bin/uvicorn
+14 MB | nginx.service |  | path=/usr/sbin/nginx
+13 MB | tor@default.service |  | path=/usr/bin/tor
+10 MB | plonk-embed.service | /opt/fino/backend | path=/opt/fino/backend/venv/bin/uvicorn
+9 MB | systemd-journald.service |  | path=/usr/lib/systemd/systemd-journald
+7 MB | plonk-bot.service | /opt/fino/backend | path=/opt/fino/backend/venv/bin/python
+4 MB | systemd-udevd.service |  | path=/usr/lib/systemd/systemd-udevd
+4 MB | fail2ban.service |  | path=/usr/bin/fail2ban-server
 3 MB | systemd-resolved.service |  | path=/usr/lib/systemd/systemd-resolved
-3 MB | ssh.service |  | path=/usr/sbin/sshd
 2 MB | udisks2.service |  | path=/usr/libexec/udisks2/udisksd
-2 MB | systemd-udevd.service |  | path=/usr/lib/systemd/systemd-udevd
+2 MB | ssh.service |  | path=/usr/sbin/sshd
 1 MB | rsyslog.service |  | path=/usr/sbin/rsyslogd
-1 MB | polkit.service |  | path=/usr/lib/polkit-1/polkitd
 1 MB | dbus.service |  | path=/usr/bin/dbus-daemon
 0 MB | systemd-timesyncd.service |  | path=/usr/lib/systemd/systemd-timesyncd
 0 MB | systemd-logind.service |  | path=/usr/lib/systemd/systemd-logind
 0 MB | qemu-guest-agent.service |  | path=/usr/sbin/qemu-ga
+0 MB | polkit.service |  | path=/usr/lib/polkit-1/polkitd
 0 MB | getty@tty1.service |  | path=/sbin/agetty
 0 MB | earlyoom.service |  | path=/usr/bin/earlyoom
 0 MB | cron.service |  | path=/usr/sbin/cron
@@ -57,24 +57,24 @@ ubuntu-advantage.service (inactive)
 vgauth.service (inactive)
 
 === таймеры ===
-knk-watchdog.timer knk-watchdog.service
 knk-update.timer knk-update.service
-kront-autodeploy.timer kront-autodeploy.service
 ttodds-autoupdate.timer ttodds-autoupdate.service
 zicer-watchdog.timer zicer-watchdog.service
-plonk-app-sync.timer plonk-app-sync.service
 plonk-indexnow.timer plonk-indexnow.service
 plonk-embed-index.timer plonk-embed-index.service
 sysstat-collect.timer sysstat-collect.service
-plonk-saved-search.timer plonk-saved-search.service
+plonk-app-sync.timer plonk-app-sync.service
+knk-watchdog.timer knk-watchdog.service
+plonk-autopost.timer plonk-autopost.service
 plonk-price-marks.timer plonk-price-marks.service
 fwupd-refresh.timer fwupd-refresh.service
-plonk-autopost.timer plonk-autopost.service
 plonk-reply-reminder.timer plonk-reply-reminder.service
+plonk-saved-search.timer plonk-saved-search.service
 plonk-price-drop.timer plonk-price-drop.service
 dpkg-db-backup.timer dpkg-db-backup.service
 logrotate.timer logrotate.service
 sysstat-summary.timer sysstat-summary.service
+motd-news.timer motd-news.service
 certbot.timer certbot.service
 plonk-nightly.timer plonk-nightly.service
 plonk-review-publish.timer plonk-review-publish.service
@@ -84,9 +84,8 @@ knk-backup.timer knk-backup.service
 plonk-pipeline.timer plonk-pipeline.service
 plonk-search-digest.timer plonk-search-digest.service
 plonk-staff-digest.timer plonk-staff-digest.service
-man-db.timer man-db.service
-motd-news.timer motd-news.service
 plonk-listing-expiry.timer plonk-listing-expiry.service
+man-db.timer man-db.service
 update-notifier-download.timer update-notifier-download.service
 systemd-tmpfiles-clean.timer systemd-tmpfiles-clean.service
 e2scrub_all.timer e2scrub_all.service
@@ -102,8 +101,6 @@ bookstats.ru:  bookstats.ru www.bookstats.ru
 bookstats-tmp:  bookstats.89-208-113-147.sslip.io bookstats.89-208-113-147.sslip.io 
 knk:  knk.89-208-113-147.sslip.io 
 plonk:  plonk.rs  plonk.rs www.plonk.rs  www.plonk.rs 
-plunkly:  plunkly.89-208-113-147.sslip.io 
-puskica.conf:  puskica.89-208-113-147.sslip.io server { listen 80 puskica.89-208-113-147.sslip.io; location /.well-known/acme-challenge/ { root /var/www/html; } location / { return 301 https://$host$request_uri; } } 
 repostik:  repostik.duckdns.org 
 severny-kubok:  kubok-59d07193.sslip.io  kubok.89.208.113.147.sslip.io 
 zicer.conf:  winly.rs  
@@ -115,12 +112,8 @@ zicer-old.conf: server { listen 443 ssl zicer.89-208-113-147.sslip.io; ssl_certi
 106M  /opt/forma/
 6.4M  /opt/knk/
 1.5M  /opt/knk-backups/
-6.8M  /opt/kront/
-48M  /opt/plunkly/
-2.5M  /opt/polako/
-1.7M  /opt/puskica/
 734M  /opt/repostik/
-686M  /opt/repostik2/
+687M  /opt/repostik2/
 123M  /opt/severny-kubok/
 2.0G  /opt/ttodds/
 331M  /opt/zicer/
@@ -130,17 +123,8 @@ zicer-old.conf: server { listen 443 ssl zicer.89-208-113-147.sslip.io; ssl_certi
 4.0K  /var/www/verify/
 
 === docker ===
-kront-web-1 | fde3de04ae7c | Up 2 hours
-kront-api-1 | c1678b33253c | Up 2 hours
-kront-collector-1 | d4934b174ae1 | Up 2 hours
-kront-db-1 | postgres:16-alpine | Up 2 hours (healthy)
-polako-app-1 | polako-app | Up 2 hours
-polako-db-1 | postgres:16-alpine | Up 2 hours (healthy)
-puskica-web-1 | puskica-web | Up 2 hours
-puskica-api-1 | puskica-api | Up 2 hours
-puskica-db-1 | postgres:16-alpine | Up 2 hours (healthy)
-knk-app-1 | knk-app | Up 2 hours
-knk-db-1 | postgres:16-alpine | Up 2 hours (healthy)
+knk-app-1 | knk-app | Up 3 hours
+knk-db-1 | postgres:16-alpine | Up 3 hours (healthy)
 
 === pm2 ===
 
@@ -161,11 +145,9 @@ zicer|13 MB
 
 === открытые порты ===
 0.0.0.0:22 "sshd",pid=4788,fd=3),("systemd"
-0.0.0.0:443 "nginx",pid=138556,fd=7),("nginx",pid=138555,fd=7),("nginx"
+0.0.0.0:443 "nginx",pid=209726,fd=7),("nginx",pid=209725,fd=7),("nginx"
 0.0.0.0:8002 "python3",pid=1179,fd=3),("python3",pid=1178,fd=3),("uvicorn"
-0.0.0.0:8096 "docker-proxy"
-0.0.0.0:80 "nginx",pid=138556,fd=5),("nginx",pid=138555,fd=5),("nginx"
-127.0.0.1:3710 "docker-proxy"
+0.0.0.0:80 "nginx",pid=209726,fd=5),("nginx",pid=209725,fd=5),("nginx"
 127.0.0.1:40000 "warp-svc"
 127.0.0.1:5432 "postgres"
 127.0.0.1:8011 "uvicorn"
@@ -173,15 +155,11 @@ zicer|13 MB
 127.0.0.1:8095 "docker-proxy"
 127.0.0.1:8099 "uvicorn"
 127.0.0.1:8107 "uvicorn"
-127.0.0.1:8120 "docker-proxy"
-127.0.0.1:8417 "uvicorn"
-127.0.0.1:8710 "docker-proxy"
-127.0.0.1:8790 "python3",pid=157495,fd=3),("python3",pid=157494,fd=3),("uvicorn"
+127.0.0.1:8790 "python3",pid=206842,fd=3),("python3",pid=206841,fd=3),("uvicorn"
 127.0.0.1:8791 "uvicorn"
 127.0.0.1:9050 "tor"
 127.0.0.53%lo:53 "systemd-resolve"
 127.0.0.54:53 "systemd-resolve"
 [::]:22 "sshd",pid=4788,fd=4),("systemd"
-[::]:443 "nginx",pid=138556,fd=8),("nginx",pid=138555,fd=8),("nginx"
-[::]:8096 "docker-proxy"
-[::]:80 "nginx",pid=138556,fd=6),("nginx",pid=138555,fd=6),("nginx"
+[::]:443 "nginx",pid=209726,fd=8),("nginx",pid=209725,fd=8),("nginx"
+[::]:80 "nginx",pid=209726,fd=6),("nginx",pid=209725,fd=6),("nginx"

@@ -1,18 +1,19 @@
-uptime: up 1 hour, 56 minutes
+uptime: up 2 hours, 33 minutes
                total        used        free      shared  buff/cache   available
-Mem:            3915        2593         453          50        1211        1322
-Swap:           4095        2423        1672
+Mem:            3915        2959         173          64        1141         955
+Swap:           4095        2263        1832
 /dev/vda2        59G   30G   29G  51% /
 --- сторож, последние записи:
 --- прошлая загрузка, память/зависания:
 --- больше всего памяти сейчас (по службам):
-1066 MB ttodds.service
-739 MB res-collector.service
-199 MB ttodds-collector.service
+933 MB ttodds.service
+721 MB res-collector.service
+241 MB fino.service
 163 MB zicer-api.service
-127 MB repostik2.service
-91 MB zicer-worker.service
-86 MB postgresql@16-main.service
-79 MB docker.service
-79 MB containerd.service
-65 MB hockey-collector.service
+130 MB postgresql@16-main.service
+130 MB att-collector.service
+123 MB ttodds-collector.service
+102 MB zicer-worker.service
+83 MB containerd.service
+63 MB hockey-collector.service
+61 MB docker.service
