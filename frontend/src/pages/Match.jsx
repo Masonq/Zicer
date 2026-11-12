@@ -156,7 +156,7 @@ export function FeaturedMatch({ m, label, linkable = true }) {
   )
   return (
     <div className={`pitch sc-${m.sport}${es ? ` es-${es}` : ''}`}>
-      {es && <span className="es-mark" aria-hidden="true">{es === 'lol' ? 'LoL' : ES_GAMES[es]}</span>}
+      {es && (() => { const w = es === 'lol' ? 'LoL' : ES_GAMES[es]; return <span className="es-wm" aria-hidden="true" style={{ fontSize: `min(70px, ${Math.round(150 / w.length)}vw)` }}>{w}</span> })()}
       {m.home.logo && <img className="bg-crest l" src={m.home.logo} alt="" aria-hidden="true" />}
       {m.away.logo && <img className="bg-crest r" src={m.away.logo} alt="" aria-hidden="true" />}
       <span className="pitch-split" aria-hidden="true" />

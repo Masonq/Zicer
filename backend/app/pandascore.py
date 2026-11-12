@@ -54,6 +54,14 @@ def _winrate(c, db, game, tid):
     return wr
 
 
+def _has_hist(db, tid) -> bool:
+    r = db.get(Meta, f"ps_wr_{tid}")
+    try:
+        return bool(r and r.value and "hist" in json.loads(r.value) and json.loads(r.value).get("t", 0) > time.time() - 86400)
+    except Exception:  # noqa
+        return False
+
+
 def _team(db, game, op):
     ext = f"ps:{op['id']}"
     db.flush()
@@ -76,6 +84,7 @@ def sync_pandascore(db: Session) -> str:
     if not tok:
         return "pandascore: no token"
     new = upd = fin = 0
+    lookups = n_streams = 0
     with httpx.Client(headers={"Authorization": f"Bearer {tok}", "Accept": "application/json"}, timeout=25) as c:
         for game, gname in GAMES.items():
             batches = []
@@ -116,6 +125,7 @@ def sync_pandascore(db: Session) -> str:
                 m.start = start or m.start
                 res = {r_["team_id"]: r_["score"] for r_ in x.get("results") or [] if "team_id" in r_}
                 hid, aid = ops[0]["id"], ops[1]["id"]
+                n_streams += 1 if x.get("streams_list") else 0
                 streams = [st for st in x.get("streams_list") or [] if st.get("raw_url") or st.get("embed_url")]
                 if streams:  # official main stream first, then English, then any
                     st = sorted(streams, key=lambda v: (not v.get("main"), not v.get("official"), v.get("language") != "en"))[0]
@@ -133,7 +143,12 @@ def sync_pandascore(db: Session) -> str:
                     fin += 1
                 elif x.get("status") in ("canceled", "postponed") and m.status == "scheduled":
                     m.status = "cancelled"
-                if m.status == "scheduled" and start and start > datetime.utcnow() and (not (m.odds or {}).get("form") or not db.get(Meta, f"ps_wr_{hid}")):
+                # team history (recent series, head-to-head): for upcoming and live matches, a limited number of new lookups per run
+                need_hist = m.status in ("scheduled", "live") and (not _has_hist(db, hid) or not _has_hist(db, aid))
+                if need_hist and lookups < 40:
+                    lookups += 2
+                    _winrate(c, db, game, hid), _winrate(c, db, game, aid)
+                if m.status == "scheduled" and start and start > datetime.utcnow() and not (m.odds or {}).get("form"):
                     ph, pa = _winrate(c, db, game, hid), _winrate(c, db, game, aid)
                     p = ph / (ph + pa) if ph + pa else 0.5
                     p = min(0.85, max(0.15, p))
@@ -143,4 +158,4 @@ def sync_pandascore(db: Session) -> str:
                 db.commit()
             except Exception:  # noqa — one bad game list must not stop the others
                 db.rollback()
-    return f"pandascore new {new}, updated {upd}, finished {fin}"
+    return f"pandascore new {new}, updated {upd}, finished {fin}, with streams {n_streams}, history lookups {lookups}"

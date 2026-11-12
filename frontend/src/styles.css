@@ -1578,3 +1578,14 @@ img { display: block; max-width: 100%; }
 @media (min-width: 900px) { .how-steps { grid-template-columns: 1fr 1fr; } }
 .how-link { display: inline-block; margin-top: 12px; font-size: 14px; font-weight: 700; color: var(--gold); }
 .foot-link { color: #c9d6cf; text-decoration: underline; text-underline-offset: 3px; }
+
+/* watermark sits behind the score, never under the game chip or the league name */
+.pitch .es-mark { left: 50% !important; right: auto !important; top: 58% !important; bottom: auto !important; transform: translate(-50%, -50%) rotate(-6deg) !important;
+  font-size: 150px; opacity: .22; z-index: 0; }
+.pitch[class*="es-"] .pitch-top { position: relative; z-index: 2; }
+.pitch[class*="es-"] .pitch-top .ellip { color: #e8e2cf; font-weight: 700; }
+@media (max-width: 480px) { .pitch .es-mark { font-size: 110px; } }
+
+/* watermark: centred in the empty top band of the card, fully visible, above nothing important */
+.es-wm { position: absolute; left: 0; right: 0; top: 10px; text-align: center; font-family: var(--display); font-weight: 700; line-height: 1; letter-spacing: .02em; text-transform: uppercase;
+  color: transparent; -webkit-text-stroke: 2px color-mix(in srgb, var(--es) 55%, transparent); opacity: .5; pointer-events: none; white-space: nowrap; z-index: 0; }
