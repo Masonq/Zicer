@@ -11,11 +11,11 @@ zicer.conf: winly.rs winly.rs
 zicer-old.conf: zicer.89-208-113-147.sslip.io zicer.89-208-113-147.sslip.io 
 
 === Свои службы systemd (статус, память) ===
-att-collector.service | active | 42 MB | /opt/ttodds/app
-fino.service | active | 24 MB | /opt/fino/backend
-forma.service | active | 10 MB | /opt/forma/backend
+att-collector.service | active | 41 MB | /opt/ttodds/app
+fino.service | active | 35 MB | /opt/fino/backend
+forma.service | active | 8 MB | /opt/forma/backend
 friendly-recovery.service | inactive | - | /root
-hockey-collector.service | active | 64 MB | /opt/ttodds/app
+hockey-collector.service | active | 65 MB | /opt/ttodds/app
 kront-autodeploy.service | inactive | - | /opt/kront
 mdmon@.service |  | - | 
 multipath-tools.service | active | 21 MB | 
@@ -26,7 +26,7 @@ pg_dump@.service |  | - |
 pg_receivewal@.service |  | - | 
 plonk-app-sync.service | inactive | - | /opt/fino/backend
 plonk-autopost.service | inactive | - | /opt/fino/backend
-plonk-bot.service | active | 11 MB | /opt/fino/backend
+plonk-bot.service | active | 9 MB | /opt/fino/backend
 plonk-cleanup.service | inactive | - | /opt/fino/backend
 plonk-dedup-sweep.service | inactive | - | /opt/fino/backend
 plonk-digest.service | inactive | - | /opt/fino/backend
@@ -47,23 +47,23 @@ plonk-seller-digest.service | inactive | - | /opt/fino/backend
 plonk-staff-digest.service | inactive | - | /opt/fino/backend
 plonk-tg-import.service | inactive | - | /opt/fino/backend
 plonk-translate.service | inactive | - | /opt/fino/backend
-plunkly.service | active | 8 MB | /opt/plunkly
+plunkly.service | active | 9 MB | /opt/plunkly
 repostik.service | inactive | - | /opt/repostik
-repostik2.service | active | 121 MB | /opt/repostik2/backend
-res-collector.service | active | 829 MB | /opt/ttodds/app
+repostik2.service | active | 127 MB | /opt/repostik2/backend
+res-collector.service | active | 739 MB | /opt/ttodds/app
 severny-kubok.service | active | 42 MB | /opt/severny-kubok
 syslog.service | active | 1 MB | 
 tor.service | active | - | 
 tor@.service |  | - | 
-tor@default.service | active | 27 MB | 
-ttodds-collector.service | active | 228 MB | /opt/ttodds/app
-ttodds.service | active | 881 MB | /opt/ttodds/app
+tor@default.service | active | 19 MB | 
+ttodds-collector.service | active | 199 MB | /opt/ttodds/app
+ttodds.service | active | 1066 MB | /opt/ttodds/app
 user-runtime-dir@.service |  | - | 
 warp-svc.service | active | 33 MB | 
 xfs_scrub@.service |  | - | 
 xfs_scrub_fail@.service |  | - | 
-zicer-api.service | active | 196 MB | /opt/zicer/backend
-zicer-worker.service | active | 107 MB | /opt/zicer/backend
+zicer-api.service | active | 165 MB | /opt/zicer/backend
+zicer-worker.service | active | 91 MB | /opt/zicer/backend
 
 === Папки в /opt и /var/www (размер) ===
 3.6G	/opt/fino
@@ -135,11 +135,11 @@ knk-watchdog.timer knk-watchdog.service
 kront-autodeploy.timer kront-autodeploy.service
 zicer-watchdog.timer zicer-watchdog.service
 plonk-app-sync.timer plonk-app-sync.service
-plonk-autopost.timer plonk-autopost.service
-plonk-embed-index.timer plonk-embed-index.service
 plonk-indexnow.timer plonk-indexnow.service
+plonk-embed-index.timer plonk-embed-index.service
 plonk-saved-search.timer plonk-saved-search.service
 plonk-price-marks.timer plonk-price-marks.service
+plonk-autopost.timer plonk-autopost.service
 plonk-reply-reminder.timer plonk-reply-reminder.service
 plonk-price-drop.timer plonk-price-drop.service
 plonk-nightly.timer plonk-nightly.service
