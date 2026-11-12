@@ -177,6 +177,27 @@ if [ ! -d /var/log/journal ]; then mkdir -p /var/log/journal && systemd-tmpfiles
   echo "--- прошлая загрузка, память/зависания:"; journalctl -b -1 -k --no-pager 2>/dev/null | grep -iE 'out of memory|oom-kill|killed process|hung task|soft lockup|blocked for more' | tail -n 15
   echo "--- больше всего памяти сейчас (по службам):"; for u in $(systemctl list-units --type=service --state=running --no-legend | awk '{print $1}'); do m=$(systemctl show -p MemoryCurrent --value $u 2>/dev/null); [ "$m" -gt 52428800 ] 2>/dev/null && echo "$((m/1048576)) MB $u"; done | sort -rn | head -15
 } > $APP/reports/server-health.txt 2>&1
+# inventory of everything living on this server: sites, services, folders, containers
+{
+  echo "=== Сайты nginx (имя → файл) ==="
+  for f in /etc/nginx/sites-enabled/*; do n=$(grep -hoP 'server_name\s+\K[^;]+' "$f" 2>/dev/null | tr '\n' ' ' | tr -s ' '); echo "$(basename $f): $n"; done
+  echo; echo "=== Свои службы systemd (статус, память) ==="
+  for u in $(systemctl list-unit-files --type=service --no-legend | awk '{print $1}' | grep -vE '^(systemd|dbus|ssh|cron|getty|user@|ufw|apparmor|snap|cloud|networkd|rsyslog|polkit|udisks|multipathd|unattended|packagekit|e2scrub|fstrim|motd|apt|dpkg|console|keyboard|setvt|grub|lvm|mdmonitor|open-iscsi|iscsid|finalrd|plymouth|rescue|emergency|kmod|modprobe|serial|systemd|thermald|irqbalance|ModemManager|accounts|udev|uuidd|qemu|blk|secureboot|sysstat|pollinate|landscape|ua-|ubuntu|wpa|NetworkManager|nftables|iptables|netfilter|chrony|ntp|containerd|docker|nginx|postgres|postfix|earlyoom|fwupd|sshd|tmp|logrotate|man-db|certbot|snapd|rc-local|rpc|nfs|ifup|ifupdown|hibernate|hybrid|suspend|quotaon|sudo|x11|vgauth|open-vm|hv-|vboxadd|dmesg|lxd|update|run-|bolt|upower|rtkit|avahi|cups|colord|gdm|kerneloops|switcheroo|power|bluetooth|alsa|pulse|speech|whoopsie|apport|kexec|sysfs|ldconfig|initrd|halt|poweroff|reboot|kbd|cryptdisks|mdadm|zfs|lxc|sssd|ondemand|smartmon|dm-event|atd|autovt|container-getty|debug-shell|nvidia|mountnfs|procps|selinux|pppd|haveged|rng|fail2ban|unbound|resolvconf|dnsmasq|named|bind9|zicer-watchdog|zicer-autoupdate)' ); do
+    st=$(systemctl is-active $u 2>/dev/null); m=$(systemctl show -p MemoryCurrent --value $u 2>/dev/null); wd=$(systemctl show -p WorkingDirectory --value $u 2>/dev/null)
+    [ "$st" = "inactive" ] && [ -z "$wd" ] && continue
+    mm=$([ "$m" -gt 0 ] 2>/dev/null && echo "$((m/1048576)) MB" || echo "-"); echo "$u | $st | $mm | $wd"
+  done
+  echo; echo "=== Папки в /opt и /var/www (размер) ==="
+  du -sh /opt/* /var/www/* 2>/dev/null | sort -rh | head -40
+  echo; echo "=== Docker-контейнеры ==="
+  docker ps -a --format '{{.Names}} | {{.Status}} | {{.Image}}' 2>/dev/null
+  echo; echo "=== Порты ==="
+  ss -ltnpH 2>/dev/null | awk '{print $4, $6}' | sed 's/users:((//; s/,pid.*//' | sort -u | head -50
+  echo; echo "=== Базы PostgreSQL ==="
+  sudo -u postgres psql -Atc "select datname, pg_size_pretty(pg_database_size(datname)) from pg_database where not datistemplate order by pg_database_size(datname) desc" 2>/dev/null
+  echo; echo "=== Таймеры ==="
+  systemctl list-timers --all --no-legend 2>/dev/null | awk '{print $(NF-1), $NF}' | grep -vE 'systemd|apt|logrotate|man-db|fstrim|e2scrub|motd|dpkg|sysstat|fwupd|snapd|update|certbot' | head -30
+} > $APP/reports/server-projects.txt 2>&1
 ok "снимок здоровья сервера записан"
 
 step "Админ"
