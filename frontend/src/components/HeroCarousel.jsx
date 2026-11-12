@@ -25,9 +25,29 @@ function Banner({ b }) {
   return external ? <a href={b.link} target="_blank" rel="noopener" className="hb-link">{body}</a> : <Link to={b.link} className="hb-link">{body}</Link>
 }
 
+// "First 100 players" slide: medal art on the right, live count of free places
+function FounderSlide({ left, bonus, user }) {
+  const t = useT()
+  const taken = Math.max(0, 100 - left)
+  return (
+    <Link to={user ? '/profil' : '/registracija'} className="hb-link">
+      <div className="hero-banner founder-slide">
+        <span className="fs-medal" aria-hidden="true" />
+        <span className="hb-tag fs-tag">★ {t('founderBadge')}</span>
+        <h3 className="hb-title fs-title"><span>{t('founderBig')}</span> {t('founderWord')}</h3>
+        <p className="hb-text fs-text">{t('founderText').replace('{b}', (bonus || 2000).toLocaleString('sr-RS'))}</p>
+        <div className="fs-meter"><i style={{ width: `${Math.max(3, taken)}%` }} /></div>
+        <div className="fs-left">{t('founderLeft')} <b className="num">{left}</b> / 100</div>
+        <span className="btn btn-gold hb-cta">{user ? t('founderInvite') : t('join')}</span>
+      </div>
+    </Link>
+  )
+}
+
 // Matches of the day and promo banners, one after another: auto-play, swipe, pause on touch, progress dots
-export default function HeroCarousel({ matches = [], banners = [], label }) {
+export default function HeroCarousel({ matches = [], banners = [], label, founders = null, user = null }) {
   const slides = []
+  if (founders && founders.left > 0) slides.push({ k: 'founders', el: <FounderSlide left={founders.left} bonus={founders.bonus} user={user} /> })
   matches.forEach((m, i) => {
     slides.push({ k: `m${m.id}`, el: <FeaturedMatch m={m} label={label} /> })
     if (i === 1) banners.forEach((b) => slides.push({ k: `b${b.id}`, el: <Banner b={b} /> }))

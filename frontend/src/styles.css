@@ -1523,3 +1523,17 @@ img { display: block; max-width: 100%; }
 .founder-banner > div > span b { color: var(--chalk); }
 .founder-mark { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; font-size: 10.5px; font-weight: 800; vertical-align: 2px;
   color: var(--gold); background: rgba(242,194,48,.14); border: 1px solid rgba(242,194,48,.4); }
+
+/* founders slide in the home carousel */
+.founder-slide { overflow: hidden; isolation: isolate; padding-right: 42%;
+  background: radial-gradient(420px 320px at 82% 45%, rgba(242,194,48,.22), transparent 70%), linear-gradient(120deg, #10291f 0%, #0a1c16 70%); border: 1px solid rgba(242,194,48,.35); }
+.founder-slide .fs-medal { position: absolute; z-index: -1; right: -6%; top: 50%; width: 58%; aspect-ratio: 1; transform: translateY(-50%);
+  background: url(/brand/medal.webp) center/cover; -webkit-mask-image: radial-gradient(closest-side, #000 60%, transparent 100%); mask-image: radial-gradient(closest-side, #000 60%, transparent 100%); }
+.founder-slide .fs-tag { background: rgba(242,194,48,.16); color: var(--gold); border-color: rgba(242,194,48,.5); }
+.founder-slide .fs-title { font-size: clamp(26px, 6vw, 40px); line-height: 1.02; }
+.founder-slide .fs-title span { color: var(--gold); display: block; font-size: 1.35em; }
+.founder-slide .fs-text { color: #d9d3b8; }
+.fs-meter { width: 100%; max-width: 260px; height: 8px; border-radius: 99px; background: rgba(255,255,255,.1); overflow: hidden; }
+.fs-meter i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #FFD95E, #E8A912); }
+.fs-left { font-size: 13px; font-weight: 700; color: #c9d6cf; } .fs-left b { color: var(--chalk); }
+@media (max-width: 480px) { .founder-slide { padding-right: 34%; } .founder-slide .fs-medal { width: 62%; right: -18%; } }

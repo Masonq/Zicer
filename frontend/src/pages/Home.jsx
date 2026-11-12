@@ -67,7 +67,7 @@ export default function Home() {
               <div><b>100%</b><span>{t('statFree')}</span></div>
             </>}
           </div>
-          {st.founders_left > 0 && <FounderBanner left={st.founders_left} bonus={st.founder_bonus} />}
+
         </div>
   )
   if (loading && !data) return (
@@ -94,7 +94,7 @@ export default function Home() {
       )}
 
       {(d.featured_list || []).length || (d.banners || []).length
-        ? <HeroCarousel matches={d.featured_list && d.featured_list.length ? d.featured_list : d.featured ? [d.featured] : []} banners={d.banners || []} label={t('matchOfDay')} />
+        ? <HeroCarousel matches={d.featured_list && d.featured_list.length ? d.featured_list : d.featured ? [d.featured] : []} banners={d.banners || []} label={t('matchOfDay')} founders={{ left: d.stats?.founders_left, bonus: d.stats?.founder_bonus }} user={user} />
         : d.featured && <FeaturedMatch m={d.featured} label={t('matchOfDay')} />}
       {switcher}
       <Safe><HotMatches list={d.hot || []} /></Safe>
