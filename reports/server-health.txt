@@ -1,16 +1,20 @@
-uptime: up 15 minutes
+uptime: up 19 minutes
                total        used        free      shared  buff/cache   available
-Mem:            3915        2898         262          70        1087        1017
-Swap:           4095        1797        2298
+Mem:            3915        2823         416          70        1007        1092
+Swap:           4095        2024        2071
 /dev/vda2        59G   30G   29G  51% /
 --- сторож, последние записи:
 --- прошлая загрузка, память/зависания:
---- больше всего памяти сейчас:
-0 MB COMMAND
-607 MB uvicorn
-388 MB python3
-192 MB python
-183 MB python
-134 MB python3
-116 MB python3
-106 MB python
+--- больше всего памяти сейчас (по службам):
+865 MB ttodds.service
+676 MB res-collector.service
+162 MB zicer-api.service
+158 MB fino.service
+140 MB att-collector.service
+126 MB plonk-bot.service
+125 MB ttodds-collector.service
+108 MB postgresql@16-main.service
+83 MB zicer-worker.service
+76 MB containerd.service
+65 MB docker.service
+62 MB hockey-collector.service
