@@ -130,6 +130,53 @@ UNIT
 systemctl daemon-reload
 systemctl enable --now zicer-autoupdate.timer >/dev/null 2>&1 && ok "таймер автообновления включён" || bad "таймер автообновления"
 
+step "Сторож сервера"
+# 1) the watchdog: checks every minute, restarts services, reboots only as the last resort
+chmod +x $APP/deploy/watchdog.sh
+cat > /etc/systemd/system/zicer-watchdog.service <<UNIT
+[Unit]
+Description=Zicer watchdog
+[Service]
+Type=oneshot
+ExecStart=/bin/bash $APP/deploy/watchdog.sh
+UNIT
+cat > /etc/systemd/system/zicer-watchdog.timer <<UNIT
+[Unit]
+Description=Zicer watchdog every minute
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=60s
+[Install]
+WantedBy=timers.target
+UNIT
+systemctl daemon-reload; systemctl enable --now zicer-watchdog.timer >/dev/null 2>&1 && ok "сторож включён (проверка раз в минуту)" || bad "сторож"
+# 2) out-of-memory guard: kills the hungriest process (headless browsers first) before the machine freezes
+if ! command -v earlyoom >/dev/null; then DEBIAN_FRONTEND=noninteractive apt-get install -y -qq earlyoom >/dev/null 2>&1; fi
+if command -v earlyoom >/dev/null; then
+  echo "EARLYOOM_ARGS=\"-m 4 -s 8 -r 3600 --avoid '(^|/)(sshd|systemd|postgres|nginx)\$' --prefer '(^|/)(chrome|chromium|headless_shell|node|ffmpeg)\$'\"" > /etc/default/earlyoom
+  systemctl enable earlyoom >/dev/null 2>&1; systemctl restart earlyoom && ok "earlyoom включён" || bad "earlyoom"
+fi
+# 3) swap: a 2 GB cushion if the server has none
+if [ "$(awk '/SwapTotal/{print $2}' /proc/meminfo)" = "0" ]; then
+  if fallocate -l 2G /swapfile 2>/dev/null && chmod 600 /swapfile && mkswap /swapfile >/dev/null && swapon /swapfile; then
+    grep -q '^/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
+  fi
+  [ "$(awk '/SwapTotal/{print $2}' /proc/meminfo)" != "0" ] && ok "swap 2 ГБ создан" || bad "swap"
+else ok "swap есть"; fi
+# 4) kernel hangs: the system watchdog reboots a frozen machine by itself; reboot 10 s after a kernel panic
+modprobe softdog 2>/dev/null; echo softdog > /etc/modules-load.d/softdog.conf
+mkdir -p /etc/systemd/system.conf.d; printf '[Manager]\nRuntimeWatchdogSec=60s\nRebootWatchdogSec=5min\n' > /etc/systemd/system.conf.d/watchdog.conf
+echo 'kernel.panic = 10' > /etc/sysctl.d/90-zicer.conf; sysctl -q -p /etc/sysctl.d/90-zicer.conf
+systemctl daemon-reexec && ok "аппаратный сторож ядра включён (softdog)" || bad "softdog"
+# 5) health snapshot for the report: memory, disk, and why the last boot ended
+{
+  echo "uptime: $(uptime -p)"; free -m | head -3; df -h / | tail -1
+  echo "--- сторож, последние записи:"; tail -n 15 /var/log/zicer-watchdog.log 2>/dev/null
+  echo "--- прошлая загрузка, память/зависания:"; journalctl -b -1 -k --no-pager 2>/dev/null | grep -iE 'out of memory|oom-kill|killed process|hung task|soft lockup|blocked for more' | tail -n 15
+  echo "--- больше всего памяти сейчас:"; ps -eo rss,comm --sort=-rss | head -8 | awk '{printf "%d MB %s\n", $1/1024, $2}'
+} > $APP/reports/server-health.txt 2>&1
+ok "снимок здоровья сервера записан"
+
 step "Админ"
 ADMIN_INFO=""
 if [ ! -f /etc/zicer-admin.txt ]; then
