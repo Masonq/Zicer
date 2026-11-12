@@ -29,3 +29,11 @@ export function trackPage(pathname, search) {
     api('/t', { method: 'POST', body: { path: pathname, sid, first, ...src } }).catch(() => {})
   } catch { /* private mode */ }
 }
+
+// funnel events (registration form): stored like page views under /__ev/…, visible in admin → Traffic
+export function trackEvent(name) {
+  try {
+    const src = JSON.parse(sessionStorage.getItem('winly_src') || '{}')
+    api('/t', { method: 'POST', body: { path: `/__ev/${name}`, sid, first: false, ...src } }).catch(() => {})
+  } catch { /* private mode */ }
+}

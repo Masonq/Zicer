@@ -28,9 +28,9 @@ def utcnow():
 
 # ---------------- auth ----------------
 class RegisterIn(BaseModel):
-    username: str = Field(min_length=3, max_length=24)
-    email: str = Field(min_length=5, max_length=160)
-    password: str = Field(min_length=6, max_length=128)
+    username: str = Field(default="", max_length=40)
+    email: str = Field(min_length=3, max_length=160)
+    password: str = Field(min_length=1, max_length=128)
     lang: str = "sr"
     ref: str = ""
 
@@ -40,19 +40,34 @@ class LoginIn(BaseModel):
     password: str
 
 
+def _make_username(db, wanted: str, email: str) -> str:
+    """Any name people type (Miloš Petrović, ђорђе, with spaces) becomes a valid unique login: latin letters, digits, _ and ."""
+    from .textutil import to_lat, strip_accents
+    base = (wanted or "").strip() or email.split("@")[0]
+    base = strip_accents(to_lat(base).replace("đ", "dj").replace("Đ", "Dj"))
+    base = re.sub(r"[^A-Za-z0-9_.]+", "_", base).strip("._")[:20] or "prognozer"
+    if len(base) < 3:
+        base = (base + "_win")[:20]
+    cand, i = base, 1
+    while db.scalar(select(User).where(func.lower(User.username) == cand.lower())):
+        i += 1
+        cand = f"{base[:20]}{i}"
+    return cand
+
+
 @router.post("/auth/register")
 def register(body: RegisterIn, db: Session = Depends(get_db)):
-    uname = body.username.strip()
-    if not re.fullmatch(r"[A-Za-z0-9_.]{3,24}", uname):
-        raise HTTPException(400, "username_invalid")
     email = body.email.strip().lower()
     if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
         raise HTTPException(400, "email_invalid")
-    if db.scalar(select(User).where(func.lower(User.username) == uname.lower())):
-        raise HTTPException(400, "username_taken")
+    if len(body.password) < 6:
+        raise HTTPException(400, "password_short")
+    shown = body.username.strip()[:40]
+    uname = _make_username(db, shown, email)
     if db.scalar(select(User).where(User.email == email)):
         raise HTTPException(400, "email_taken")
     u = User(username=uname, email=email, pw_hash=hash_pw(body.password), lang=body.lang if body.lang in ("sr", "sr-cyr", "ru") else "sr",
+             display_name=shown if shown and shown != uname else None,
              bank=config.START_BANK, color=random.choice(COLORS), tg_code=secrets.token_hex(8), email_verified=False)
     db.add(u)
     db.commit()

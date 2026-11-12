@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 import { useT } from '../i18n'
+import { trackEvent } from '../seo'
 import { useAuth, usePoll } from '../store'
 import { FounderBanner } from './Home'
 
@@ -53,20 +54,25 @@ export function Register() {
   const [f, setF] = useState({ username: '', email: '', password: '' })
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
+  useEffect(() => { trackEvent('reg_view') }, [])
   const submit = async (e) => {
-    e.preventDefault(); setErr(''); setBusy(true)
+    e.preventDefault(); setErr('')
+    // our own checks with clear messages (no silent browser tooltips that in-app browsers hide)
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.email.trim())) { setErr(t('err_email_invalid')); trackEvent('reg_error/email_invalid'); return }
+    if (f.password.length < 6) { setErr(t('err_password_short')); trackEvent('reg_error/password_short'); return }
+    setBusy(true); trackEvent('reg_submit')
     try { const r = await api('/auth/register', { method: 'POST', body: { ...f, lang: t.lang, ref: (() => { try { return localStorage.getItem('winly_ref') || '' } catch { return '' } })() } }); login(r.token, r.user); nav(r.verify ? `/potvrda?sent=1&next=${encodeURIComponent('/izbor-kluba?novi=1')}` : '/izbor-kluba?novi=1', { replace: true }) }
-    catch (ex) { const k = `err_${ex.code}`; setErr(t(k) !== k ? t(k) : t('error')) } finally { setBusy(false) }
+    catch (ex) { const k = `err_${ex.code}`; setErr(t(k) !== k ? t(k) : t('error')); trackEvent(`reg_error/${ex.code || ex.status || 'net'}`) } finally { setBusy(false) }
   }
   return (
     <div className="auth-wrap">
       <h1 className="h1">{t('register')}</h1>
       <RegFounder />
       <p className="sub">{t('virtual')}</p>
-      <form className="card pad stack" style={{ marginTop: 14 }} onSubmit={submit}>
-        <div className="field"><label htmlFor="u">{t('username')}</label><input id="u" className="input" autoComplete="username" minLength={3} maxLength={24} pattern="[A-Za-z0-9_.]{3,24}" value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} required /><span className="note">{t('usernameRule')}</span></div>
-        <div className="field"><label htmlFor="e">{t('email')}</label><input id="e" className="input" type="email" autoComplete="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} required /></div>
-        <div className="field"><label htmlFor="p">{t('password')}</label><input id="p" className="input" type="password" autoComplete="new-password" minLength={6} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} required /></div>
+      <form className="card pad stack" style={{ marginTop: 14 }} onSubmit={submit} noValidate>
+        <div className="field"><label htmlFor="u">{t('regName')}</label><input id="u" className="input" autoComplete="nickname" maxLength={40} placeholder={t('regNamePh')} value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} /><span className="note">{t('regNameNote')}</span></div>
+        <div className="field"><label htmlFor="e">{t('email')}</label><input id="e" className="input" type="email" inputMode="email" autoCapitalize="off" autoComplete="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></div>
+        <div className="field"><label htmlFor="p">{t('password')}</label><input id="p" className="input" type="password" autoComplete="new-password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /><span className="note">{t('regPassNote')}</span></div>
         {err && <div className="form-error">{err}</div>}
         <button className="btn btn-gold btn-block" disabled={busy}>{t('createAccount')}</button>
         <div className="small" style={{ textAlign: 'center' }}>{t('haveAccount')} <Link to="/prijava" style={{ color: 'var(--gold)', fontWeight: 700 }}>{t('signIn')}</Link></div>
