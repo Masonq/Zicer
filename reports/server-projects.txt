@@ -3,20 +3,17 @@ bookstats.ru: bookstats.ru www.bookstats.ru bookstats.ru www.bookstats.ru
 bookstats-tmp: bookstats.89-208-113-147.sslip.io bookstats.89-208-113-147.sslip.io bookstats.89-208-113-147.sslip.io bookstats.89-208-113-147.sslip.io 
 knk: knk.89-208-113-147.sslip.io knk.89-208-113-147.sslip.io 
 plonk: plonk.rs www.plonk.rs www.plonk.rs plonk.rs 
-plunkly: plunkly.89-208-113-147.sslip.io plunkly.89-208-113-147.sslip.io 
-puskica.conf: puskica.89-208-113-147.sslip.io puskica.89-208-113-147.sslip.io 
 repostik: repostik.duckdns.org repostik.duckdns.org 
 severny-kubok: kubok-59d07193.sslip.io kubok.89.208.113.147.sslip.io kubok-59d07193.sslip.io kubok.89.208.113.147.sslip.io 
 zicer.conf: winly.rs winly.rs 
 zicer-old.conf: zicer.89-208-113-147.sslip.io zicer.89-208-113-147.sslip.io 
 
 === Свои службы systemd (статус, память) ===
-att-collector.service | active | 130 MB | /opt/ttodds/app
-fino.service | active | 241 MB | /opt/fino/backend
-forma.service | active | 25 MB | /opt/forma/backend
+att-collector.service | active | 45 MB | /opt/ttodds/app
+fino.service | active | 247 MB | /opt/fino/backend
+forma.service | active | 71 MB | /opt/forma/backend
 friendly-recovery.service | inactive | - | /root
-hockey-collector.service | active | 63 MB | /opt/ttodds/app
-kront-autodeploy.service | inactive | - | /opt/kront
+hockey-collector.service | active | 322 MB | /opt/ttodds/app
 mdmon@.service |  | - | 
 multipath-tools.service | active | 21 MB | 
 networking.service | active | - | 
@@ -26,12 +23,12 @@ pg_dump@.service |  | - |
 pg_receivewal@.service |  | - | 
 plonk-app-sync.service | inactive | - | /opt/fino/backend
 plonk-autopost.service | inactive | - | /opt/fino/backend
-plonk-bot.service | active | 7 MB | /opt/fino/backend
+plonk-bot.service | active | 390 MB | /opt/fino/backend
 plonk-cleanup.service | inactive | - | /opt/fino/backend
 plonk-dedup-sweep.service | inactive | - | /opt/fino/backend
 plonk-digest.service | inactive | - | /opt/fino/backend
 plonk-embed-index.service | inactive | - | /opt/fino/backend
-plonk-embed.service | active | 10 MB | /opt/fino/backend
+plonk-embed.service | active | 944 MB | /opt/fino/backend
 plonk-indexnow.service | inactive | - | /opt/fino/backend
 plonk-listing-expiry.service | inactive | - | /opt/fino/backend
 plonk-nightly.service | inactive | - | /opt/fino/backend
@@ -47,23 +44,22 @@ plonk-seller-digest.service | inactive | - | /opt/fino/backend
 plonk-staff-digest.service | inactive | - | /opt/fino/backend
 plonk-tg-import.service | inactive | - | /opt/fino/backend
 plonk-translate.service | inactive | - | /opt/fino/backend
-plunkly.service | active | 8 MB | /opt/plunkly
 repostik.service | inactive | - | /opt/repostik
-repostik2.service | active | 43 MB | /opt/repostik2/backend
-res-collector.service | active | 721 MB | /opt/ttodds/app
-severny-kubok.service | active | 16 MB | /opt/severny-kubok
-syslog.service | active | 1 MB | 
+repostik2.service | active | 119 MB | /opt/repostik2/backend
+res-collector.service | active | 547 MB | /opt/ttodds/app
+severny-kubok.service | active | 61 MB | /opt/severny-kubok
+syslog.service | active | 3 MB | 
 tor.service | active | - | 
 tor@.service |  | - | 
-tor@default.service | active | 15 MB | 
-ttodds-collector.service | active | 123 MB | /opt/ttodds/app
-ttodds.service | active | 933 MB | /opt/ttodds/app
+tor@default.service | active | 83 MB | 
+ttodds-collector.service | active | 513 MB | /opt/ttodds/app
+ttodds.service | active | 815 MB | /opt/ttodds/app
 user-runtime-dir@.service |  | - | 
-warp-svc.service | active | 34 MB | 
+warp-svc.service | active | 119 MB | 
 xfs_scrub@.service |  | - | 
 xfs_scrub_fail@.service |  | - | 
-zicer-api.service | active | 163 MB | /opt/zicer/backend
-zicer-worker.service | active | 102 MB | /opt/zicer/backend
+zicer-api.service | active | 160 MB | /opt/zicer/backend
+zicer-worker.service | active | 78 MB | /opt/zicer/backend
 
 === Папки в /opt и /var/www (размер) ===
 3.6G	/opt/fino
@@ -71,38 +67,23 @@ zicer-worker.service | active | 102 MB | /opt/zicer/backend
 734M	/opt/repostik
 687M	/opt/repostik2
 331M	/opt/zicer
-123M	/opt/severny-kubok
+119M	/opt/severny-kubok
 106M	/opt/forma
-48M	/opt/plunkly
-6.8M	/opt/kront
 6.4M	/opt/knk
-2.5M	/opt/polako
-1.7M	/opt/puskica
 1.5M	/opt/knk-backups
 12K	/opt/containerd
 8.0K	/var/www/html
 4.0K	/var/www/verify
 
 === Docker-контейнеры ===
-kront-web-1 | Up 3 hours | fde3de04ae7c
-kront-api-1 | Up 3 hours | c1678b33253c
-kront-collector-1 | Up 3 hours | d4934b174ae1
-kront-db-1 | Up 3 hours (healthy) | postgres:16-alpine
-polako-app-1 | Up 3 hours | polako-app
-polako-db-1 | Up 3 hours (healthy) | postgres:16-alpine
-puskica-web-1 | Up 3 hours | puskica-web
-puskica-api-1 | Up 3 hours | puskica-api
-puskica-db-1 | Up 3 hours (healthy) | postgres:16-alpine
-knk-app-1 | Up 3 hours | knk-app
-knk-db-1 | Up 3 hours (healthy) | postgres:16-alpine
+knk-app-1 | Up 9 minutes | knk-app
+knk-db-1 | Up 9 minutes (healthy) | postgres:16-alpine
 
 === Порты ===
 0.0.0.0:22 "sshd"
 0.0.0.0:443 "nginx"
 0.0.0.0:8002 "python3"
-0.0.0.0:8096 "docker-proxy"
 0.0.0.0:80 "nginx"
-127.0.0.1:3710 "docker-proxy"
 127.0.0.1:40000 "warp-svc"
 127.0.0.1:5432 "postgres"
 127.0.0.1:8011 "uvicorn"
@@ -110,9 +91,6 @@ knk-db-1 | Up 3 hours (healthy) | postgres:16-alpine
 127.0.0.1:8095 "docker-proxy"
 127.0.0.1:8099 "uvicorn"
 127.0.0.1:8107 "uvicorn"
-127.0.0.1:8120 "docker-proxy"
-127.0.0.1:8417 "uvicorn"
-127.0.0.1:8710 "docker-proxy"
 127.0.0.1:8790 "python3"
 127.0.0.1:8791 "uvicorn"
 127.0.0.1:9050 "tor"
@@ -120,7 +98,6 @@ knk-db-1 | Up 3 hours (healthy) | postgres:16-alpine
 127.0.0.54:53 "systemd-resolve"
 [::]:22 "sshd"
 [::]:443 "nginx"
-[::]:8096 "docker-proxy"
 [::]:80 "nginx"
 
 === Базы PostgreSQL ===
@@ -131,12 +108,11 @@ forma|8183 kB
 postgres|7511 kB
 
 === Таймеры ===
-kront-autodeploy.timer kront-autodeploy.service
+knk-watchdog.timer knk-watchdog.service
 zicer-watchdog.timer zicer-watchdog.service
 plonk-app-sync.timer plonk-app-sync.service
-plonk-indexnow.timer plonk-indexnow.service
 plonk-embed-index.timer plonk-embed-index.service
-knk-watchdog.timer knk-watchdog.service
+plonk-indexnow.timer plonk-indexnow.service
 plonk-autopost.timer plonk-autopost.service
 plonk-price-marks.timer plonk-price-marks.service
 plonk-reply-reminder.timer plonk-reply-reminder.service
