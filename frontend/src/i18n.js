@@ -91,6 +91,8 @@ const LAT = 'abvgdđežzijklmnoprstćufhcčšABVGDĐEŽZIJKLMNOPRSTĆUFHCČŠ'
 const CYR = 'абвгдђежзијклмнопрстћуфхцчшАБВГДЂЕЖЗИЈКЛМНОПРСТЋУФХЦЧШ'
 export function toCyr(s) {
   if (!s) return s
+  // placeholders like {b}, {won}, {all} stay as they are, so .replace('{b}', …) still works in Cyrillic
+  if (/\{[a-z]+\}/.test(s)) return s.split(/(\{[a-z]+\})/).map((part) => (/^\{[a-z]+\}$/.test(part) ? part : toCyr(part))).join('')
   for (const [a, b] of L2C) s = s.split(a).join(b)
   let out = ''
   for (const ch of s) { const i = LAT.indexOf(ch); out += i >= 0 ? CYR[i] : ch }
