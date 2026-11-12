@@ -1194,6 +1194,10 @@ def sync_xfeed(db: Session) -> str:
                     weak = (g["home"], m.home.name) if sh < sa else (g["away"], m.away.name)
                     if _shared_token(*weak):
                         sc = 1.7
+                if not sc and m.sport in ("waterpolo", "handball", "volleyball", "futsal") and _shared_token(g["home"], m.home.name) and _shared_token(g["away"], m.away.name):
+                    # club names in different languages ("Radnički Kragujevac" / "VK Radnicki"): one shared word on each side + same start time
+                    if g.get("start") and abs(datetime.utcfromtimestamp(g["start"]) - m.start).total_seconds() <= 45 * 60:
+                        sc = 1.6
             if sc > bs:
                 best, bs = g, sc
         if best:

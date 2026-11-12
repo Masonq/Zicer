@@ -40,7 +40,9 @@ MIGRATIONS = [
     "CREATE INDEX IF NOT EXISTS ix_matches_x_id ON matches (x_id)",
     "ALTER TABLE highlights ADD COLUMN IF NOT EXISTS status VARCHAR(8) DEFAULT ''",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS ref_by INTEGER",
-    "ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT TRUE",  # accounts made before email codes count as verified
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT TRUE",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_last VARCHAR(10) DEFAULT ''",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_streak INTEGER DEFAULT 0",  # accounts made before email codes count as verified
 ]
 
 

@@ -1,4 +1,4 @@
-import { Flame, Ticket, Trophy, TrendingUp, Target, Medal, Zap, Star } from 'lucide-react'
+import { Flame, Ticket, Trophy, TrendingUp, Target, Medal, Zap, Star, Crown, Rocket, Gem, Layers, CalendarCheck, Swords, UserPlus, Award, Sparkles } from 'lucide-react'
 import { useT } from '../i18n'
 
 export function MiniLine({ data = [], w = 70, h = 26, color }) {
@@ -38,6 +38,24 @@ export function Ring({ p = 0, size = 110, label }) {
 const ACH = {
   first_pick: [Target, '#6AAEF0'], first_ticket: [Ticket, '#4CC38A'], streak5: [Flame, '#FF8A3D'], streak10: [Zap, '#F2C230'],
   won50: [Trophy, '#F2C230'], underdog: [TrendingUp, '#B48CFF'], ticket_won: [Medal, '#3DD68C'], euroleague: [Star, '#FF8A3D'],
+  streak3: [Sparkles, '#6AAEF0'], won10: [Award, '#4CC38A'], won100: [Crown, '#F2C230'], underdog5: [Rocket, '#B48CFF'], tickets5: [Layers, '#3DD68C'],
+  ticket10x: [Gem, '#FF6B9A'], sports3: [Target, '#FF8A3D'], daily7: [CalendarCheck, '#FF8A3D'], derby: [Swords, '#FF6B6B'], invite: [UserPlus, '#6AAEF0'], founder: [Star, '#F2C230'],
+}
+
+const LEVEL_KEYS = ['lvl0', 'lvl1', 'lvl2', 'lvl3', 'lvl4', 'lvl5', 'lvl6']
+// level of the forecaster: name, experience bar to the next level
+export function LevelCard({ level }) {
+  const t = useT()
+  if (!level) return null
+  const pct = level.to ? Math.min(100, Math.round(((level.xp - level.from) / (level.to - level.from)) * 100)) : 100
+  return (
+    <div className="pb-tile lvl-card">
+      <span className="pb-l">{t('level')} {level.n + 1}</span>
+      <b className="pb-v lvl-name">{t(LEVEL_KEYS[level.n])}</b>
+      <span className="lvl-bar"><i style={{ width: `${pct}%` }} /></span>
+      <small className="num">{level.to ? `${level.xp} / ${level.to} XP · ${t('lvlNext')} ${t(LEVEL_KEYS[level.n + 1])}` : `${level.xp} XP · ${t('lvlMax')}`}</small>
+    </div>
+  )
 }
 
 // Metallic 3D-looking badges (no emoji): earned ones shine, others are dimmed with progress

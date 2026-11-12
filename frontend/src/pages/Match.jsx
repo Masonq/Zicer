@@ -74,6 +74,65 @@ function EsTablo({ m }) {
   )
 }
 
+function streamEmbed(st) {
+  const host = window.location.hostname
+  if (st.embed && /twitch\.tv/.test(st.embed)) return `${st.embed}${st.embed.includes('?') ? '&' : '?'}parent=${host}&autoplay=true&muted=true`
+  if (st.embed && /youtube\.com|youtu\.be/.test(st.embed)) return st.embed
+  const ch = (st.url || '').match(/twitch\.tv\/([\w_]+)/)
+  if (ch) return `https://player.twitch.tv/?channel=${ch[1]}&parent=${host}&autoplay=true&muted=true`
+  const yt = (st.url || '').match(/(?:v=|youtu\.be\/)([\w-]{6,})/)
+  if (yt) return `https://www.youtube.com/embed/${yt[1]}?autoplay=1&mute=1`
+  return null
+}
+
+// esports: stream (loaded only on tap), recent series of both teams, head-to-head
+function EsPanel({ m, es }) {
+  const t = useT()
+  const [play, setPlay] = useState(false)
+  const st = es.stream
+  const src = st ? streamEmbed(st) : null
+  const site = st?.url ? (/twitch/.test(st.url) ? 'Twitch' : /youtu/.test(st.url) ? 'YouTube' : 'stream') : ''
+  const Row = ({ x }) => (
+    <div className="list-row es-row">
+      <FormPills form={[x.w ? 'W' : 'L']} />
+      {x.logo ? <img className="es-logo" src={x.logo} alt="" loading="lazy" /> : <span className="es-logo" />}
+      <span className="grow ellip" style={{ fontWeight: 700 }}>{x.name}</span>
+      <b className="num">{x.s}</b><small className="es-date">{x.at ? x.at.slice(8, 10) + '.' + x.at.slice(5, 7) + '.' : ''}</small>
+    </div>
+  )
+  const Team = ({ team, list }) => (
+    <div className="card es-team">
+      <div className="list-row"><Crest team={team} size={26} /><span className="grow ellip" style={{ fontWeight: 800 }}>{t.team(team)}</span>
+        <FormPills form={list.slice(0, 5).map((x) => (x.w ? 'W' : 'L'))} /></div>
+      {list.slice(0, 5).map((x, i) => <Row key={i} x={x} />)}
+      {!list.length && <div className="small" style={{ padding: '10px 14px' }}>{t('esNoHist')}</div>}
+    </div>
+  )
+  return (
+    <>
+      {st && (src || st.url) && (m.status === 'live' || new Date(m.start) - Date.now() < 3600000) && (
+        <section className="section">
+          <div className="section-head"><h2 className="h2">{t('esStream')}</h2>{st.lang && <span className="small">{st.lang.toUpperCase()}</span>}</div>
+          {play && src ? <div className="es-player"><iframe src={src} title="stream" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen /></div>
+            : <button type="button" className="es-cover" onClick={() => (src ? setPlay(true) : window.open(st.url, '_blank', 'noopener'))}>
+                <span className="es-play">▶</span><b>{t('esWatch')}</b>{site && <small>{t('esOpen')} {site}</small>}
+              </button>}
+        </section>
+      )}
+      <section className="section">
+        <div className="section-head"><h2 className="h2">{t('esForm')}</h2></div>
+        <div className="es-grid"><Team team={m.home} list={es.home || []} /><Team team={m.away} list={es.away || []} /></div>
+      </section>
+      {es.h2h?.length > 0 && (
+        <section className="section">
+          <div className="section-head"><h2 className="h2">{t('esH2H')}</h2></div>
+          <div className="card">{es.h2h.map((x, i) => <Row key={i} x={{ ...x, name: `${t.team(m.home)} – ${x.name}` }} />)}</div>
+        </section>
+      )}
+    </>
+  )
+}
+
 export function FeaturedMatch({ m, label, linkable = true }) {
   const t = useT()
   const es = m.sport === 'esports' ? esGame(m) : null
@@ -322,6 +381,7 @@ export default function MatchPage() {
       )}
 
 
+      {m.sport === 'esports' && m.es ? <EsPanel m={m} es={m.es} /> : <>
       <section className="section">
         <div className="section-head"><h2 className="h2">{t('form')}</h2></div>
         <div className="card">
@@ -336,6 +396,7 @@ export default function MatchPage() {
           <div className="rows">{m.h2h.map((x) => <MatchRow key={x.id} m={x} />)}</div>
         </section>
       )}
+      </>}
 
       <section className="section">
         <div className="section-head"><h2 className="h2">{t('predictionsCap')}</h2><span className="small">{m.predictions.length}</span></div>

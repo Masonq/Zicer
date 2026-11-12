@@ -90,6 +90,8 @@ class User(Base):
     avatar: Mapped[str] = mapped_column(String(256), default="")
     ref_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
     email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    daily_last: Mapped[str] = mapped_column(String(10), default="")  # Belgrade date of the last daily bonus
+    daily_streak: Mapped[int] = mapped_column(Integer, default=0)
 
     fav_football = relationship("Team", foreign_keys=[fav_football_id], lazy="joined")
     fav_basket = relationship("Team", foreign_keys=[fav_basket_id], lazy="joined")

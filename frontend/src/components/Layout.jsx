@@ -88,7 +88,7 @@ export default function Layout() {
         )}
         {user?.is_admin && <NavLink to="/admin" className={({ isActive }) => `side-link${isActive ? ' on' : ''}`}><Shield size={20} />{t('admin')}</NavLink>}
         <div className="side-foot">
-          {user && <span className="bank-chip" title={t('yourBank')}><Wallet size={16} /><RollNum value={fmtNum(user.bank)} /></span>}
+          {user && <span className="bank-chip" title={t('yourBank')}>{user.daily_streak >= 2 && <span className="streak-flame num" title={t('dailyStreak')}>🔥{user.daily_streak}</span>}<Wallet size={16} /><RollNum value={fmtNum(user.bank)} /></span>}
           <LangSwitch />
         </div>
       </aside>
@@ -97,7 +97,7 @@ export default function Layout() {
         <header className="topbar">
           <Link to="/" className="wordmark"><img src={LOGO_SRC} alt="" width={Math.round((LOGO_W * 21) / LOGO_H)} height={21} className="wm-logo" decoding="sync" /><span>Winly</span></Link>
           <div className="topbar-right">
-            {user && <Link to="/profil" className="bank-chip" title={t('yourBank')}><Wallet size={16} /><RollNum value={fmtNum(user.bank)} /></Link>}
+            {user && <Link to="/profil" className="bank-chip" title={t('yourBank')}>{user.daily_streak >= 2 && <span className="streak-flame num" title={t('dailyStreak')}>🔥{user.daily_streak}</span>}<Wallet size={16} /><RollNum value={fmtNum(user.bank)} /></Link>}
             <LangSwitch />
           </div>
         </header>
@@ -106,7 +106,7 @@ export default function Layout() {
             <Link to={`/potvrda?next=${encodeURIComponent(loc.pathname)}`} className="verify-strip"><span>{t('verifyBanner')}</span><b>{t('verifyNow')}</b></Link>
           )}
           <div className="page-body"><ErrorBoundary resetKey={loc.pathname + loc.search}><Outlet /></ErrorBoundary></div>
-          <div className="foot">{t('responsible')}</div>
+          <div className="foot"><Link to="/kako-funkcionise" className="foot-link">{t('howTitle')}</Link> · <a href="mailto:podrska@winly.rs" className="foot-link">podrska@winly.rs</a><br />{t('responsible')}</div>
         </main>
       </div>
 

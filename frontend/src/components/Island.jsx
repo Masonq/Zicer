@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { useT } from '../i18n'
 import { useAuth } from '../store'
+import { Flame } from 'lucide-react'
 import { favList } from '../fav'
 import { Crest } from './ui'
 
@@ -12,11 +13,21 @@ const SEEN = 'winly_island_seen'
 // Dynamic-Island style alerts at the top: goals in matches you follow, your settled picks and tickets
 export default function Island() {
   const t = useT()
-  const { user } = useAuth()
+  const { user, setUser } = useAuth()
   const nav = useNavigate()
   const prev = useRef(null)
   const [q, setQ] = useState([])
   const push = (x) => setQ((cur) => (cur.length > 4 ? cur : [...cur, x]))
+  // daily bonus: claimed automatically on the first visit of the day, announced in the island
+  useEffect(() => {
+    if (!user) return
+    const today = new Date(Date.now() + 3600000).toISOString().slice(0, 10)
+    if (user.daily_last === today) return
+    api('/me/daily', { method: 'POST' }).then((r) => {
+      if (r.user) setUser(r.user)
+      if (r.granted > 0) push({ id: `daily${today}`, kind: 'daily', title: `${t('dailyBonus')} · ${t('dailyStreak')} ${r.streak}`, sub: `+${r.granted}`, to: '/profil', streak: r.streak, double: r.double })
+    }).catch(() => {})
+  }, [user?.id]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     let alive = true
     const seen = new Set(JSON.parse(localStorage.getItem(SEEN) || '[]'))
@@ -64,8 +75,8 @@ export default function Island() {
   const m = cur.m
   return (
     <button className={`island ${cur.kind}`} key={cur.id} onClick={() => { setQ((x) => x.slice(1)); nav(cur.to) }}>
-      <span className="isl-ico">{m ? <Crest team={cur.kind === 'goal' && m.score ? (cur.title.includes(t.team(m.away)) ? m.away : m.home) : m.home} size={26} /> : null}</span>
-      <span className="isl-txt"><b>{cur.title}</b>{m && <small className="ellip">{t.team(m.home)} {cur.sc || (m.score ? `${m.score[0]}:${m.score[1]}` : '–')} {t.team(m.away)}</small>}</span>
+      <span className="isl-ico">{cur.kind === 'daily' ? <span className="isl-flame"><Flame size={18} /></span> : m ? <Crest team={cur.kind === 'goal' && m.score ? (cur.title.includes(t.team(m.away)) ? m.away : m.home) : m.home} size={26} /> : null}</span>
+      <span className="isl-txt"><b>{cur.title}</b>{cur.kind === 'daily' && <small className="ellip">{cur.double ? t('dailyDouble') : t('dailyHint')}</small>}{m && <small className="ellip">{t.team(m.home)} {cur.sc || (m.score ? `${m.score[0]}:${m.score[1]}` : '–')} {t.team(m.away)}</small>}</span>
       {cur.sub && <span className="isl-sub num">{cur.sub}</span>}
     </button>
   )

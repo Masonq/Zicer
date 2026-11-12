@@ -74,4 +74,5 @@ def user_me(u: User) -> dict:
     return {**user_short(u), "email": u.email, "lang": u.lang, "bank": round(u.bank, 2), "is_admin": u.is_admin,
             "fav_football": team_out(u.fav_football), "fav_basket": team_out(u.fav_basket),
             "tg_linked": bool(u.tg_chat_id), "bio": u.bio or "", "display_name": u.display_name or "",
-            "email_verified": bool(getattr(u, "email_verified", True))}
+            "email_verified": bool(getattr(u, "email_verified", True)),
+            "daily_streak": u.daily_streak or 0, "daily_last": u.daily_last or ""}

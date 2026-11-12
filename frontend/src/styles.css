@@ -1537,3 +1537,44 @@ img { display: block; max-width: 100%; }
 .fs-meter i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #FFD95E, #E8A912); }
 .fs-left { font-size: 13px; font-weight: 700; color: #c9d6cf; } .fs-left b { color: var(--chalk); }
 @media (max-width: 480px) { .founder-slide { padding-right: 34%; } .founder-slide .fs-medal { width: 62%; right: -18%; } }
+
+/* daily streak, level card */
+.streak-flame { margin-right: 4px; padding-right: 8px; border-right: 1px solid rgba(255,255,255,.12); font-weight: 800; font-size: 13px; color: #FFB067; }
+.island.daily b { color: #FFB067; } .isl-flame { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: linear-gradient(180deg, #FFB067, #FF6B3D); color: #fff; }
+.lvl-card { grid-column: span 2; }
+.lvl-name { color: var(--gold); }
+.lvl-bar { display: block; height: 8px; margin: 8px 0 6px; border-radius: 99px; background: rgba(255,255,255,.09); overflow: hidden; }
+.lvl-bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #FFD95E, #E8A912); }
+
+/* esports panel */
+.es-grid { display: grid; gap: 12px; } @media (min-width: 900px) { .es-grid { grid-template-columns: 1fr 1fr; } }
+.es-team .list-row:first-child { border-bottom: 1px solid var(--line); }
+.es-pills { display: flex; gap: 4px; }
+.es-row { gap: 10px; font-size: 14px; } .es-row .fp { flex: none; }
+.es-logo { width: 22px; height: 22px; border-radius: 6px; background: #fff; object-fit: contain; flex: none; }
+.es-date { color: var(--muted); min-width: 42px; text-align: right; }
+.fp { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 6px; font-size: 11px; font-weight: 900; }
+.fp.w { background: rgba(61,214,140,.18); color: #3DD68C; } .fp.l { background: rgba(255,107,107,.16); color: #FF6B6B; }
+.es-player { position: relative; aspect-ratio: 16/9; border-radius: 18px; overflow: hidden; background: #000; }
+.es-player iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.es-cover { width: 100%; aspect-ratio: 16/9; border-radius: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  background: radial-gradient(400px 220px at 50% 40%, rgba(145,70,255,.35), transparent 70%), #0d0f14; border: 1px solid rgba(145,70,255,.35); color: #fff; }
+.es-play { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; background: #9146FF; font-size: 24px; padding-left: 4px; box-shadow: 0 10px 30px rgba(145,70,255,.5); }
+.es-cover small { color: #b9b4c8; }
+
+/* how it works */
+.how { max-width: 760px; }
+.how-steps { display: grid; gap: 10px; margin-top: 18px; }
+.how-step { position: relative; display: grid; grid-template-columns: 44px 1fr; gap: 14px; align-items: start; padding: 16px 16px 16px 18px; }
+.how-step b { display: block; font-size: 16px; margin-bottom: 4px; } .how-step p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
+.how-ico { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; background: rgba(242,194,48,.14); color: var(--gold); }
+.how-n { position: absolute; right: 14px; top: 10px; font-family: var(--display); font-size: 30px; color: rgba(255,255,255,.07); }
+.how-safe { display: flex; gap: 10px; align-items: center; margin-top: 12px; padding: 14px 16px; color: #c9d6cf; font-size: 14px; } .how-safe svg { color: #3DD68C; flex: none; }
+.how-faq { padding: 4px 0; }
+.faq-item + .faq-item { border-top: 1px solid var(--line); }
+.faq-item button { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 15px 16px; text-align: left; font-weight: 700; font-size: 15px; color: var(--chalk); }
+.faq-item button svg { flex: none; transition: transform .2s; color: var(--muted); } .faq-item.on button svg { transform: rotate(180deg); }
+.faq-item p { margin: 0; padding: 0 16px 16px; color: var(--muted); font-size: 14px; line-height: 1.55; }
+@media (min-width: 900px) { .how-steps { grid-template-columns: 1fr 1fr; } }
+.how-link { display: inline-block; margin-top: 12px; font-size: 14px; font-weight: 700; color: var(--gold); }
+.foot-link { color: #c9d6cf; text-decoration: underline; text-underline-offset: 3px; }

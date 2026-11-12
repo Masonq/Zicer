@@ -34,17 +34,23 @@ def _winrate(c, db, game, tid):
     m = db.get(Meta, key)
     if m and m.value:
         v = json.loads(m.value)
-        if v.get("t", 0) > time.time() - 86400:
+        if v.get("t", 0) > time.time() - 86400 and "hist" in v:
             return v["wr"]
-    wr = 0.5
+    wr, hist = 0.5, []
     try:
         past = c.get(f"{API}/{game}/matches/past", params={"filter[opponent_id]": tid, "per_page": 15}).json()
         done = [x for x in past if x.get("winner_id")]
         if done:
             wr = (sum(1 for x in done if x["winner_id"] == tid) + 1) / (len(done) + 2)  # smoothed
+        for x in done:  # newest first: who it was against, the series score, the date
+            opp = next((o["opponent"] for o in x.get("opponents") or [] if o.get("opponent") and o["opponent"].get("id") != tid), None)
+            res = {r_["team_id"]: r_["score"] for r_ in x.get("results") or [] if "team_id" in r_}
+            if opp:
+                hist.append({"opp": opp.get("id"), "name": opp.get("name"), "logo": opp.get("image_url"), "w": x["winner_id"] == tid,
+                             "s": f"{res.get(tid, 0)}:{res.get(opp.get('id'), 0)}", "at": (x.get("begin_at") or "")[:10]})
     except Exception:  # noqa
         pass
-    db.merge(Meta(key=key, value=json.dumps({"wr": wr, "t": time.time()})))
+    db.merge(Meta(key=key, value=json.dumps({"wr": wr, "t": time.time(), "hist": hist[:15]})))
     return wr
 
 
@@ -110,6 +116,12 @@ def sync_pandascore(db: Session) -> str:
                 m.start = start or m.start
                 res = {r_["team_id"]: r_["score"] for r_ in x.get("results") or [] if "team_id" in r_}
                 hid, aid = ops[0]["id"], ops[1]["id"]
+                streams = [st for st in x.get("streams_list") or [] if st.get("raw_url") or st.get("embed_url")]
+                if streams:  # official main stream first, then English, then any
+                    st = sorted(streams, key=lambda v: (not v.get("main"), not v.get("official"), v.get("language") != "en"))[0]
+                    lv = dict(m.live or {})
+                    lv["stream"] = {"embed": st.get("embed_url") or "", "url": st.get("raw_url") or "", "lang": st.get("language") or ""}
+                    m.live = lv
                 if x.get("status") == "running":
                     m.status = "live"
                     m.score_home, m.score_away = res.get(hid, 0), res.get(aid, 0)
@@ -121,7 +133,7 @@ def sync_pandascore(db: Session) -> str:
                     fin += 1
                 elif x.get("status") in ("canceled", "postponed") and m.status == "scheduled":
                     m.status = "cancelled"
-                if m.status == "scheduled" and not (m.odds or {}).get("form") and start and start > datetime.utcnow():
+                if m.status == "scheduled" and start and start > datetime.utcnow() and (not (m.odds or {}).get("form") or not db.get(Meta, f"ps_wr_{hid}")):
                     ph, pa = _winrate(c, db, game, hid), _winrate(c, db, game, aid)
                     p = ph / (ph + pa) if ph + pa else 0.5
                     p = min(0.85, max(0.15, p))

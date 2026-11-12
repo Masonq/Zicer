@@ -1,3 +1,4 @@
+import json
 import io
 import os
 import random
@@ -14,7 +15,7 @@ from sqlalchemy.orm import Session
 from . import config, ingest
 from .auth import hash_pw, check_pw, make_token, current_user, current_user_opt
 from .db import get_db
-from .models import (User, Team, Match, Prediction, Ticket, TicketItem, ScorePick, Trend, Bookmaker, League, Banner)
+from .models import (Meta, User, Team, Match, Prediction, Ticket, TicketItem, ScorePick, Trend, Bookmaker, League, Banner)
 from .serial import match_out, user_short, user_me, team_out, iso
 
 router = APIRouter(prefix="/api")
@@ -89,6 +90,25 @@ def login(body: LoginIn, db: Session = Depends(get_db)):
     if u.is_banned:
         raise HTTPException(403, "banned")
     return {"token": make_token(u.id), "user": user_me(u)}
+
+
+DAILY_BASE = 100
+
+
+@router.post("/me/daily")
+def daily_bonus(u: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Once a day (Belgrade date): +100 to the bank; every 7th day in a row pays double. Missing a day restarts the streak."""
+    u = db.merge(u)
+    today = (utcnow() + timedelta(hours=1)).date()
+    if u.daily_last == today.isoformat():
+        return {"granted": 0, "streak": u.daily_streak, "user": user_me(u)}
+    yesterday = (today - timedelta(days=1)).isoformat()
+    u.daily_streak = (u.daily_streak or 0) + 1 if u.daily_last == yesterday else 1
+    amount = DAILY_BASE * (2 if u.daily_streak % 7 == 0 else 1)
+    u.daily_last = today.isoformat()
+    u.bank += amount
+    db.commit()
+    return {"granted": amount, "streak": u.daily_streak, "double": u.daily_streak % 7 == 0, "user": user_me(u)}
 
 
 @router.get("/me")
@@ -287,6 +307,24 @@ def matches(sport: str = "all", day: str = "today", serbian: bool = False, tz: i
 
 
 @router.get("/matches/{mid}")
+def _esports_extra(db, m):
+    """Esports: recent series and head-to-head come from PandaScore history; live stream link if the match has one."""
+    if m.sport != "esports":
+        return {}
+    def hist(team):
+        if not (team.ext or "").startswith("ps:"):
+            return []
+        r = db.get(Meta, f"ps_wr_{team.ext[3:]}")
+        try:
+            return json.loads(r.value).get("hist") or [] if r and r.value else []
+        except Exception:  # noqa
+            return []
+    hh, ha = hist(m.home), hist(m.away)
+    away_id = int(m.away.ext[3:]) if (m.away.ext or "").startswith("ps:") else None
+    st = (m.live or {}).get("stream") or None
+    return {"es": {"home": hh[:5], "away": ha[:5], "h2h": [x for x in hh if x.get("opp") == away_id][:5], "stream": st}}
+
+
 def match_detail(mid: int, u: User | None = Depends(current_user_opt), db: Session = Depends(get_db)):
     m = db.get(Match, mid)
     if not m:
@@ -301,6 +339,7 @@ def match_detail(mid: int, u: User | None = Depends(current_user_opt), db: Sessi
         "analysis": {"sr": m.analysis_sr, "ru": m.analysis_ru},
         "form": {"home": ingest.team_form(db, m.home_id, m.start), "away": ingest.team_form(db, m.away_id, m.start)},
         "h2h": [match_out(x) for x in hh],
+        **_esports_extra(db, m),
         "trends": [{"pick": t.pick, "odds": t.odds, "sr": t.text_sr, "ru": t.text_ru} for t in trends],
         "predictions": [{"id": p.id, "user": user_short(p.user), "pick": p.pick, "odds": p.odds, "stake": p.stake,
                          "comment": p.comment, "status": p.status, "profit": p.profit, "created": iso(p.created_at),
@@ -597,6 +636,9 @@ def profile(username: str, db: Session = Depends(get_db)):
             "bento": _profile_bento(db, u)}
 
 
+LEVELS = [0, 100, 300, 700, 1500, 3000, 6000]  # Početnik, Amater, Poznavalac, Analitičar, Ekspert, Majstor, Legenda
+
+
 def _profile_bento(db, u):
     settled = db.scalars(select(Prediction).where(Prediction.user_id == u.id, Prediction.status.in_(["won", "lost"]))
                          .order_by(Prediction.settled_at)).all()
@@ -624,6 +666,19 @@ def _profile_bento(db, u):
     big_odds = any(p.status == "won" and p.odds >= 3 for p in settled)
     el = sum(1 for p in settled if p.status == "won" and p.match.league and "euroleague" in (p.match.league.name or "").lower())
     won_n = sum(1 for p in settled if p.status == "won")
+    preds_all = db.scalar(select(func.count()).select_from(Prediction).where(Prediction.user_id == u.id)) or 0
+    under_n = sum(1 for p in settled if p.status == "won" and p.odds >= 3)
+    sports_won = {p.match.sport for p in settled if p.status == "won"}
+    big_ticket = db.scalar(select(func.count()).select_from(Ticket).where(Ticket.user_id == u.id, Ticket.status == "won", Ticket.total_odds >= 10)) or 0
+    derby_n = db.scalar(select(func.count()).select_from(ScorePick).where(ScorePick.user_id == u.id)) or 0
+    invited = db.scalar(select(func.count()).select_from(User).where(User.ref_by == u.id)) or 0
+    from .serial import founder_ids
+    # experience: every prediction counts, wins and won tickets count more
+    xp = preds_all * 10 + won_n * 20 + tickets_all * 15 + tickets_won * 60 + (u.daily_streak or 0) * 5 + invited * 100
+    lvl = 0
+    for i, need in enumerate(LEVELS):
+        if xp >= need:
+            lvl = i
     ach = [
         {"key": "first_pick", "got": len(settled) > 0 or db.scalar(select(func.count()).select_from(Prediction).where(Prediction.user_id == u.id)) > 0},
         {"key": "first_ticket", "got": tickets_all > 0},
@@ -633,10 +688,22 @@ def _profile_bento(db, u):
         {"key": "underdog", "got": big_odds},
         {"key": "ticket_won", "got": tickets_won > 0},
         {"key": "euroleague", "got": el >= 10, "p": min(el, 10), "of": 10},
+        {"key": "streak3", "got": best_streak >= 3, "p": min(best_streak, 3), "of": 3},
+        {"key": "won10", "got": won_n >= 10, "p": min(won_n, 10), "of": 10},
+        {"key": "won100", "got": won_n >= 100, "p": min(won_n, 100), "of": 100},
+        {"key": "underdog5", "got": under_n >= 5, "p": min(under_n, 5), "of": 5},
+        {"key": "tickets5", "got": tickets_won >= 5, "p": min(tickets_won, 5), "of": 5},
+        {"key": "ticket10x", "got": big_ticket > 0},
+        {"key": "sports3", "got": len(sports_won) >= 3, "p": min(len(sports_won), 3), "of": 3},
+        {"key": "daily7", "got": (u.daily_streak or 0) >= 7, "p": min(u.daily_streak or 0, 7), "of": 7},
+        {"key": "derby", "got": derby_n > 0},
+        {"key": "invite", "got": invited > 0},
+        {"key": "founder", "got": u.id in founder_ids()},
     ]
     return {"streak": cur, "best_streak": best_streak, "fav_sport": fav_sport, "curve": curve,
             "best_win": {"profit": round(best_win.profit), "odds": best_win.odds, "match": match_out(best_win.match), "pick": best_win.pick} if best_win else None,
-            "achievements": ach}
+            "achievements": ach,
+            "level": {"n": lvl, "xp": xp, "from": LEVELS[lvl], "to": LEVELS[lvl + 1] if lvl + 1 < len(LEVELS) else None}}
 
 
 # ---------------- home / derby / trends / bookmakers ----------------

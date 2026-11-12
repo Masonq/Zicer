@@ -138,7 +138,7 @@ def _page(title, desc, path, body, og_image=None, jsonld=None):
 <meta property="og:type" content="website"><meta property="og:site_name" content="Winly"><meta property="og:title" content="{E(title)}">
 <meta property="og:description" content="{E(desc)}"><meta property="og:url" content="{url}"><meta property="og:image" content="{img}">
 <meta name="twitter:card" content="summary_large_image">{ld}</head><body>
-<header><a href="/">Winly — liga prognoza</a> · <a href="/mecevi">Mečevi</a> · <a href="/rang">Rang</a> · <a href="/derbi">Derbi</a></header>
+<header><a href="/">Winly — liga prognoza</a> · <a href="/mecevi">Mečevi</a> · <a href="/rang">Rang</a> · <a href="/derbi">Derbi</a> · <a href="/kako-funkcionise">Kako funkcioniše</a></header>
 <main>{body}</main><footer><p>18+. Winly ne prima opklade i ne organizuje igre na sreću — besplatna liga prognoza za navijače.</p></footer></body></html>'''
 
 
@@ -220,7 +220,7 @@ def seo_render(path: str, request: Request, db: Session = Depends(get_db)):
 @router.get("/sitemap.xml", include_in_schema=False)
 def sitemap(db: Session = Depends(get_db)):
     n = now()
-    urls = [("/", "hourly"), ("/mecevi", "hourly"), ("/rang", "daily"), ("/derbi", "daily")]
+    urls = [("/", "hourly"), ("/mecevi", "hourly"), ("/rang", "daily"), ("/derbi", "daily"), ("/kako-funkcionise", "monthly")]
     ms = db.scalars(select(Match).where(Match.start > n - timedelta(days=7), Match.start < n + timedelta(days=10))).all()
     urls += [(match_path(m), "hourly" if m.status != "finished" else "weekly") for m in ms]
     lgs = {m.league.id: m.league for m in ms}

@@ -56,6 +56,7 @@ export default function Home() {
             <Link to="/registracija" className="btn btn-gold">{t('join')}</Link>
             <Link to="/prijava" className="btn btn-line">{t('login')}</Link>
           </div>
+          <Link to="/kako-funkcionise" className="how-link">{t('howTitle')} →</Link>
           {/* until the league is big, show what the site offers instead of small player counts */}
           <div className="hero-stats">
             {st.users >= 50 ? <>

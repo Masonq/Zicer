@@ -1,5 +1,5 @@
 import { Shield, Flame, Trophy } from 'lucide-react'
-import { AreaChart, Ring, Badges } from '../components/Bits'
+import { AreaChart, Ring, Badges , LevelCard } from '../components/Bits'
 import { InviteCard } from '../components/Invite'
 import { SportIcon } from '../components/Sports'
 import { Link, useParams } from 'react-router-dom'
@@ -37,6 +37,7 @@ export function ProfileView({ data, editable = false }) {
         <div className="pb-tile"><span className="pb-l">{t('profit')}</span><b className={`pb-v num ${s.profit >= 0 ? 'pos' : 'neg'}`}>{s.profit > 0 ? '+' : ''}{fmtNum(s.profit)}</b><small>ROI {s.roi}%</small></div>
         <div className="pb-tile"><span className="pb-l">{t('bank')}</span><b className="pb-v num">{fmtNum(u.bank)}</b><small>{t.n(s.count, 'predictions')}</small></div>
         {data.bento && <>
+          <LevelCard level={data.bento.level} />
           <div className="pb-tile"><span className="pb-l"><Flame size={14} />{t('streak')}</span><b className="pb-v num">{data.bento.streak}</b><small>{t('bestStreak')} {data.bento.best_streak}</small></div>
           <div className="pb-tile"><span className="pb-l">{t('favSport')}</span>{data.bento.fav_sport ? <b className="pb-v pb-sport"><SportIcon sport={data.bento.fav_sport} size={22} />{t(data.bento.fav_sport)}</b> : <b className="pb-v">—</b>}</div>
           <div className="pb-tile pb-chart"><span className="pb-l">{t('bankMonth')}</span><AreaChart data={data.bento.curve} /></div>
