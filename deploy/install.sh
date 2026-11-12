@@ -200,6 +200,31 @@ if [ ! -d /var/log/journal ]; then mkdir -p /var/log/journal && systemd-tmpfiles
 } > $APP/reports/server-projects.txt 2>&1
 ok "снимок здоровья сервера записан"
 
+# one-time removal of finished projects: Plunkly (Bunker 17), Kront, Puškica, POLAKO.
+# A compressed copy of code and databases is kept in /root/backups/deleted-20261112 (just in case).
+CLEAN=/var/lib/zicer-cleanup-20261112.done
+if [ ! -f $CLEAN ]; then
+  B=/root/backups/deleted-20261112; mkdir -p $B
+  systemctl disable --now plunkly.service >/dev/null 2>&1; rm -f /etc/systemd/system/plunkly.service
+  [ -d /opt/plunkly ] && tar czf $B/plunkly.tgz --exclude=.venv --exclude=node_modules -C /opt plunkly 2>/dev/null && rm -rf /opt/plunkly
+  rm -f /etc/nginx/sites-enabled/plunkly /etc/nginx/sites-available/plunkly
+  for p in kront puskica polako; do
+    db=$(docker ps --format '{{.Names}}' | grep "^$p-db-1$")
+    [ -n "$db" ] && docker exec $db sh -c 'pg_dumpall -U "${POSTGRES_USER:-postgres}"' 2>/dev/null | gzip > $B/$p-db.sql.gz
+    if [ -d /opt/$p ]; then (cd /opt/$p && docker compose -p $p down -v --rmi local >/dev/null 2>&1); fi
+    docker ps -a --format '{{.Names}}' | grep "^$p-" | xargs -r docker rm -f >/dev/null 2>&1
+    docker volume ls -q | grep "^${p}_" | xargs -r docker volume rm >/dev/null 2>&1
+    docker images --format '{{.Repository}}:{{.Tag}}' | grep "^$p-" | xargs -r docker rmi -f >/dev/null 2>&1
+    [ -d /opt/$p ] && tar czf $B/$p.tgz --exclude=node_modules --exclude=.venv --exclude=.next -C /opt $p 2>/dev/null && rm -rf /opt/$p
+  done
+  systemctl disable --now kront-autodeploy.timer kront-autodeploy.service >/dev/null 2>&1; rm -f /etc/systemd/system/kront-autodeploy.*
+  rm -f /etc/nginx/sites-enabled/puskica.conf /etc/nginx/sites-available/puskica.conf
+  for c in $(ls /etc/letsencrypt/live 2>/dev/null | grep -E 'plunkly|puskica'); do certbot delete --cert-name $c --non-interactive >/dev/null 2>&1; done
+  systemctl daemon-reload; nginx -t >/dev/null 2>&1 && systemctl reload nginx
+  touch $CLEAN
+  ok "удалены проекты: Plunkly (Бункер 17), Kront, Puškica, POLAKO; копия в $B ($(du -sh $B | cut -f1))"
+fi
+
 # inventory of everything running on this server (all projects, even small ones)
 {
   echo "=== службы (запущенные) — память, папка ==="
