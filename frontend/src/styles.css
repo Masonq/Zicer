@@ -1589,3 +1589,7 @@ img { display: block; max-width: 100%; }
 /* watermark: centred in the empty top band of the card, fully visible, above nothing important */
 .es-wm { position: absolute; left: 0; right: 0; top: 10px; text-align: center; font-family: var(--display); font-weight: 700; line-height: 1; letter-spacing: .02em; text-transform: uppercase;
   color: transparent; -webkit-text-stroke: 2px color-mix(in srgb, var(--es) 55%, transparent); opacity: .5; pointer-events: none; white-space: nowrap; z-index: 0; }
+
+/* the watermark was taking space in the card's flow (generic ".pitch > *" made it relative) — that empty band pushed the chip row down */
+.pitch[class*="sc-"] > .es-wm, .pitch[class*="sc-"] > .es-mark { position: absolute; }
+.pitch[class*="sc-"] > .es-wm { top: 50%; transform: translateY(-38%); opacity: .2; }
