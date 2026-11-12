@@ -168,6 +168,8 @@ modprobe softdog 2>/dev/null; echo softdog > /etc/modules-load.d/softdog.conf
 mkdir -p /etc/systemd/system.conf.d; printf '[Manager]\nRuntimeWatchdogSec=60s\nRebootWatchdogSec=5min\n' > /etc/systemd/system.conf.d/watchdog.conf
 echo 'kernel.panic = 10' > /etc/sysctl.d/90-zicer.conf; sysctl -q -p /etc/sysctl.d/90-zicer.conf
 systemctl daemon-reexec && ok "аппаратный сторож ядра включён (softdog)" || bad "softdog"
+# keep the system log across reboots, so the next freeze can be explained (out of memory, disk, kernel)
+if [ ! -d /var/log/journal ]; then mkdir -p /var/log/journal && systemd-tmpfiles --create --prefix /var/log/journal >/dev/null 2>&1; systemctl restart systemd-journald; fi
 # 5) health snapshot for the report: memory, disk, and why the last boot ended
 {
   echo "uptime: $(uptime -p)"; free -m | head -3; df -h / | tail -1
