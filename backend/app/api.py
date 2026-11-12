@@ -306,7 +306,6 @@ def matches(sport: str = "all", day: str = "today", serbian: bool = False, tz: i
     return _list(db, ms)
 
 
-@router.get("/matches/{mid}")
 def _esports_extra(db, m):
     """Esports: recent series and head-to-head come from PandaScore history; live stream link if the match has one."""
     if m.sport != "esports":
@@ -325,6 +324,7 @@ def _esports_extra(db, m):
     return {"es": {"home": hh[:5], "away": ha[:5], "h2h": [x for x in hh if x.get("opp") == away_id][:5], "stream": st}}
 
 
+@router.get("/matches/{mid}")
 def match_detail(mid: int, u: User | None = Depends(current_user_opt), db: Session = Depends(get_db)):
     m = db.get(Match, mid)
     if not m:
